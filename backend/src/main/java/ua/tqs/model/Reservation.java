@@ -11,28 +11,31 @@ import java.time.LocalDateTime;
 import ua.tqs.enums.ReservationStatus;
 
 @Entity
-@Table(name = "reservas")
+@Table(name = "reservations")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Reserva {
+public class Reservation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank
-    private String nome;
+    @NotBlank(message = "Name is required")
+    @Column(name = "name", nullable = false)
+    private String name;
 
-    @NotNull
-    private LocalDateTime data;
+    @NotNull(message = "Date and time is required")
+    @Column(name = "date_time", nullable = false)
+    private LocalDateTime dateTime;
 
-    @Min(1)
-    private int pessoas;
+    @Min(value = 1, message = "At least one person is required")
+    @Column(name = "people")
+    private int people;
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private ReservationStatus status = ReservationStatus.ACTIVE;
 }

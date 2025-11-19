@@ -8,7 +8,7 @@ import java.util.Objects;
 
 import lombok.Getter;
 import lombok.Setter;
-import ua.tqs.enums.UserType;
+import ua.tqs.enums.UserRole;
 
 @Getter
 @Entity
@@ -38,7 +38,7 @@ public class User {
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private UserType type = UserType.CUSTOMER;
+    private UserRole type = UserRole.CUSTOMER;
 
     public User() {
     }

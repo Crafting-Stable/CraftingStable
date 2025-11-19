@@ -1,6 +1,6 @@
 package ua.tqs.enums;
 
-public enum UserType {
+public enum UserRole {
     CUSTOMER,
     ADMIN
 
