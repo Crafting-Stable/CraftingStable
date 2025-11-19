@@ -98,8 +98,6 @@
                     <encoding>${project.build.sourceEncoding}</encoding>
                     <!-- Forçar fork para usar o javac do JDK instalado (evita incompatibilidades internas) -->
                     <fork>true</fork>
-                    <!-- opcional: apontar explicitamente para o javac se quiseres garantir o JDK correto -->
-                    <!-- <executable>${env.JAVA_HOME}/bin/javac</executable> -->
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>

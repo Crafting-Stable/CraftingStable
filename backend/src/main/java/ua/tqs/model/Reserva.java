@@ -8,6 +8,8 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
+import ua.tqs.enums.ReservationStatus;
+
 @Entity
 @Table(name = "reservas")
 @Getter
@@ -28,4 +30,9 @@ public class Reserva {
 
     @Min(1)
     private int pessoas;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ReservationStatus status = ReservationStatus.ACTIVE;
 }

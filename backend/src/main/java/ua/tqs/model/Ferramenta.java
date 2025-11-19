@@ -6,6 +6,8 @@ import lombok.*;
 
 import java.math.BigDecimal;
 
+import ua.tqs.enums.FerramentaStatus;
+
 @Entity
 @Table(name = "ferramentas")
 @Data
@@ -44,4 +46,9 @@ public class Ferramenta {
 
     // Owner ID virá depois quando implementares User
     private Long ownerId;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private FerramentaStatus status = FerramentaStatus.DISPONIVEL;
 }

@@ -1,11 +1,16 @@
-// java
 package ua.tqs.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.util.Objects;
 
+import lombok.Getter;
+import lombok.Setter;
+import ua.tqs.enums.UserType;
+
+@Getter
 @Entity
 @Table(name = "users")
 public class User {
@@ -14,16 +19,26 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Setter
     @NotBlank
     private String name;
 
+    @Setter
     @NotBlank
     @Email
     @Column(unique = true, nullable = false)
     private String email;
 
+    // Não retornar a senha em toString; getter/setter mantidos para uso interno
+    @Setter
     @NotBlank
     private String password;
+
+    @Setter
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserType type = UserType.CUSTOMER;
 
     public User() {
     }
@@ -37,35 +52,6 @@ public class User {
 
     public User(String name, String email, String password) {
         this(null, name, email, password);
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    // Não retornar a senha em toString; getter/setter mantidos para uso interno
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 
     @Override
@@ -88,6 +74,7 @@ public class User {
                 "id=" + id +
                 ", name='" + name + '\'' +
                 ", email='" + email + '\'' +
+                ", type=" + type +
                 '}';
     }
 }
