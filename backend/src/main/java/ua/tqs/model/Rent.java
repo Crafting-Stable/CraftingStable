@@ -9,7 +9,6 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 import ua.tqs.enums.RentStatus;
-
 @Entity
 @Table(name = "rents")
 @Getter
@@ -18,24 +17,25 @@ import ua.tqs.enums.RentStatus;
 @AllArgsConstructor
 @Builder
 public class Rent {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Name is required")
-    @Column(name = "name", nullable = false)
-    private String name;
-
-    @NotNull(message = "Date and time is required")
-    @Column(name = "date_time", nullable = false)
-    private LocalDateTime dateTime;
-
-    @Min(value = 1, message = "At least one person is required")
-    @Column(name = "people")
-    private int people;
+    @NotNull
+    private Long toolId;
 
     @NotNull
+    private Long userId;
+
+    @NotNull
+    private LocalDateTime startDate;
+
+    @NotNull
+    private LocalDateTime endDate;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
     private RentStatus status = RentStatus.ACTIVE;
+
+    private String message;
 }
