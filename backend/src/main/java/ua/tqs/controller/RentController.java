@@ -6,47 +6,47 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ua.tqs.model.Reservation;
-import ua.tqs.service.ReservationService;
+import ua.tqs.model.Rent;
+import ua.tqs.service.RentService;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/reservations")
+@RequestMapping("/api/rents")
 @RequiredArgsConstructor
-public class ReservationController {
+public class RentController {
 
-    private final ReservationService reservationService;
+    private final RentService rentService;
 
     @PostMapping
-    public ResponseEntity<Reservation> create(@Valid @RequestBody Reservation reservation) {
-        Reservation created = reservationService.create(reservation);
+    public ResponseEntity<Rent> create(@Valid @RequestBody Rent rent) {
+        Rent created = rentService.create(rent);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @GetMapping
-    public ResponseEntity<List<Reservation>> listAll() {
-        return ResponseEntity.ok(reservationService.listAll());
+    public ResponseEntity<List<Rent>> listAll() {
+        return ResponseEntity.ok(rentService.listAll());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Reservation> findById(@PathVariable Long id) {
-        return reservationService.findById(id)
+    public ResponseEntity<Rent> findById(@PathVariable Long id) {
+        return rentService.findById(id)
                 .map(r -> ResponseEntity.ok(r))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        reservationService.delete(id);
+        rentService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/interval")
-    public ResponseEntity<List<Reservation>> findByInterval(
+    public ResponseEntity<List<Rent>> findByInterval(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
-        return ResponseEntity.ok(reservationService.findByInterval(from, to));
+        return ResponseEntity.ok(rentService.findByInterval(from, to));
     }
 }

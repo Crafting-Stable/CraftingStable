@@ -1,6 +1,6 @@
 package ua.tqs.enums;
 
-public enum ReservationStatus {
+public enum RentStatus {
     ACTIVE,
     CANCELED,
     FINISHED

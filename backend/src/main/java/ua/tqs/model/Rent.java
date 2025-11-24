@@ -8,16 +8,16 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-import ua.tqs.enums.ReservationStatus;
+import ua.tqs.enums.RentStatus;
 
 @Entity
-@Table(name = "reservations")
+@Table(name = "rents")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Reservation {
+public class Rent {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -37,5 +37,5 @@ public class Reservation {
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private ReservationStatus status = ReservationStatus.ACTIVE;
+    private RentStatus status = RentStatus.ACTIVE;
 }
