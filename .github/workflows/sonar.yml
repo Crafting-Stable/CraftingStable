@@ -52,12 +52,37 @@ jobs:
       - name: Build backend
         run: mvn -B -f backend/pom.xml verify
 
-      - name: SonarCloud Scan
-        uses: sonarsource/sonarcloud-github-action@master
-        with:
-          args: >
-            -Dsonar.projectKey=Goncasgamer20_CraftingStable
-            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
-            -Dsonar.host.url=https://sonarcloud.io
+      - name: Run SonarScanner CLI (conditional args)
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
+        run: |
+          set -euo pipefail
+
+          echo "Preparing SonarScanner CLI..."
+          SCANNER_VERSION="7.0.2.4839"
+          SCANNER_FILE="sonar-scanner-cli-${SCANNER_VERSION}-linux-x64.zip"
+          SCANNER_URL="https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/${SCANNER_FILE}"
+
+          mkdir -p "$RUNNER_TEMP/sonarscanner"
+          wget -q "$SCANNER_URL" -O "$RUNNER_TEMP/$SCANNER_FILE"
+          unzip -q -o "$RUNNER_TEMP/$SCANNER_FILE" -d "$RUNNER_TEMP"
+          SCANNER_DIR=$(find "$RUNNER_TEMP" -maxdepth 1 -type d -name "sonar-scanner-*linux-x64" | head -n1)
+          if [ -z "$SCANNER_DIR" ]; then echo "Could not find sonar scanner dir" >&2; exit 1; fi
+          echo "${SCANNER_DIR}/bin" >> "$GITHUB_PATH"
+
+          echo "Building sonar-scanner args..."
+          ARGS="-Dsonar.projectKey=Goncasgamer20_CraftingStable -Dsonar.host.url=https://sonarcloud.io"
+          if [ -n "${SONAR_ORGANIZATION:-}" ]; then
+            ARGS="$ARGS -Dsonar.organization=${SONAR_ORGANIZATION}"
+          else
+            echo "::warning::SONAR_ORGANIZATION secret is empty; running scan without organization flag"
+          fi
+          if [ -n "${SONAR_TOKEN:-}" ]; then
+            ARGS="$ARGS -Dsonar.login=${SONAR_TOKEN}"
+          else
+            echo "::warning::SONAR_TOKEN secret is empty; authentication may fail"
+          fi
+
+          echo "Running sonar-scanner with args: $ARGS"
+          sonar-scanner $ARGS
