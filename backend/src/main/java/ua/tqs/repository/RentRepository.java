@@ -7,5 +7,5 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface RentRepository extends JpaRepository<Rent, Long> {
-    List<Rent> findByDateTimeBetween(LocalDateTime from, LocalDateTime to);
+    List<Rent> findByStartDateBetween(LocalDateTime from, LocalDateTime to);
 }

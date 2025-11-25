@@ -35,6 +35,6 @@ public class RentService {
     }
 
     public List<Rent> findByInterval(LocalDateTime from, LocalDateTime to) {
-        return rentRepository.findByDateTimeBetween(from, to);
+        return rentRepository.findByStartDateBetween(from, to);
     }
 }

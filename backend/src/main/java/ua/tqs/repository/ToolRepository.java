@@ -9,9 +9,9 @@ import java.util.List;
 @Repository
 public interface ToolRepository extends JpaRepository<Tool, Long> {
 
-    List<Tool> findByType(String tipo);
+    List<Tool> findByType(String type);
 
     List<Tool> findByAvailableTrue();
 
-    List<Tool> findByLocalizacao(String localizacao);
+    List<Tool> findByLocation(String location);
 }
