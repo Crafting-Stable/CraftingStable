@@ -55,7 +55,7 @@ jobs:
           npm run build
 
       - name: Build backend
-        run: mvn -B -f backend/pom.xml ver
+        run: mvn -B -f backend/pom.xml verify
 
       - name: Run SonarScanner CLI (conditional args)
         env:
