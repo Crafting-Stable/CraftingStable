@@ -5,6 +5,7 @@ on:
       - '**'
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
 jobs:
   build:
     name: Build and analyze
@@ -46,7 +47,12 @@ jobs:
       - name: Install and build frontend
         working-directory: frontend
         run: |
-          npm ci
+          # Use npm ci when a lockfile exists for reproducible installs, otherwise fall back to npm install
+          if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+            npm ci
+          else
+            npm install
+          fi
           npm run build
 
       - name: Build backend
@@ -75,7 +81,8 @@ jobs:
           which sonar-scanner || true
 
           echo "Building sonar-scanner args..."
-          ARGS="-Dsonar.projectKey=Goncasgamer20_CraftingStable -Dsonar.host.url=https://sonarcloud.io"
+          # Tell Sonar where compiled Java classes are located so the Java analyzer can run
+          ARGS="-Dsonar.projectKey=Goncasgamer20_CraftingStable -Dsonar.host.url=https://sonarcloud.io -Dsonar.java.binaries=backend/target/classes"
           if [ -n "${SONAR_ORGANIZATION:-}" ]; then
             ARGS="$ARGS -Dsonar.organization=${SONAR_ORGANIZATION}"
           else
