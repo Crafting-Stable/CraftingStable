@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import logoImg from '../assets/craftingstable.png';
 import bgImg from '../assets/rust.jpg';
+import Header from '../components/Header';
 
 type Tool = {
     id: string;
@@ -39,7 +39,13 @@ const styles: { [k: string]: React.CSSProperties } = {
         color: "#fff",
         fontFamily: "Inter, Arial, sans-serif"
     },
-    overlay: { position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)" },
+    overlay: {
+        position: "absolute",
+        inset: 0,
+        background: "rgba(0,0,0,0.55)",
+        zIndex: 0,
+        pointerEvents: "none"
+    },
 
     /* header / navbar — largura total como HomePage */
     header: {
@@ -109,21 +115,7 @@ export default function CatalogPage(): React.ReactElement {
         <div style={styles.root}>
             <div style={styles.overlay} />
 
-            <header style={styles.header}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <Link to="/" style={styles.logo}>
-                        <img src={logoImg} alt="Crafting Stable logo" style={styles.logoImg} />
-                        <div style={styles.logoText}>CraftingStable</div>
-                    </Link>
-
-                    <nav style={styles.nav}>
-                        <Link to="/catalog" style={styles.navLink}>Catálogo</Link>
-                        <Link to="/about" style={styles.navLink}>Sobre</Link>
-                    </nav>
-                </div>
-
-                <Link to="/login" style={styles.loginButton}>Iniciar sessão</Link>
-            </header>
+            <Header />
 
             <div style={styles.container}>
                 <section style={styles.hero}>

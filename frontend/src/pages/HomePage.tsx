@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { Link } from "react-router-dom";
+import Header from '../components/Header';
 
-import logoImg from '../assets/craftingstable.png';
 import bgImg from '../assets/rust.jpg';
 
 type Tool = {
@@ -53,11 +53,7 @@ const styles: { [k: string]: React.CSSProperties } = {
         flexDirection: "column",
         flex: 1,
     },
-    header: { width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", boxSizing: "border-box", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "transparent", color: "#fff" },
-    headerRight: { display: "flex", alignItems: "center", gap: 12 },
     container: { fontFamily: "Inter, Arial, sans-serif", color: "#fff", padding: "0 16px", maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", flex: 1, boxSizing: "border-box" },
-    logoText: { fontWeight: 700, fontSize: 20, color: "#f8b749" },
-    logoImage: { width: 64, height: "auto", marginRight: 12 },
     nav: { display: "flex", gap: 12, color: "#fff", fontFamily: "Inter, Arial, sans-serif" },
     hero: { display: "flex", gap: 24, alignItems: "center", padding: "24px 0" },
     heroText: { flex: 1 },
@@ -76,7 +72,6 @@ const styles: { [k: string]: React.CSSProperties } = {
     arrowLeft: { left: 8 },
     arrowRight: { right: 8 },
 
-    loginButton: { padding: "8px 14px", borderRadius: 8, background: "#f8b749", color: "#222", textDecoration: "none", fontWeight: 600, border: "none", cursor: "pointer" },
     footer: { width: "100%", borderTop: "1px solid rgba(255,255,255,0.06)", padding: "18px 0", color: "rgba(255,255,255,0.9)", textAlign: "center", fontSize: 14, boxSizing: "border-box", background: "transparent" },
 };
 
@@ -94,23 +89,7 @@ export default function HomePage(): React.ReactElement {
         <div style={styles.root}>
             <div style={styles.overlay} />
             <div style={styles.content}>
-                <header style={styles.header}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <Link to="/" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "inherit" }}>
-                            <img src={logoImg} alt="Crafting Stable logo" style={styles.logoImage} />
-                            <div style={styles.logoText}>CraftingStable</div>
-                        </Link>
-
-                        <nav style={styles.nav}>
-                            <Link to="/catalog" style={{ color: "inherit", textDecoration: "none" }}>Catálogo</Link>
-                            <Link to="/about" style={{ color: "inherit", textDecoration: "none" }}>Sobre</Link>
-                        </nav>
-                    </div>
-
-                    <div style={styles.headerRight}>
-                        <Link to="/loginPage" style={styles.loginButton}>Iniciar sessão</Link>
-                    </div>
-                </header>
+                <Header />
 
                 <div style={styles.container}>
                     <main>
