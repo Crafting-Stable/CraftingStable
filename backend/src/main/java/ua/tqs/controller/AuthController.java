@@ -1,6 +1,5 @@
 package ua.tqs.controller;
 
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
@@ -13,6 +12,7 @@ import ua.tqs.service.UserDetailsServiceImpl;
 
 @RestController
 @RequestMapping("/api/auth")
+@CrossOrigin(origins = "http://localhost:5173")
 public class AuthController {
 
     private final AuthenticationManager authManager;
@@ -53,6 +53,16 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody AuthRequest request) {
+        if (request.getPassword() == null || request.getPasswordConfirm() == null ||
+                !request.getPassword().equals(request.getPasswordConfirm())) {
+            return ResponseEntity.badRequest().body("Passwords do not match");
+        }
+
+        String role = request.getRole();
+        if (role == null || role.isBlank()) {
+            role = "USER";
+        }
+
         if (userDetailsService.userExists(request.getEmail())) {
             return ResponseEntity.badRequest().body("Email already exists");
         }
@@ -62,7 +72,7 @@ public class AuthController {
                     request.getEmail(),
                     request.getPassword(),
                     request.getName(),
-                    request.getRole()
+                    role
             );
             return ResponseEntity.ok("User registered successfully");
         } catch (IllegalArgumentException e) {

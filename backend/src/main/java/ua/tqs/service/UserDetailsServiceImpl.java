@@ -3,6 +3,7 @@ package ua.tqs.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import ua.tqs.enums.UserRole;
 import ua.tqs.model.User;
@@ -14,10 +15,12 @@ import java.util.List;
 public class UserDetailsServiceImpl implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    public UserDetailsServiceImpl(UserRepository userRepository) {
+    public UserDetailsServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -43,7 +46,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         User user = new User();
         user.setEmail(username);
-        user.setPassword(password);
+        user.setPassword(passwordEncoder.encode(password)); // <<< encode aqui
         user.setName(name);
         user.setType(UserRole.valueOf(role.toUpperCase()));
 

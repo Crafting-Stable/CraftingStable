@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import logoImg from '../assets/craftingstable.png';
 import bgImg from '../assets/rust.jpg';
@@ -18,6 +18,7 @@ type RegisterForm = {
 };
 
 export default function LoginPage(): React.ReactElement {
+    const navigate = useNavigate();
     const [login, setLogin] = useState<LoginForm>({ email: '', password: '', remember: false });
     const [reg, setReg] = useState<RegisterForm>({ name: '', email: '', password: '', passwordConfirm: '' });
     const [loginErrors, setLoginErrors] = useState<Record<string, string>>({});
@@ -27,21 +28,49 @@ export default function LoginPage(): React.ReactElement {
 
     const emailValid = (e: string) => /\S+@\S+\.\S+/.test(e);
 
-    const handleLoginSubmit = (ev?: React.FormEvent) => {
+    const handleLoginSubmit = async (ev?: React.FormEvent) => {
         ev?.preventDefault();
         const errs: Record<string, string> = {};
         if (!login.email) errs.email = 'Email obrigatório';
         else if (!emailValid(login.email)) errs.email = 'Email inválido';
         if (!login.password) errs.password = 'Password obrigatória';
         setLoginErrors(errs);
-        if (Object.keys(errs).length === 0) {
-            console.log('Login', login);
-            alert('Login submetido (simulado)');
-            setLogin({ ...login, password: '' });
+        if (Object.keys(errs).length > 0) return;
+
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: login.email, password: login.password })
+            });
+
+            const data: any = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                if (data.errors && typeof data.errors === 'object') {
+                    setLoginErrors(data.errors);
+                } else if (data.message) {
+                    setLoginErrors({ general: data.message });
+                } else {
+                    setLoginErrors({ general: 'Erro no login' });
+                }
+                return;
+            }
+
+            if (data.token) {
+                localStorage.setItem('jwt', data.token);
+                localStorage.setItem('user', JSON.stringify({ username: data.username, role: data.role }));
+                setLogin({ ...login, password: '' });
+                navigate('/catalog');
+            } else {
+                setLoginErrors({ general: 'Resposta inválida do servidor' });
+            }
+        } catch (err) {
+            setLoginErrors({ general: 'Erro de rede' });
         }
     };
 
-    const handleRegisterSubmit = (ev?: React.FormEvent) => {
+    const handleRegisterSubmit = async (ev?: React.FormEvent) => {
         ev?.preventDefault();
         const errs: Record<string, string> = {};
         if (!reg.name) errs.name = 'Nome obrigatório';
@@ -51,10 +80,46 @@ export default function LoginPage(): React.ReactElement {
         else if (reg.password.length < 6) errs.password = 'Mínimo 6 caracteres';
         if (reg.password !== reg.passwordConfirm) errs.passwordConfirm = 'Passwords não coincidem';
         setRegErrors(errs);
-        if (Object.keys(errs).length === 0) {
-            console.log('Registo', reg);
-            alert('Registo submetido (simulado)');
-            setReg({ name: '', email: '', password: '', passwordConfirm: '' });
+        if (Object.keys(errs).length > 0) return;
+
+        try {
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: reg.name,
+                    email: reg.email,
+                    password: reg.password,
+                    passwordConfirm: reg.passwordConfirm,
+                    role: 'CUSTOMER' // força role USER para evitar "Invalid role"
+                })
+            });
+
+            const data: any = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                if (data.errors && typeof data.errors === 'object') {
+                    setRegErrors(data.errors);
+                } else if (data.message) {
+                    setRegErrors({ general: data.message });
+                } else {
+                    setRegErrors({ general: 'Erro no registo' });
+                }
+                return;
+            }
+
+            if (data.token) {
+                localStorage.setItem('jwt', data.token);
+                localStorage.setItem('user', JSON.stringify({ username: data.username, role: data.role }));
+                setReg({ name: '', email: '', password: '', passwordConfirm: '' });
+                navigate('/catalog');
+            } else {
+                setReg({ name: '', email: '', password: '', passwordConfirm: '' });
+                alert('Registo efetuado. Por favor inicie sessão.');
+                navigate('/loginPage');
+            }
+        } catch (err) {
+            setRegErrors({ general: 'Erro de rede' });
         }
     };
 
@@ -124,6 +189,7 @@ export default function LoginPage(): React.ReactElement {
                                         </button>
                                     </div>
                                     {loginErrors.password && <div className="error">{loginErrors.password}</div>}
+                                    {loginErrors.general && <div className="error">{loginErrors.general}</div>}
                                 </div>
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -142,8 +208,6 @@ export default function LoginPage(): React.ReactElement {
 
                                 <div style={{ display: 'flex', gap: 8 }}>
                                     <button type="submit" className="btn">Entrar</button>
-                                    <button type="button" className="btn secondary" onClick={() => alert('Login com Google (simulado)')}>Google</button>
-                                    <button type="button" className="btn secondary" onClick={() => alert('Login com Facebook (simulado)')}>Facebook</button>
                                 </div>
                             </form>
                         </section>
@@ -187,11 +251,11 @@ export default function LoginPage(): React.ReactElement {
                                     <label className="muted">Confirmar Password</label>
                                     <input type={showRegPw ? 'text' : 'password'} value={reg.passwordConfirm} onChange={(e) => setReg({ ...reg, passwordConfirm: e.target.value })} />
                                     {regErrors.passwordConfirm && <div className="error">{regErrors.passwordConfirm}</div>}
+                                    {regErrors.general && <div className="error">{regErrors.general}</div>}
                                 </div>
 
                                 <div style={{ display: 'flex', gap: 8 }}>
                                     <button type="submit" className="btn">Criar conta</button>
-                                    <button type="button" className="btn secondary" onClick={() => alert('Continuar como convidado (simulado)')}>Continuar como convidado</button>
                                 </div>
                             </form>
                         </section>
@@ -239,12 +303,14 @@ const styles: Record<string, React.CSSProperties> = {
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
-        color: '#111'
+        backgroundAttachment: 'fixed',
+        color: '#f1991e',
+        filter: 'contrast(110%)' // aumenta ligeiramente o contraste para uma imagem mais nítida
     },
     overlay: {
         position: 'absolute',
         inset: 0,
-        background: 'rgba(255,255,255,0.92)'
+        background: 'rgba(255,255,255,0.6)' // menos opaco para o background ficar mais visível
     },
     content: {
         position: 'relative',
@@ -254,7 +320,7 @@ const styles: Record<string, React.CSSProperties> = {
         flexDirection: 'column',
         flex: 1,
     },
-    header: { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', boxSizing: 'border-box', borderBottom: '1px solid rgba(0,0,0,0.04)', background: 'transparent', color: '#111' },
+    header: { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', boxSizing: 'border-box', borderBottom: '1px solid rgba(0,0,0,0.04)', background: 'transparent', color: '#f1991e' },
     headerRight: { display: 'flex', alignItems: 'center', gap: 12 },
     container: {
         width: '100%',
