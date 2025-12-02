@@ -95,8 +95,4 @@ jobs:
           fi
 
           echo "Running sonar-scanner with args: $ARGS"
-<<<<<<< HEAD
           sonar-scanner $ARGS
-=======
-          sonar-scanner $ARGS
->>>>>>> origin/main
