@@ -1,0 +1,66 @@
+svg{
+    background-color: black
+}
+
+.e-outer{
+    transform-style: preserve-3d;
+    animation: rotate-outer 8.0s linear infinite;
+    transform-origin: center center;
+}
+@keyframes rotate-outer {
+    0%   { transform: rotateZ(20deg) rotateX(90deg) rotateY(0deg) rotate(0deg); }
+    50%   { transform: rotateZ(20deg) rotateX(0deg) rotateY(0deg) rotate(180deg); }
+    100% { transform: rotateZ(20deg) rotateX(90deg) rotateY(0deg) rotate(360deg); }
+}
+
+.e-mid{
+    transform-style: preserve-3d;
+    animation: rotate-mid 6.1s linear infinite alternate;
+    transform-origin: center center;
+}
+@keyframes rotate-mid {
+    0%   { transform: rotateZ(10deg) rotateX(0deg) rotateY(90deg) rotate(0deg); }
+    50%   { transform: rotateZ(10deg) rotateX(0deg) rotateY(0deg) rotate(180deg); }
+    100% { transform: rotateZ(10deg) rotateX(0deg) rotateY(90deg) rotate(360deg); }
+}
+
+.e-in-out{
+    transform-style: preserve-3d;
+    animation: rotate-in-out 2.4s linear infinite alternate;
+    transform-origin: center center;
+}
+@keyframes rotate-in-out {
+    0%   { transform: rotateZ(0deg) rotateX(0deg) rotateY(0deg); }
+    100% { transform: rotateZ(0deg) rotateX(90deg) rotateY(-45deg); }
+}
+
+.e-in-mid{
+    transform-style: preserve-3d;
+    animation: rotate-in-mid 1.8s linear infinite alternate;
+    transform-origin: center center;
+}
+@keyframes rotate-in-mid {
+    0%   { transform: rotateZ(0deg) rotateX(0deg) rotateY(0deg); }
+    100% { transform: rotateZ(-10deg) rotateX(0deg) rotateY(90deg); }
+}
+
+.e-in-in{
+    transform-style: preserve-3d;
+    animation: rotate-in-in 1.8s linear infinite alternate;
+    animation-delay: 1.8s;
+    transform-origin: center center;
+}
+@keyframes rotate-in-in {
+    0%   { transform: rotateZ(0deg) rotateX(0deg) rotateY(0deg); }
+    100% { transform: rotateZ(-10deg) rotateX(0deg) rotateY(90deg); }
+}
+
+.static{
+    animation: static 1s infinite;
+    transform-origin: center center;
+}
+@keyframes static {
+    0%, 100%   { transform: rotateZ(-10deg) rotateX(0deg) rotateY(0deg); }
+}
+
+
