@@ -11,7 +11,6 @@ type Tool = {
     pricePerDay: number;
     oldPricePerDay?: number;
     image?: string;
-    description?: string;
     promo?: boolean;
 };
 
@@ -26,8 +25,8 @@ const styles: { [k: string]: React.CSSProperties } = {
         backgroundPosition: "center",
         color: "#fff",
         fontFamily: "Inter, Arial, sans-serif",
-        overflowY: "auto",                // permite scroll vertical
-        WebkitOverflowScrolling: "touch"  // suaviza scroll em touch
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch"
     },
     overlay: {
         position: "absolute",
@@ -49,11 +48,8 @@ const styles: { [k: string]: React.CSSProperties } = {
         background: "transparent",
         color: "#fff"
     },
-    /* ... demais estilos inalterados ... */
     container: { position: "relative", zIndex: 2, width: "100%", maxWidth: 1200, margin: "0 auto", padding: "0 20px", boxSizing: "border-box" },
-    /* ... */
     grid: { display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", marginTop: 12 },
-    /* Loading overlay fix: fixed, centered, but `pointerEvents: none` para não bloquear scroll */
     loadingOverlay: {
         position: "fixed",
         inset: 0,
@@ -65,7 +61,7 @@ const styles: { [k: string]: React.CSSProperties } = {
     },
     loadingInner: {
         pointerEvents: "none",
-        transform: "scale(0.45)", // reduz o SVG grande sem mexer no componente
+        transform: "scale(0.45)",
         width: 340,
         height: 340
     }
@@ -88,7 +84,6 @@ export default function CatalogPage(): React.ReactElement {
         pricePerDay: Number(apiTool.dailyPrice ?? apiTool.pricePerDay ?? 0),
         oldPricePerDay: apiTool.oldPricePerDay ? Number(apiTool.oldPricePerDay) : undefined,
         image: apiTool.imageUrl || apiTool.image || placeholderFor(apiTool.type, apiTool.name),
-        description: apiTool.description ?? undefined,
         promo: Boolean(apiTool.promo) || false
     });
 
@@ -133,7 +128,7 @@ export default function CatalogPage(): React.ReactElement {
                     fileName = fileName.replace(/^File:/i, '').trim();
                     const encoded = encodeURIComponent(fileName).replace(/\+/g, '%20');
                     const imageUrl = `https://commons.wikimedia.org/wiki/Special:FilePath/${encoded}`;
-                    return { thumbnail: { source: imageUrl }, extract: first.description || first.label || null };
+                    return { thumbnail: { source: imageUrl } };
                 }
             }
         } catch {
@@ -158,12 +153,11 @@ export default function CatalogPage(): React.ReactElement {
                 const mapped = data.map(mapApiToUi);
                 const enriched = await Promise.all(mapped.map(async (t) => {
                     const hasRealImage = !!t.image && !t.image.includes("placehold.co");
-                    if (hasRealImage && t.description) return t;
+                    if (hasRealImage) return t;
                     const w = await fetchWikipediaFor(t.name);
-                    if (!w) return t;
-                    const image = (hasRealImage ? t.image : (w.thumbnail && w.thumbnail.source)) || undefined;
-                    const description = t.description || w.extract || undefined;
-                    return { ...t, image: image ?? placeholderFor(t.category, t.name), description };
+                    if (!w) return { ...t, image: placeholderFor(t.category, t.name) };
+                    const image = (w.thumbnail && w.thumbnail.source) || placeholderFor(t.category, t.name);
+                    return { ...t, image };
                 }));
                 if (mounted) setTools(enriched);
             } catch (e) {
@@ -183,7 +177,7 @@ export default function CatalogPage(): React.ReactElement {
         let list = tools.slice();
         if (q.trim()) {
             const term = q.toLowerCase();
-            list = list.filter(t => t.name.toLowerCase().includes(term) || (t.description || "").toLowerCase().includes(term));
+            list = list.filter(t => t.name.toLowerCase().includes(term));
         }
         if (category !== "all") list = list.filter(t => t.category === category);
         if (sort === "price-asc") list.sort((a, b) => a.pricePerDay - b.pricePerDay);
@@ -237,7 +231,6 @@ export default function CatalogPage(): React.ReactElement {
                 </section>
 
                 <section>
-                    {/* substituído: overlay de loading que não bloqueia scroll */}
                     {loading ? (
                         <div style={styles.loadingOverlay}>
                             <div style={styles.loadingInner}>
@@ -254,7 +247,6 @@ export default function CatalogPage(): React.ReactElement {
                                 </div>
 
                                 <div style={{ fontWeight: 700 }}>{tool.name}</div>
-                                <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, marginTop: 6 }}>{tool.description}</div>
 
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
                                     <div>
