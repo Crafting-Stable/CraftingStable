@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/tools")
+@CrossOrigin(origins = "http://localhost:5173")
 @RequiredArgsConstructor
 public class ToolController {
 

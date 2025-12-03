@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import ua.tqs.model.Tool;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 @Data
 @NoArgsConstructor
@@ -44,6 +45,11 @@ public class ToolDTO {
 
     private Long ownerId;
 
+    /* Campos novos para exposição/recepção via API */
+    private String wikidataId;
+    private Instant imageFetchedAt;
+    private String imageSource;
+
     public static ToolDTO fromModel(Tool f) {
         if (f == null) return null;
         return ToolDTO.builder()
@@ -57,6 +63,9 @@ public class ToolDTO {
                 .available(f.getAvailable())
                 .imageUrl(f.getImageUrl())
                 .ownerId(f.getOwnerId())
+                .wikidataId(f.getWikidataId())
+                .imageFetchedAt(f.getImageFetchedAt())
+                .imageSource(f.getImageSource())
                 .build();
     }
 
@@ -72,6 +81,9 @@ public class ToolDTO {
                 .available(this.available != null ? this.available : Boolean.TRUE)
                 .imageUrl(this.imageUrl)
                 .ownerId(this.ownerId)
+                .wikidataId(this.wikidataId)
+                .imageFetchedAt(this.imageFetchedAt)
+                .imageSource(this.imageSource)
                 .build();
     }
 }

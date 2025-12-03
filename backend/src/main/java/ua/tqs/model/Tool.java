@@ -5,6 +5,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 import ua.tqs.enums.ToolStatus;
 
@@ -57,4 +58,14 @@ public class Tool {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private ToolStatus status = ToolStatus.AVAILABLE;
+
+    /* Novos campos para rastrear origem e cache da imagem */
+    @Column(name = "wikidata_id")
+    private String wikidataId;
+
+    @Column(name = "image_fetched_at")
+    private Instant imageFetchedAt;
+
+    @Column(name = "image_source")
+    private String imageSource;
 }
