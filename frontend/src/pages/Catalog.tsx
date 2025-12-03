@@ -16,7 +16,7 @@ type Tool = {
 
 const styles: { [k: string]: React.CSSProperties } = {
     root: {
-        minHeight: "100vh",
+        height: "100vh",                      // trocar minHeight por height
         display: "flex",
         flexDirection: "column",
         position: "relative",
@@ -25,13 +25,13 @@ const styles: { [k: string]: React.CSSProperties } = {
         backgroundPosition: "center",
         color: "#fff",
         fontFamily: "Inter, Arial, sans-serif",
-        overflowY: "auto",
-        WebkitOverflowScrolling: "touch"
+        overflowY: "auto",                    // garante scroll no eixo Y
+        WebkitOverflowScrolling: "touch",     // acelera o scroll em iOS
+        touchAction: "pan-y"                  // ajuda no touch scrolling
     },
     overlay: {
         position: "absolute",
         inset: 0,
-        background: "rgba(0,0,0,0.55)",
         zIndex: 0,
         pointerEvents: "none"
     },

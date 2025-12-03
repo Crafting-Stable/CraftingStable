@@ -262,7 +262,7 @@ export default function HomePage(): React.ReactElement {
             t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             t.category.toLowerCase().includes(searchQuery.toLowerCase())
         )
-        : tools.slice(0, 5); // Mostra apenas 5 se não houver pesquisa
+        : tools.slice(0, 10); //mostrar 10 produtos
 
     const isSearching = searchQuery.trim().length > 0;
 
