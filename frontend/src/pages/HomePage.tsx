@@ -4,6 +4,7 @@ import Header from '../components/Header';
 import LoadingScreen from '../components/LoadingScreen';
 
 import bgImg from '../assets/rust.jpg';
+import { fetchWikiInfo } from '../utils/wiki';
 
 type Tool = {
     id: string;
@@ -160,59 +161,6 @@ export default function HomePage(): React.ReactElement {
         promo: Boolean(apiTool.promo) || false
     });
 
-    async function fetchImageFor(name: string) {
-        const langs = ['en', 'pt'];
-
-        for (const lang of langs) {
-            try {
-                const searchUrl = `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(name)}&srlimit=1&origin=*`;
-                const searchResp = await fetch(searchUrl);
-                if (!searchResp.ok) continue;
-                const searchJson = await searchResp.json();
-                const first = searchJson.query && searchJson.query.search && searchJson.query.search[0];
-                if (!first) continue;
-
-                const foundTitle = first.title.replace(/ /g, '_');
-                const res = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(foundTitle)}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.thumbnail?.source) return data.thumbnail.source;
-                }
-            } catch {
-                // ignora e tenta próximo idioma
-            }
-        }
-
-        try {
-            const searchUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&format=json&language=pt&type=item&search=${encodeURIComponent(name)}&origin=*`;
-            const searchResp = await fetch(searchUrl);
-            if (!searchResp.ok) return null;
-            const searchJson = await searchResp.json();
-            const first = searchJson.search && searchJson.search[0];
-            if (!first) return null;
-            const id = first.id;
-
-            const getUrl = `https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&ids=${encodeURIComponent(id)}&props=claims&languages=pt|en&origin=*`;
-            const getResp = await fetch(getUrl);
-            if (!getResp.ok) return null;
-            const getJson = await getResp.json();
-            const entity = getJson.entities && getJson.entities[id];
-            const claims = entity && entity.claims && entity.claims.P18;
-            if (Array.isArray(claims) && claims.length > 0) {
-                let fileName = claims[0].mainsnak?.datavalue?.value;
-                if (fileName) {
-                    fileName = fileName.replace(/^File:/i, '').trim();
-                    const encoded = encodeURIComponent(fileName).replace(/\+/g, '%20');
-                    return `https://commons.wikimedia.org/wiki/Special:FilePath/${encoded}?width=600`;
-                }
-            }
-        } catch {
-            // ignora
-        }
-
-        return null;
-    }
-
     useEffect(() => {
         let mounted = true;
         async function loadAndEnrich() {
@@ -231,8 +179,9 @@ export default function HomePage(): React.ReactElement {
                     const hasRealImage = !!t.image && !t.image.includes("placehold.co");
                     if (hasRealImage) return t;
 
-                    const imageUrl = await fetchImageFor(t.name);
-                    if (imageUrl) return { ...t, image: imageUrl };
+                    // usa util comum
+                    const wiki = await fetchWikiInfo(t.name, 600);
+                    if (wiki?.thumbnail) return { ...t, image: wiki.thumbnail };
 
                     return t;
                 }));
@@ -256,13 +205,12 @@ export default function HomePage(): React.ReactElement {
         el.scrollBy({ left: dir === "left" ? -amount : amount, behavior: "smooth" });
     };
 
-    // Filtro de pesquisa
     const filteredTools = searchQuery.trim()
         ? tools.filter(t =>
             t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             t.category.toLowerCase().includes(searchQuery.toLowerCase())
         )
-        : tools.slice(0, 10); //mostrar 10 produtos
+        : tools.slice(0, 10);
 
     const isSearching = searchQuery.trim().length > 0;
 
@@ -311,7 +259,6 @@ export default function HomePage(): React.ReactElement {
                             ) : null}
 
                             {isSearching ? (
-                                // Modo grid quando pesquisar
                                 <div style={{
                                     display: "grid",
                                     gap: 16,
@@ -410,7 +357,6 @@ export default function HomePage(): React.ReactElement {
                                     )}
                                 </div>
                             ) : (
-                                // Modo carousel quando não pesquisar (mostra 5)
                                 <div style={styles.carouselWrapper}>
                                     <button
                                         aria-label="Ver anteriores"

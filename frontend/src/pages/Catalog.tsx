@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import bgImg from '../assets/rust.jpg';
 import Header from '../components/Header';
 import LoadingScreen from '../components/LoadingScreen';
+import { fetchWikiInfo } from '../utils/wiki';
 
 type Tool = {
     id: string;
@@ -16,7 +17,7 @@ type Tool = {
 
 const styles: { [k: string]: React.CSSProperties } = {
     root: {
-        height: "100vh",                      // trocar minHeight por height
+        height: "100vh",
         display: "flex",
         flexDirection: "column",
         position: "relative",
@@ -25,9 +26,9 @@ const styles: { [k: string]: React.CSSProperties } = {
         backgroundPosition: "center",
         color: "#fff",
         fontFamily: "Inter, Arial, sans-serif",
-        overflowY: "auto",                    // garante scroll no eixo Y
-        WebkitOverflowScrolling: "touch",     // acelera o scroll em iOS
-        touchAction: "pan-y"                  // ajuda no touch scrolling
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
+        touchAction: "pan-y"
     },
     overlay: {
         position: "absolute",
@@ -87,57 +88,6 @@ export default function CatalogPage(): React.ReactElement {
         promo: Boolean(apiTool.promo) || false
     });
 
-    async function fetchWikipediaFor(name: string) {
-        const langs = ['en', 'pt'];
-
-        for (const lang of langs) {
-            try {
-                const searchUrl = `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(name)}&srlimit=1&origin=*`;
-                const searchResp = await fetch(searchUrl);
-                if (!searchResp.ok) continue;
-                const searchJson = await searchResp.json();
-                const first = searchJson.query && searchJson.query.search && searchJson.query.search[0];
-                if (!first) continue;
-
-                const foundTitle = first.title.replace(/ /g, '_');
-                const res = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(foundTitle)}`);
-                if (res.ok) return await res.json();
-            } catch {
-                // ignora e tenta próximo idioma
-            }
-        }
-
-        try {
-            const searchUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&format=json&language=pt&type=item&search=${encodeURIComponent(name)}&origin=*`;
-            const searchResp = await fetch(searchUrl);
-            if (!searchResp.ok) return null;
-            const searchJson = await searchResp.json();
-            const first = searchJson.search && searchJson.search[0];
-            if (!first) return null;
-            const id = first.id;
-
-            const getUrl = `https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&ids=${encodeURIComponent(id)}&props=claims&languages=pt|en&origin=*`;
-            const getResp = await fetch(getUrl);
-            if (!getResp.ok) return null;
-            const getJson = await getResp.json();
-            const entity = getJson.entities && getJson.entities[id];
-            const claims = entity && entity.claims && entity.claims.P18;
-            if (Array.isArray(claims) && claims.length > 0) {
-                let fileName = claims[0].mainsnak?.datavalue?.value;
-                if (fileName) {
-                    fileName = fileName.replace(/^File:/i, '').trim();
-                    const encoded = encodeURIComponent(fileName).replace(/\+/g, '%20');
-                    const imageUrl = `https://commons.wikimedia.org/wiki/Special:FilePath/${encoded}`;
-                    return { thumbnail: { source: imageUrl } };
-                }
-            }
-        } catch {
-            // ignora
-        }
-
-        return null;
-    }
-
     useEffect(() => {
         let mounted = true;
         async function loadAndEnrich() {
@@ -154,10 +104,15 @@ export default function CatalogPage(): React.ReactElement {
                 const enriched = await Promise.all(mapped.map(async (t) => {
                     const hasRealImage = !!t.image && !t.image.includes("placehold.co");
                     if (hasRealImage) return t;
-                    const w = await fetchWikipediaFor(t.name);
-                    if (!w) return { ...t, image: placeholderFor(t.category, t.name) };
-                    const image = (w.thumbnail && w.thumbnail.source) || placeholderFor(t.category, t.name);
-                    return { ...t, image };
+
+                    try {
+                        const w = await fetchWikiInfo(t.name, 600);
+                        if (w?.thumbnail) return { ...t, image: w.thumbnail };
+                    } catch (e) {
+                        // ignore wiki errors
+                    }
+
+                    return { ...t, image: placeholderFor(t.category, t.name) };
                 }));
                 if (mounted) setTools(enriched);
             } catch (e) {
