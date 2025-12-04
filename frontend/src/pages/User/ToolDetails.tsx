@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import bgImg from "../../assets/rust.jpg";
 import Header from "../../components/Header";
 import LoadingScreen from "../../components/LoadingScreen";
+import { fetchWikiInfo } from "../../utils/wiki";
 
 type Tool = {
     id: string;
@@ -33,76 +34,12 @@ export default function ToolDetails(): React.ReactElement {
     const placeholderFor = (type: string, name?: string) =>
         `https://placehold.co/800x500?text=${encodeURIComponent((name || type).slice(0, 40))}`;
 
-    async function fetchWiki(name: string) {
-        // tenta resumo do Wikipedia (pt/en) e, se necessário, imagem do Wikidata Commons
-        const langs = ["pt", "en"];
-        for (const lang of langs) {
-            try {
-                const sUrl = `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(
-                    name
-                )}&srlimit=1&origin=*`;
-                const sResp = await fetch(sUrl);
-                if (!sResp.ok) continue;
-                const sJson = await sResp.json();
-                const first = sJson.query?.search?.[0];
-                if (!first) continue;
-                const title = first.title.replace(/ /g, "_");
-                const sumResp = await fetch(
-                    `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`
-                );
-                if (sumResp.ok) {
-                    const sumJson = await sumResp.json();
-                    return {
-                        extract: sumJson.extract,
-                        thumbnail: sumJson.thumbnail?.source
-                    };
-                }
-            } catch {
-                /* ignore */
-            }
-        }
-
-        // fallback: tenta imagem via Wikidata
-        try {
-            const sd = `https://www.wikidata.org/w/api.php?action=wbsearchentities&format=json&language=pt&type=item&search=${encodeURIComponent(
-                name
-            )}&origin=*`;
-            const sdResp = await fetch(sd);
-            if (!sdResp.ok) return null;
-            const sdJson = await sdResp.json();
-            const first = sdJson.search?.[0];
-            if (!first) return null;
-            const id = first.id;
-            const gUrl = `https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&ids=${encodeURIComponent(
-                id
-            )}&props=claims&origin=*`;
-            const gResp = await fetch(gUrl);
-            if (!gResp.ok) return null;
-            const gJson = await gResp.json();
-            const entity = gJson.entities?.[id];
-            const claims = entity?.claims?.P18;
-            if (Array.isArray(claims) && claims.length > 0) {
-                let fileName = claims[0].mainsnak?.datavalue?.value;
-                if (fileName) {
-                    fileName = fileName.replace(/^File:/i, "").trim();
-                    const encoded = encodeURIComponent(fileName).replace(/\+/g, "%20");
-                    const imageUrl = `https://commons.wikimedia.org/wiki/Special:FilePath/${encoded}`;
-                    return { extract: first.description || null, thumbnail: imageUrl };
-                }
-            }
-        } catch {
-            /* ignore */
-        }
-        return null;
-    }
-
     useEffect(() => {
         let mounted = true;
         async function load() {
             setLoading(true);
             try {
                 let data: any = null;
-                // tenta endpoint singular, se falhar pega lista e procura
                 const single = id ? await fetch(`/api/tools/${id}`) : null;
                 if (single && single.ok) {
                     data = await single.json();
@@ -129,13 +66,12 @@ export default function ToolDetails(): React.ReactElement {
                     promo: Boolean(data.promo) || false
                 };
 
-                // enriquecer se falta imagem/descrição
                 const needImage = !mapped.image || mapped.image.includes("placehold.co");
                 const needDescription = !mapped.description;
                 if (needImage || needDescription) {
-                    const w = await fetchWiki(mapped.name);
+                    const w = await fetchWikiInfo(mapped.name, 800);
                     const image = mapped.image && !mapped.image.includes("placehold.co") ? mapped.image : w?.thumbnail;
-                    const description = mapped.description || w?.extract;
+                    const description = mapped.description || (w?.extract ?? undefined);
                     mapped.image = image ?? placeholderFor(mapped.category, mapped.name);
                     mapped.description = description ?? undefined;
                 } else {
