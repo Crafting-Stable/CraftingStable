@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import bgImg from "../../assets/rust.jpg";
 import Header from "../../components/Header";
 import LoadingScreen from "../../components/LoadingScreen";
@@ -16,6 +16,110 @@ type Tool = {
     promo?: boolean;
 };
 
+type BookingCalendarProps = {
+    toolId: string;
+    pricePerDay: number;
+    inclusive?: boolean;
+    currency?: string;
+};
+
+function toIsoDateString(d: Date) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+function daysBetween(startStr: string, endStr: string, inclusive: boolean) {
+    if (!startStr || !endStr) return 0;
+    const s = new Date(startStr);
+    const e = new Date(endStr);
+    const utcStart = Date.UTC(s.getFullYear(), s.getMonth(), s.getDate());
+    const utcEnd = Date.UTC(e.getFullYear(), e.getMonth(), e.getDate());
+    let diff = Math.floor((utcEnd - utcStart) / (24 * 60 * 60 * 1000));
+    if (inclusive) diff = diff + 1;
+    return diff > 0 ? diff : 0;
+}
+
+function BookingCalendar({
+                             toolId,
+                             pricePerDay,
+                             inclusive = true,
+                             currency = "EUR"
+                         }: BookingCalendarProps): React.ReactElement {
+    const navigate = useNavigate();
+    const today = useMemo(() => new Date(), []);
+    const [start, setStart] = useState<string>(toIsoDateString(today));
+    const [end, setEnd] = useState<string>(toIsoDateString(new Date(today.getTime() + 24 * 60 * 60 * 1000)));
+
+    const days = useMemo(() => daysBetween(start, end, inclusive), [start, end, inclusive]);
+    const total = useMemo(() => Number((days * pricePerDay).toFixed(2)), [days, pricePerDay]);
+
+    const fmt = new Intl.NumberFormat("pt-PT", { style: "currency", currency });
+
+    function onConfirm() {
+        const qs = new URLSearchParams({
+            toolId,
+            start,
+            end,
+            days: String(days),
+            total: String(total)
+        }).toString();
+        navigate(`/confirm?${qs}`);
+    }
+
+    return (
+        <div style={{ marginTop: 16, background: "rgba(0,0,0,0.45)", padding: 12, borderRadius: 8 }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                <label style={{ color: "#fff" }}>
+                    Início:
+                    <input
+                        type="date"
+                        value={start}
+                        onChange={(e) => setStart(e.target.value)}
+                        style={{ marginLeft: 8 }}
+                    />
+                </label>
+
+                <label style={{ color: "#fff" }}>
+                    Fim:
+                    <input
+                        type="date"
+                        value={end}
+                        onChange={(e) => setEnd(e.target.value)}
+                        style={{ marginLeft: 8 }}
+                    />
+                </label>
+
+                <div style={{ color: "#fff", marginLeft: "auto", textAlign: "right" }}>
+                    <div>Dias: <strong>{days}</strong></div>
+                    <div>Preço/dia: <strong>{fmt.format(pricePerDay)}</strong></div>
+                    <div style={{ fontSize: 18, marginTop: 6 }}>Total: <strong>{fmt.format(total)}</strong></div>
+                </div>
+            </div>
+
+            <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+                <button
+                    onClick={onConfirm}
+                    disabled={days <= 0}
+                    style={{
+                        background: "#f8b749",
+                        color: "#111",
+                        padding: "8px 14px",
+                        borderRadius: 6,
+                        fontWeight: 700,
+                        border: "none",
+                        cursor: days > 0 ? "pointer" : "not-allowed"
+                    }}
+                >
+                    Confirmar e Pagar
+                </button>
+            </div>
+        </div>
+    );
+}
+/* --- fim BookingCalendar --- */
+
 const containerStyle: React.CSSProperties = {
     minHeight: "100vh",
     backgroundImage: `url(${bgImg})`,
@@ -28,6 +132,16 @@ const containerStyle: React.CSSProperties = {
 
 export default function ToolDetails(): React.ReactElement {
     const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
+
+    // Verifica autenticação e redireciona para a página de login se não houver JWT
+    useEffect(() => {
+        const jwt = localStorage.getItem("jwt");
+        if (!jwt) {
+            navigate("/loginPage");
+        }
+    }, [navigate]);
+
     const [tool, setTool] = useState<Tool | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -144,6 +258,9 @@ export default function ToolDetails(): React.ReactElement {
                                 <Link to="/catalog" style={{ color: "#f8b749", fontWeight: 700, textDecoration: "none" }}>Voltar</Link>
                             </div>
                         </div>
+
+                        {/* Renderiza o calendário de reserva aqui */}
+                        <BookingCalendar toolId={tool.id} pricePerDay={tool.pricePerDay} />
                     </div>
                 </div>
             </main>
