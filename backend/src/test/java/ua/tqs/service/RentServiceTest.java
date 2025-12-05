@@ -144,7 +144,7 @@ class RentServiceTest {
         newRent.setStartDate(startDate);
         newRent.setEndDate(endDate);
 
-        when(rentRepository.findByToolIdAndStatusIn(eq(1L), anyList()))
+        when(rentRepository.findOverlappingRents(eq(1L), eq(startDate), eq(endDate), anyList()))
                 .thenReturn(Collections.singletonList(existingRent));
 
         // Then: overlap should be detected
@@ -167,7 +167,7 @@ class RentServiceTest {
         newRent.setStartDate(startDate.plusDays(2)); // day 3
         newRent.setEndDate(endDate.plusDays(2));     // day 7
 
-        when(rentRepository.findByToolIdAndStatusIn(eq(1L), anyList()))
+        when(rentRepository.findOverlappingRents(eq(1L), eq(startDate.plusDays(2)), eq(endDate.plusDays(2)), anyList()))
                 .thenReturn(Collections.singletonList(existingRent));
 
         // Then: overlap should be detected
@@ -190,7 +190,7 @@ class RentServiceTest {
         newRent.setStartDate(startDate);
         newRent.setEndDate(endDate);
 
-        when(rentRepository.findByToolIdAndStatusIn(eq(1L), anyList()))
+        when(rentRepository.findOverlappingRents(eq(1L), eq(startDate), eq(endDate), anyList()))
                 .thenReturn(Collections.singletonList(existingRent));
 
         // Then: overlap should be detected
@@ -213,7 +213,7 @@ class RentServiceTest {
         newRent.setStartDate(startDate);
         newRent.setEndDate(endDate.plusDays(2));
 
-        when(rentRepository.findByToolIdAndStatusIn(eq(1L), anyList()))
+        when(rentRepository.findOverlappingRents(eq(1L), eq(startDate), eq(endDate.plusDays(2)), anyList()))
                 .thenReturn(Collections.singletonList(existingRent));
 
         // Then: overlap should be detected
@@ -236,10 +236,10 @@ class RentServiceTest {
         newRent.setStartDate(startDate);
         newRent.setEndDate(startDate.plusDays(2));
 
-        when(rentRepository.findByToolIdAndStatusIn(eq(1L), anyList()))
-                .thenReturn(Collections.singletonList(existingRent));
+        when(rentRepository.findOverlappingRents(eq(1L), eq(startDate), eq(startDate.plusDays(2)), anyList()))
+                .thenReturn(Collections.emptyList());
 
-        // Then: no overlap should be detected
+        // Then: no overlap should be detected (before existing)
         boolean hasOverlap = rentService.hasOverlap(newRent);
         assertThat(hasOverlap).isFalse();
     }
@@ -256,11 +256,11 @@ class RentServiceTest {
         // When: new rent from day 5 to day 10 (after existing)
         Rent newRent = new Rent();
         newRent.setToolId(1L);
-        newRent.setStartDate(startDate.plusDays(4));
+        newRent.setStartDate(endDate.plusDays(2));
         newRent.setEndDate(endDate.plusDays(5));
 
-        when(rentRepository.findByToolIdAndStatusIn(eq(1L), anyList()))
-                .thenReturn(Collections.singletonList(existingRent));
+        when(rentRepository.findOverlappingRents(eq(1L), eq(endDate.plusDays(2)), eq(endDate.plusDays(5)), anyList()))
+                .thenReturn(Collections.emptyList());
 
         // Then: no overlap should be detected
         boolean hasOverlap = rentService.hasOverlap(newRent);
@@ -282,7 +282,7 @@ class RentServiceTest {
         newRent.setStartDate(startDate);
         newRent.setEndDate(endDate);
 
-        when(rentRepository.findByToolIdAndStatusIn(eq(1L), anyList()))
+        when(rentRepository.findOverlappingRents(eq(1L), eq(startDate), eq(endDate), anyList()))
                 .thenReturn(Collections.emptyList()); // canceled rents are excluded
 
         // Then: no overlap (canceled rents don't block)
@@ -305,7 +305,7 @@ class RentServiceTest {
         newRent.setStartDate(startDate);
         newRent.setEndDate(endDate);
 
-        when(rentRepository.findByToolIdAndStatusIn(eq(2L), anyList()))
+        when(rentRepository.findOverlappingRents(eq(2L), eq(startDate), eq(endDate), anyList()))
                 .thenReturn(Collections.emptyList());
 
         // Then: no overlap (different tools)

@@ -33,11 +33,10 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         testUser = new User();
-        testUser.setId(1L);
         testUser.setEmail("test@example.com");
         testUser.setPassword("hashedPassword123");
         testUser.setName("Test User");
-        testUser.setRole(UserRole.CUSTOMER);
+        testUser.setType(UserRole.CUSTOMER);
     }
 
     /**
@@ -51,7 +50,7 @@ class UserServiceTest {
 
         assertThat(created).isNotNull();
         assertThat(created.getEmail()).isEqualTo("test@example.com");
-        assertThat(created.getRole()).isEqualTo(UserRole.CUSTOMER);
+        assertThat(created.getType()).isEqualTo(UserRole.CUSTOMER);
         verify(userRepository, times(1)).save(testUser);
     }
 
@@ -156,28 +155,28 @@ class UserServiceTest {
 
         when(userRepository.save(any(User.class))).thenAnswer(i -> {
             User u = i.getArgument(0);
-            if (u.getRole() == null) {
-                u.setRole(UserRole.CUSTOMER);
+            if (u.getType() == null) {
+                u.setType(UserRole.CUSTOMER);
             }
             return u;
         });
 
         User created = userService.create(newUser);
 
-        assertThat(created.getRole()).isEqualTo(UserRole.CUSTOMER);
+        assertThat(created.getType()).isEqualTo(UserRole.CUSTOMER);
     }
 
     @Test
     void whenUpdateUserRole_thenRoleChanges() {
         User updates = new User();
-        updates.setRole(UserRole.ADMIN);
+        updates.setType(UserRole.ADMIN);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
         when(userRepository.save(any(User.class))).thenReturn(testUser);
 
         User updated = userService.update(1L, updates);
 
-        assertThat(updated.getRole()).isEqualTo(UserRole.ADMIN);
+        assertThat(updated.getType()).isEqualTo(UserRole.ADMIN);
     }
 
     /**
@@ -185,7 +184,6 @@ class UserServiceTest {
      */
     @Test
     void whenCreateUserWithDuplicateEmail_thenThrowException() {
-        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
         when(userRepository.save(any(User.class))).thenThrow(
                 new org.springframework.dao.DataIntegrityViolationException("Duplicate email")
         );

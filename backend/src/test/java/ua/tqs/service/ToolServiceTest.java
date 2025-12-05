@@ -39,8 +39,8 @@ class ToolServiceTest {
         testTool.setOwnerId(ownerId);
         testTool.setName("Electric Drill");
         testTool.setDescription("Professional grade electric drill");
-        testTool.setDailyPrice(25.0);
-        testTool.setDepositAmount(100.0);
+        testTool.setDailyPrice(new java.math.BigDecimal("25.0"));
+        testTool.setDepositAmount(new java.math.BigDecimal("100.0"));
         testTool.setStatus(ToolStatus.AVAILABLE);
         testTool.setLocation("Aveiro");
     }
@@ -98,7 +98,7 @@ class ToolServiceTest {
     void whenUpdateTool_thenSuccess() {
         Tool updates = new Tool();
         updates.setName("Updated Drill");
-        updates.setDailyPrice(30.0);
+        updates.setDailyPrice(new java.math.BigDecimal("30.0"));
 
         when(toolRepository.findById(1L)).thenReturn(Optional.of(testTool));
         when(toolRepository.save(any(Tool.class))).thenReturn(testTool);
@@ -106,7 +106,7 @@ class ToolServiceTest {
         Tool updated = toolService.update(1L, updates);
 
         assertThat(updated.getName()).isEqualTo("Updated Drill");
-        assertThat(updated.getDailyPrice()).isEqualTo(30.0);
+        assertThat(updated.getDailyPrice()).isEqualTo(new java.math.BigDecimal("30.0"));
     }
 
     @Test
@@ -194,9 +194,9 @@ class ToolServiceTest {
         when(toolRepository.findById(1L)).thenReturn(Optional.of(testTool));
         when(toolRepository.save(any(Tool.class))).thenAnswer(i -> i.getArgument(0));
 
-        Tool updated = toolService.updateStatus(1L, ToolStatus.UNAVAILABLE);
+        Tool updated = toolService.updateStatus(1L, ToolStatus.UNDER_MAINTENANCE);
 
-        assertThat(updated.getStatus()).isEqualTo(ToolStatus.UNAVAILABLE);
+        assertThat(updated.getStatus()).isEqualTo(ToolStatus.UNDER_MAINTENANCE);
     }
 
     @Test
@@ -227,11 +227,11 @@ class ToolServiceTest {
         tool = toolService.updateStatus(1L, ToolStatus.AVAILABLE);
         assertThat(tool.getStatus()).isEqualTo(ToolStatus.AVAILABLE);
 
-        // Maintenance: AVAILABLE → UNAVAILABLE
-        tool = toolService.updateStatus(1L, ToolStatus.UNAVAILABLE);
-        assertThat(tool.getStatus()).isEqualTo(ToolStatus.UNAVAILABLE);
+        // Maintenance: AVAILABLE → UNDER_MAINTENANCE
+        tool = toolService.updateStatus(1L, ToolStatus.UNDER_MAINTENANCE);
+        assertThat(tool.getStatus()).isEqualTo(ToolStatus.UNDER_MAINTENANCE);
 
-        // Back to service: UNAVAILABLE → AVAILABLE
+        // Back to service: UNDER_MAINTENANCE → AVAILABLE
         tool = toolService.updateStatus(1L, ToolStatus.AVAILABLE);
         assertThat(tool.getStatus()).isEqualTo(ToolStatus.AVAILABLE);
     }
@@ -272,7 +272,7 @@ class ToolServiceTest {
 
     @Test
     void whenFindToolsByLocation_thenReturnMatchingTools() {
-        List<Tool> aveiro Tools = Arrays.asList(testTool);
+        List<Tool> aveiroTools = Arrays.asList(testTool);
         when(toolRepository.findByLocation("Aveiro")).thenReturn(aveiroTools);
 
         List<Tool> found = toolService.findByLocation("Aveiro");

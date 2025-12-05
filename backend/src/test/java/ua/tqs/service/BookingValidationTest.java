@@ -45,9 +45,6 @@ class BookingValidationTest {
         testRent.setStartDate(LocalDateTime.now().plusDays(5));
         testRent.setEndDate(LocalDateTime.now().plusDays(2));
 
-        when(rentRepository.findOverlappingRents(anyLong(), any(), any(), anyList()))
-                .thenReturn(java.util.Collections.emptyList());
-
         assertThatThrownBy(() -> rentService.create(testRent))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("End date must be after start date");
@@ -59,21 +56,15 @@ class BookingValidationTest {
         testRent.setStartDate(sameDate);
         testRent.setEndDate(sameDate);
 
-        when(rentRepository.findOverlappingRents(anyLong(), any(), any(), anyList()))
-                .thenReturn(java.util.Collections.emptyList());
-
         assertThatThrownBy(() -> rentService.create(testRent))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("End date must be after start date");
     }
 
     @Test
-    void whenStartDateInPast_thenThrowException() {
-        testRent.setStartDate(LocalDateTime.now().minusDays(1));
-        testRent.setEndDate(LocalDateTime.now().plusDays(3));
-
-        when(rentRepository.findOverlappingRents(anyLong(), any(), any(), anyList()))
-                .thenReturn(java.util.Collections.emptyList());
+    void whenEndDateInPast_thenThrowException() {
+        testRent.setStartDate(LocalDateTime.now().minusDays(3));
+        testRent.setEndDate(LocalDateTime.now().minusDays(1));
 
         assertThatThrownBy(() -> rentService.create(testRent))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -85,9 +76,6 @@ class BookingValidationTest {
         testRent.setStartDate(null);
         testRent.setEndDate(LocalDateTime.now().plusDays(3));
 
-        when(rentRepository.findOverlappingRents(anyLong(), any(), any(), anyList()))
-                .thenReturn(java.util.Collections.emptyList());
-
         assertThatThrownBy(() -> rentService.create(testRent))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Start date and end date are required");
@@ -98,9 +86,6 @@ class BookingValidationTest {
         testRent.setStartDate(LocalDateTime.now().plusDays(1));
         testRent.setEndDate(null);
 
-        when(rentRepository.findOverlappingRents(anyLong(), any(), any(), anyList()))
-                .thenReturn(java.util.Collections.emptyList());
-
         assertThatThrownBy(() -> rentService.create(testRent))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Start date and end date are required");
@@ -110,9 +95,6 @@ class BookingValidationTest {
     void whenBothDatesNull_thenThrowException() {
         testRent.setStartDate(null);
         testRent.setEndDate(null);
-
-        when(rentRepository.findOverlappingRents(anyLong(), any(), any(), anyList()))
-                .thenReturn(java.util.Collections.emptyList());
 
         assertThatThrownBy(() -> rentService.create(testRent))
                 .isInstanceOf(IllegalArgumentException.class)
