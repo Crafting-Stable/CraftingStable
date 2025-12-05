@@ -2,15 +2,17 @@ package ua.tqs.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ua.tqs.dto.AdminStatsDTO;
 import ua.tqs.dto.ClientStatsDTO;
+import ua.tqs.enums.RentStatus;
+import ua.tqs.exception.ResourceNotFoundException;
 import ua.tqs.model.Rent;
 import ua.tqs.model.Tool;
 import ua.tqs.model.User;
 import ua.tqs.repository.RentRepository;
 import ua.tqs.repository.ToolRepository;
 import ua.tqs.repository.UserRepository;
-import ua.tqs.enums.RentStatus;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -107,5 +109,51 @@ public class UserService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return new ClientStatsDTO(id, totalRents, activeRents, pastRents, totalSpent.doubleValue());
+    }
+
+    @Transactional
+    public User create(User user) {
+        if (user.getType() == null) {
+            user.setType(ua.tqs.enums.UserRole.CUSTOMER);
+        }
+        return userRepository.save(user);
+    }
+
+    public Optional<User> findById(Long id) {
+        return userRepository.findById(id);
+    }
+
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    public List<User> listAll() {
+        return userRepository.findAll();
+    }
+
+    @Transactional
+    public User update(Long id, User updates) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        
+        if (updates.getName() != null) {
+            user.setName(updates.getName());
+        }
+        if (updates.getEmail() != null) {
+            user.setEmail(updates.getEmail());
+        }
+        if (updates.getPassword() != null) {
+            user.setPassword(updates.getPassword());
+        }
+        if (updates.getType() != null) {
+            user.setType(updates.getType());
+        }
+        
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        userRepository.deleteById(id);
     }
 }
