@@ -1,7 +1,7 @@
 INSERT INTO users (id, email, password, name, type) VALUES
                                                         (1, 'joana@gmail.com', '$2a$10$7EqJtq98hPqEX7fNZaFWoOq6N/1S3G1pZ0XyZq1eQ5s8G9sV0K0eK', 'Joana', 'ADMIN'),
                                                         (2, 'tiago@gmail.com', '$2a$10$K1mV6n1pQe7Qe9u0b1K0Yq1u8jKc9G3Ouq9j1yYlZ8b7Qe9u0b1K0', 'Tiago', 'CUSTOMER')
-ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING;
 --a password e password
 SELECT setval(pg_get_serial_sequence('users','id'), (SELECT COALESCE(MAX(id),1) FROM users));
 
@@ -28,7 +28,7 @@ INSERT INTO tools (id, name, type, daily_price, deposit_amount, description, loc
                                                                                                                                    (13, 'Triturador de Vegetais', 'Jardinagem', 20.00, 65.00, NULL, '', true, NULL, 2, 'AVAILABLE'),
                                                                                                                                    (14, 'Lavadora de Alta Pressão', 'Jardinagem', 15.00, 40.00, NULL, '', true, NULL, 4, 'AVAILABLE'),
                                                                                                                                    (15, 'Arejador de Relva', 'Jardinagem', 12.00, 30.00, NULL, '', true, NULL, 3, 'AVAILABLE')
-ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING;
 
 -- CARPINTARIA (20 ferramentas)
 INSERT INTO tools (id, name, type, daily_price, deposit_amount, description, location, available, image_url, owner_id, status) VALUES
@@ -52,7 +52,7 @@ INSERT INTO tools (id, name, type, daily_price, deposit_amount, description, loc
                                                                                                                                    (33, 'Serra Tico-Tico', 'Carpintaria', 10.00, 25.00, NULL, '', true, NULL, 1, 'AVAILABLE'),
                                                                                                                                    (34, 'Compressor de Ar', 'Carpintaria', 20.00, 60.00, NULL, '', true, NULL, 1, 'AVAILABLE'),
                                                                                                                                    (35, 'Aspirador Industrial', 'Carpintaria', 15.00, 40.00, NULL, '', true, NULL, 2, 'AVAILABLE')
-ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING;
 
 -- ELÉTRICAS (15 ferramentas)
 INSERT INTO tools (id, name, type, daily_price, deposit_amount, description, location, available, image_url, owner_id, status) VALUES
@@ -71,7 +71,7 @@ INSERT INTO tools (id, name, type, daily_price, deposit_amount, description, loc
                                                                                                                                    (48, 'Alicate Amperímetro', 'Elétricas', 7.00, 18.00, NULL, '', true, NULL, 2, 'AVAILABLE'),
                                                                                                                                    (49, 'Detector de Cabos', 'Elétricas', 8.00, 20.00, NULL, '', true, NULL, 4, 'AVAILABLE'),
                                                                                                                                    (50, 'Gerador Elétrico 2kW', 'Elétricas', 40.00, 150.00, NULL, '', true, NULL, 1, 'AVAILABLE')
-ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING;
 
 -- OBRAS/CONSTRUÇÃO (20 ferramentas)
 INSERT INTO tools (id, name, type, daily_price, deposit_amount, description, location, available, image_url, owner_id, status) VALUES
@@ -95,7 +95,7 @@ INSERT INTO tools (id, name, type, daily_price, deposit_amount, description, loc
                                                                                                                                    (68, 'Martelete Pneumático', 'Obras', 18.00, 55.00, NULL, '', true, NULL, 2, 'AVAILABLE'),
                                                                                                                                    (69, 'Serra Sabre', 'Obras', 13.00, 35.00, NULL, '', true, NULL, 3, 'AVAILABLE'),
                                                                                                                                    (70, 'Talhadeira Elétrica', 'Obras', 16.00, 45.00, NULL, '', true, NULL, 1, 'AVAILABLE')
-ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING;
 
 -- PINTURA (10 ferramentas)
 INSERT INTO tools (id, name, type, daily_price, deposit_amount, description, location, available, image_url, owner_id, status) VALUES
@@ -109,7 +109,7 @@ INSERT INTO tools (id, name, type, daily_price, deposit_amount, description, loc
                                                                                                                                    (78, 'Extrator Papel Parede', 'Pintura', 10.00, 25.00, NULL, '', true, NULL, 3, 'AVAILABLE'),
                                                                                                                                    (79, 'Kit Pintura Completo', 'Pintura', 16.00, 45.00, NULL, '', true, NULL, 2, 'AVAILABLE'),
                                                                                                                                    (80, 'Escadas Telescópicas', 'Pintura', 11.00, 40.00, NULL, '', true, NULL, 4, 'AVAILABLE')
-ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING;
 
 -- CANALIZAÇÃO (10 ferramentas)
 INSERT INTO tools (id, name, type, daily_price, deposit_amount, description, location, available, image_url, owner_id, status) VALUES
@@ -123,7 +123,7 @@ INSERT INTO tools (id, name, type, daily_price, deposit_amount, description, loc
                                                                                                                                    (88, 'Alargador de Tubos', 'Canalização', 8.00, 20.00, NULL, '', true, NULL, 3, 'AVAILABLE'),
                                                                                                                                    (89, 'Curvador de Tubos', 'Canalização', 14.00, 35.00, NULL, '', true, NULL, 4, 'AVAILABLE'),
                                                                                                                                    (90, 'Detector de Fugas', 'Canalização', 18.00, 50.00, NULL, '', true, NULL, 2, 'AVAILABLE')
-ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING;
 
 -- LIMPEZA/MANUTENÇÃO (10 ferramentas)
 INSERT INTO tools (id, name, type, daily_price, deposit_amount, description, location, available, image_url, owner_id, status) VALUES
@@ -137,6 +137,6 @@ INSERT INTO tools (id, name, type, daily_price, deposit_amount, description, loc
                                                                                                                                    (98, 'Máquina Limpar Estofos', 'Limpeza', 19.00, 60.00, NULL, '', true, NULL, 3, 'AVAILABLE'),
                                                                                                                                    (99, 'Aspirador Industrial 80L', 'Limpeza', 24.00, 75.00, NULL, '', true, NULL, 1, 'AVAILABLE'),
                                                                                                                                    (100, 'Politriz Pavimentos', 'Limpeza', 28.00, 90.00, NULL, '', true, NULL, 2, 'AVAILABLE')
-ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT (id) DO NOTHING;
 
 SELECT setval(pg_get_serial_sequence('tools','id'), (SELECT COALESCE(MAX(id),1) FROM tools));

@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import bgImg from '../assets/rust.jpg';
 import Header from '../components/Header';
 import LoadingScreen from '../components/LoadingScreen';
-import { fetchWikiInfo } from '../utils/wiki';
 
 type Tool = {
     id: string;
@@ -101,19 +100,12 @@ export default function CatalogPage(): React.ReactElement {
                     return;
                 }
                 const mapped = data.map(mapApiToUi);
-                const enriched = await Promise.all(mapped.map(async (t) => {
+
+                const enriched = mapped.map(t => {
                     const hasRealImage = !!t.image && !t.image.includes("placehold.co");
-                    if (hasRealImage) return t;
+                    return { ...t, image: hasRealImage ? t.image : placeholderFor(t.category, t.name) };
+                });
 
-                    try {
-                        const w = await fetchWikiInfo(t.name, 600);
-                        if (w?.thumbnail) return { ...t, image: w.thumbnail };
-                    } catch (e) {
-                        // ignore wiki errors
-                    }
-
-                    return { ...t, image: placeholderFor(t.category, t.name) };
-                }));
                 if (mounted) setTools(enriched);
             } catch (e) {
                 console.error(e);
