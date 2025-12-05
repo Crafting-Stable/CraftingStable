@@ -109,3 +109,45 @@ public class UserService {
         return new ClientStatsDTO(id, totalRents, activeRents, pastRents, totalSpent.doubleValue());
     }
 }
+    public User create(User user) {
+        if (user.getRole() == null) {
+            user.setRole(ua.tqs.enums.UserRole.CUSTOMER);
+        }
+        return userRepository.save(user);
+    }
+
+    public Optional<User> findById(Long id) {
+        return userRepository.findById(id);
+    }
+
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    public List<User> listAll() {
+        return userRepository.findAll();
+    }
+
+    public User update(Long id, User updates) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ua.tqs.exception.ResourceNotFoundException("User not found"));
+        
+        if (updates.getName() != null) {
+            user.setName(updates.getName());
+        }
+        if (updates.getEmail() != null) {
+            user.setEmail(updates.getEmail());
+        }
+        if (updates.getPassword() != null) {
+            user.setPassword(updates.getPassword());
+        }
+        if (updates.getRole() != null) {
+            user.setRole(updates.getRole());
+        }
+        
+        return userRepository.save(user);
+    }
+
+    public void delete(Long id) {
+        userRepository.deleteById(id);
+    }

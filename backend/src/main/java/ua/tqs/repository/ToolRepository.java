@@ -15,3 +15,7 @@ public interface ToolRepository extends JpaRepository<Tool, Long> {
 
     List<Tool> findByLocation(String location);
 }
+
+    List<Tool> findByOwnerId(Long ownerId);
+
+    List<Tool> findByStatus(ua.tqs.enums.ToolStatus status);
