@@ -19,6 +19,8 @@
         <java.version>21</java.version>
         <cucumber.version>7.15.0</cucumber.version>
         <sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.coverage.exclusions>**/test/**/*,**/integration/**/*</sonar.coverage.exclusions>
+        <sonar.exclusions>**/test/**/*,**/integration/**/*</sonar.exclusions>
     </properties>
 
     <dependencies>

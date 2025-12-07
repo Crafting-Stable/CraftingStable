@@ -84,7 +84,7 @@ jobs:
 
           echo "Building sonar-scanner args..."
           # Tell Sonar where compiled Java classes are located so the Java analyzer can run
-          ARGS="-Dsonar.projectKey=Goncasgamer20_CraftingStable -Dsonar.host.url=https://sonarcloud.io -Dsonar.java.binaries=backend/target/classes -Dsonar.coverage.jacoco.xmlReportPaths=backend/target/site/jacoco/jacoco.xml"
+          ARGS="-Dsonar.projectKey=Goncasgamer20_CraftingStable -Dsonar.host.url=https://sonarcloud.io -Dsonar.java.binaries=backend/target/classes -Dsonar.coverage.jacoco.xmlReportPaths=backend/target/site/jacoco/jacoco.xml -Dsonar.exclusions=**/test/**/*,**/integration/**/*,frontend/vite.config.ts,frontend/*.config.js,frontend/*.config.ts -Dsonar.coverage.exclusions=**/test/**/*,**/integration/**/*"
           if [ -n "${SONAR_ORGANIZATION:-}" ]; then
             ARGS="$ARGS -Dsonar.organization=${SONAR_ORGANIZATION}"
           else
