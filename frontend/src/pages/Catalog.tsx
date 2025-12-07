@@ -4,12 +4,7 @@ import bgImg from '../assets/rust.jpg';
 import Header from '../components/Header';
 import LoadingScreen from '../components/LoadingScreen';
 
-enum ToolStatus {
-    AVAILABLE = "AVAILABLE",
-    RENTED = "RENTED",
-    UNDER_MAINTENANCE = "UNDER_MAINTENANCE",
-    INACTIVE = "INACTIVE"
-}
+type ToolStatus = "AVAILABLE" | "RENTED" | "UNDER_MAINTENANCE" | "INACTIVE";
 
 type Tool = {
     id: string;
