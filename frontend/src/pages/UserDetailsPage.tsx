@@ -17,7 +17,6 @@ export default function UserDetailsPage(): React.ReactElement {
                 let parsed: User = raw ? JSON.parse(raw) : null;
                 const token = localStorage.getItem('jwt');
 
-                // Se não houver email (ou outros campos) e tivermos token, pedimos o perfil ao servidor
                 if (token && (!parsed || !parsed.email)) {
                     try {
                         const res = await fetch('/api/auth/me', {
@@ -32,7 +31,6 @@ export default function UserDetailsPage(): React.ReactElement {
                                     email: data.email ?? parsed?.email,
                                     role: data.role ?? parsed?.role
                                 };
-                                // Guardamos versão completa no localStorage para próximas visitas
                                 localStorage.setItem('user', JSON.stringify(parsed));
                             }
                         } else if (res.status === 401) {
@@ -42,7 +40,6 @@ export default function UserDetailsPage(): React.ReactElement {
                             parsed = null;
                         }
                     } catch {
-                        // falha de rede -> manter o que já temos (se houver)
                     }
                 }
 

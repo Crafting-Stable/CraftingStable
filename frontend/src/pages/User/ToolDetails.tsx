@@ -9,10 +9,9 @@ type Tool = {
     name: string;
     category: string;
     pricePerDay: number;
-    oldPricePerDay?: number;
     image?: string;
     description?: string;
-    promo?: boolean;
+    location?: string;
 };
 
 type BookingCalendarProps = {
@@ -172,11 +171,10 @@ export default function ToolDetails(): React.ReactElement {
                     id: String(data.id),
                     name: data.name,
                     category: data.type || data.category || "Outros",
-                    pricePerDay: Number(data.dailyPrice ?? data.pricePerDay ?? 0),
-                    oldPricePerDay: data.oldPricePerDay ? Number(data.oldPricePerDay) : undefined,
+                    pricePerDay: Number(data.dailyPrice ?? data.pricePerDay ?? data.daily_price ?? 0),
                     image: data.imageUrl || data.image || undefined,
                     description: data.description ?? undefined,
-                    promo: Boolean(data.promo) || false
+                    location: data.location ?? undefined
                 };
 
                 // Sem consultas externas (Wikipedia). Usa placeholder quando não houver imagem.
@@ -234,16 +232,16 @@ export default function ToolDetails(): React.ReactElement {
                     <div style={{ flex: 1, color: "#fff" }}>
                         <h2 style={{ margin: 0 }}>{tool.name}</h2>
                         <div style={{ marginTop: 8, color: "rgba(255,255,255,0.85)" }}>{tool.description}</div>
+                        {tool.location ? (
+                            <div style={{ marginTop: 8, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>
+                                Localização: <span style={{ fontWeight: 700 }}>{tool.location}</span>
+                            </div>
+                        ) : null}
 
                         <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 12 }}>
                             <div>
-                                {tool.oldPricePerDay ? (
-                                    <div style={{ color: "rgba(255,255,255,0.7)", textDecoration: "line-through" }}>€{tool.oldPricePerDay}/dia</div>
-                                ) : null}
                                 <div style={{ fontSize: 22, fontWeight: 800 }}>€{tool.pricePerDay}/dia</div>
                             </div>
-
-                            {tool.promo ? <div style={{ background: "#f8b749", color: "#111", padding: "6px 10px", borderRadius: 6, fontWeight: 700 }}>Promo</div> : null}
 
                             <div style={{ marginLeft: "auto" }}>
                                 <Link to="/catalog" style={{ color: "#f8b749", fontWeight: 700, textDecoration: "none" }}>Voltar</Link>
