@@ -64,7 +64,9 @@ jobs:
         run: npm run test --if-present
 
       - name: Run backend tests
-        run: mvn -B -f backend/pom.xml test
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: mvn -B -f backend/pom.xml -Djwt.secret=$JWT_SECRET test
 
       - name: Upload backend test results
         if: always()
