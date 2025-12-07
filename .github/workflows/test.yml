@@ -68,10 +68,18 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
           if [ -n "$JWT_SECRET" ]; then
+            echo "Using JWT_SECRET from GitHub Secrets"
             mvn -B -f backend/pom.xml -Djwt.secret="$JWT_SECRET" test
           else
+            echo "Using jwt.secret from application-test.properties"
             mvn -B -f backend/pom.xml test
           fi
+      
+      - name: Print test failure details on error
+        if: failure()
+        run: |
+          echo "=== Test failures detected ==="
+          find backend/target/surefire-reports -name "*.txt" -exec echo "File: {}" \; -exec cat {} \; 2>/dev/null || true
 
       - name: Upload backend test results
         if: always()
