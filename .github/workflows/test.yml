@@ -66,7 +66,12 @@ jobs:
       - name: Run backend tests
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        run: mvn -B -f backend/pom.xml -Djwt.secret=$JWT_SECRET test
+        run: |
+          if [ -n "$JWT_SECRET" ]; then
+            mvn -B -f backend/pom.xml -Djwt.secret="$JWT_SECRET" test
+          else
+            mvn -B -f backend/pom.xml test
+          fi
 
       - name: Upload backend test results
         if: always()
