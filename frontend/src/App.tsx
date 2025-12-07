@@ -6,6 +6,7 @@ import Catalog from "./pages/Catalog";
 import  LoginPage from "./pages/LoginPage";
 import  User from "./pages/UserDetailsPage";
 import ToolDetails from "./pages/User/ToolDetails";
+import AddRent from "./pages/User/AddRent";
 export default function App(): React.ReactElement {
     return (
         <BrowserRouter>
@@ -17,6 +18,7 @@ export default function App(): React.ReactElement {
                 <Route path="/about" element={<About />} />
                 <Route path="/user" element={<User />} />
                 <Route path="/tools/:id" element={<ToolDetails />} />
+                <Route path="/user/add-rent" element={<AddRent />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </BrowserRouter>

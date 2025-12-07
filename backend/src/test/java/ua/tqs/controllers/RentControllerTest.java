@@ -1,4 +1,3 @@
-// language: java
 package ua.tqs.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
