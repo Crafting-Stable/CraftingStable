@@ -56,7 +56,9 @@ jobs:
           npm run build
 
       - name: Build backend
-        run: mvn -B -f backend/pom.xml verify
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: mvn -B -f backend/pom.xml clean -Djwt.secret="$JWT_SECRET" verify
 
       - name: Run SonarScanner CLI (conditional args)
         env:
