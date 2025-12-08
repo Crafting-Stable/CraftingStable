@@ -5,4 +5,4 @@
 target/
 backend/target/
 frontend/node_modules/
-*.log
+*.logbackend/target/
