@@ -1,2 +1,2 @@
-# Crafting Stable
+# CraftingStable
 

@@ -1,34 +1,48 @@
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/login/JwtAuthFilter.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/controller/UserController.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/controller/ToolController.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/dto/AuthResponse.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/enums/RentStatus.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/dto/AdminStatsDTO.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/model/User.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/BackendApplication.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/repository/UserRepository.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/enums/UserRole.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/login/JwtUtil.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/service/UserDetailsServiceImpl.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/model/Rent.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/service/ToolService.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/model/Analytics.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/repository/RentRepository.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/model/Tool.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/enums/ToolStatus.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/exception/ResourceNotFoundException.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/controller/RentController.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/service/UserService.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/controller/AuthController.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/dto/AuthRequest.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/service/RentService.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/dto/ToolDTO.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/repository/AnalyticsRepository.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/config/SecurityConfig.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/service/AnalyticsService.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/config/SwaggerConfig.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/controller/AnalyticsController.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/dto/RentResponseDTO.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/dto/ClientStatsDTO.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/repository/ToolRepository.java
-/home/goncalo/Desktop/1S_3M/TQS/projeto/CraftingStable/backend/src/main/java/ua/tqs/dto/RentRequestDTO.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/login/JwtUtil.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/service/UserDetailsServiceImpl.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/model/NotificationTemplate.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/exception/ResourceNotFoundException.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/dto/AuthRequest.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/dto/RentResponseDTO.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/service/AnalyticsService.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/controller/RentController.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/controller/AuthController.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/enums/UserRole.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/model/User.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/controller/UserController.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/dto/ToolDTO.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/enums/RentStatus.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/repository/UserNotificationPreferencesRepository.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/repository/ToolRepository.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/service/UserService.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/controller/AnalyticsController.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/login/JwtAuthFilter.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/model/NotificationLog.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/service/NotificationService.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/model/Tool.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/model/Analytics.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/enums/NotificationType.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/model/Rent.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/config/SecurityConfig.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/dto/ClientStatsDTO.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/repository/AnalyticsRepository.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/model/UserNotificationPreferences.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/enums/NotificationStatus.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/BackendApplication.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/repository/NotificationLogRepository.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/service/RentService.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/repository/UserRepository.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/controller/ToolController.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/service/EmailService.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/service/NotificationTemplateService.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/dto/AuthResponse.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/service/UserPreferencesService.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/dto/RentRequestDTO.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/service/NotificationLogService.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/service/ToolService.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/dto/AdminStatsDTO.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/repository/NotificationTemplateRepository.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/config/SwaggerConfig.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/enums/ToolStatus.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/repository/RentRepository.java
+/home/mufasa/Secretária/Classes/TQS/Projeto Final/CraftingStable/backend/src/main/java/ua/tqs/enums/NotificationChannel.java

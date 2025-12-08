@@ -3,16 +3,22 @@ package ua.tqs.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ua.tqs.enums.NotificationType;
 import ua.tqs.enums.RentStatus;
 import ua.tqs.exception.ResourceNotFoundException;
 import ua.tqs.model.Rent;
 import ua.tqs.model.Tool;
+import ua.tqs.model.User;
 import ua.tqs.repository.RentRepository;
 import ua.tqs.repository.ToolRepository;
+import ua.tqs.repository.UserRepository;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -21,6 +27,8 @@ public class RentService {
 
     private final RentRepository rentRepository;
     private final ToolRepository toolRepository;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public Rent create(Rent rent) {
@@ -59,7 +67,16 @@ public class RentService {
         }
         
         rent.setStatus(RentStatus.APPROVED);
-        return rentRepository.save(rent);
+        Rent savedRent = rentRepository.save(rent);
+
+        try {
+            Map<String, Object> variables = buildRentVariables(savedRent, tool);
+            notificationService.sendNotification(savedRent.getUserId(), NotificationType.RENT_APPROVED, variables, savedRent.getId());
+        } catch (Exception e) {
+            // Log the error but don't fail the approval
+        }
+
+        return savedRent;
     }
 
     @Transactional
@@ -82,7 +99,17 @@ public class RentService {
         
         rent.setStatus(RentStatus.REJECTED);
         rent.setMessage(message);
-        return rentRepository.save(rent);
+        Rent savedRent = rentRepository.save(rent);
+
+        try {
+            Map<String, Object> variables = buildRentVariables(savedRent, tool);
+            variables.put("rejectionMessage", message != null ? message : "No reason provided");
+            notificationService.sendNotification(savedRent.getUserId(), NotificationType.RENT_REJECTED, variables, savedRent.getId());
+        } catch (Exception e) {
+            // Log the error but don't fail the rejection
+        }
+
+        return savedRent;
     }
 
     public List<Rent> listAll() {
@@ -129,21 +156,43 @@ public class RentService {
      */
     private void validateBookingDates(Rent rent) {
         LocalDateTime now = LocalDateTime.now();
-        
+
         if (rent.getStartDate() == null || rent.getEndDate() == null) {
             throw new IllegalArgumentException("Start date and end date are required");
         }
-        
+
         if (rent.getStartDate().isBefore(now)) {
             throw new IllegalArgumentException("Start date cannot be in the past");
         }
-        
+
         if (rent.getEndDate().isBefore(rent.getStartDate())) {
             throw new IllegalArgumentException("End date must be after start date");
         }
-        
+
         if (rent.getStartDate().isEqual(rent.getEndDate())) {
             throw new IllegalArgumentException("End date must be after start date");
         }
+    }
+
+    /**
+     * Build template variables for rent notifications
+     */
+    private Map<String, Object> buildRentVariables(Rent rent, Tool tool) {
+        Map<String, Object> variables = new HashMap<>();
+
+        User user = userRepository.findById(rent.getUserId()).orElse(null);
+
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+        variables.put("userName", user != null ? user.getName() : "User");
+        variables.put("toolName", tool.getName());
+        variables.put("toolType", tool.getType());
+        variables.put("startDate", rent.getStartDate().format(dateFormatter));
+        variables.put("endDate", rent.getEndDate().format(dateFormatter));
+        variables.put("rentId", rent.getId());
+        variables.put("dailyPrice", tool.getDailyPrice());
+        variables.put("depositAmount", tool.getDepositAmount());
+
+        return variables;
     }
 }

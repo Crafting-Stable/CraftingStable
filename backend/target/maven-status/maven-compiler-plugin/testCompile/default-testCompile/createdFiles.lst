@@ -1,5 +1,11 @@
+ua/tqs/service/UserServiceTest.class
+ua/tqs/service/EmailServiceTest.class
+ua/tqs/service/EmailServiceTest$2.class
 ua/tqs/service/RentServiceTest.class
 ua/tqs/service/ToolServiceTest.class
-ua/tqs/service/UserServiceTest.class
+ua/tqs/service/UserPreferencesServiceTest.class
+ua/tqs/service/EmailServiceTest$1.class
+ua/tqs/service/NotificationServiceTest.class
 ua/tqs/service/OwnerApprovalWorkflowTest.class
 ua/tqs/service/BookingValidationTest.class
+ua/tqs/service/NotificationTemplateServiceTest.class

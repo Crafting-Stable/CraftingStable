@@ -29,9 +29,13 @@ services:
       SPRING_DATASOURCE_PASSWORD: postgres
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
     depends_on:
       db:
         condition: service_healthy
+      mailhog:
+        condition: service_started
     networks:
       - app-network
     restart: unless-stopped
@@ -58,6 +62,15 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - app-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:

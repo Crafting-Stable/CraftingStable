@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: ua.tqs.service.BookingValidationTest
 -------------------------------------------------------------------------------
-Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.026 s -- in ua.tqs.service.BookingValidationTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.034 s -- in ua.tqs.service.BookingValidationTest
