@@ -14,6 +14,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      
+      - name: Extract Jira Issue Key
+        id: extract_jira
+        run: |
+          BRANCH_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          ISSUE_KEY=$(echo "$BRANCH_NAME" | grep -oP 'SCRUM-\d+' | head -1 || echo "")
+          echo "JIRA_ISSUE_KEY=$ISSUE_KEY" >> $GITHUB_ENV
+          if [ -n "$ISSUE_KEY" ]; then
+            echo "Found Jira issue: $ISSUE_KEY"
+          else
+            echo "No Jira issue key found in branch name"
+          fi
+      
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -98,3 +111,32 @@ jobs:
 
           echo "Running sonar-scanner with args: $ARGS"
           sonar-scanner $ARGS
+
+      - name: Comment on Jira on Success
+        if: success() && env.JIRA_ISSUE_KEY != ''
+        uses: atlassian/gajira-comment@v3
+        with:
+          issue: ${{ env.JIRA_ISSUE_KEY }}
+          comment: |
+            ✅ SonarCloud Analysis Passed
+            Build: [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            Commit: ${{ github.sha }}
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
+      - name: Comment on Jira on Failure
+        if: failure() && env.JIRA_ISSUE_KEY != ''
+        uses: atlassian/gajira-comment@v3
+        with:
+          issue: ${{ env.JIRA_ISSUE_KEY }}
+          comment: |
+            ❌ SonarCloud Analysis Failed
+            Build: [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            Commit: ${{ github.sha }}
+            Please check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
