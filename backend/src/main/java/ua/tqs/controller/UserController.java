@@ -8,7 +8,9 @@ import ua.tqs.dto.ClientStatsDTO;
 import ua.tqs.model.User;
 import ua.tqs.service.UserService;
 
+import java.net.URI;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/users")
@@ -23,7 +25,27 @@ public class UserController {
 
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
-        return ResponseEntity.ok(userService.getAllUsers());
+        return ResponseEntity.ok(userService.listAll());
+    }
+
+    @PostMapping
+    public ResponseEntity<User> createUser(@RequestBody User user) {
+        User created = userService.create(user);
+        URI location = URI.create("/api/users/" + created.getId());
+        return ResponseEntity.created(location).body(created);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<User> getUserById(@PathVariable("id") Long id) {
+        Optional<User> opt = userService.findById(id);
+        return opt.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable("id") Long id) {
+        userService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/total-users")

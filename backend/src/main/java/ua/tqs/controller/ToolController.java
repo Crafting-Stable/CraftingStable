@@ -63,6 +63,15 @@ public class ToolController {
         return ResponseEntity.ok(ToolDTO.fromModel(f));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<ToolDTO> update(@PathVariable Long id, @Valid @RequestBody ToolDTO dto) {
+        Tool toolToUpdate = dto.toModel();
+        toolToUpdate.setId(id);
+
+        Tool updated = toolService.update(id, toolToUpdate);
+        return ResponseEntity.ok(ToolDTO.fromModel(updated));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         toolService.delete(id);

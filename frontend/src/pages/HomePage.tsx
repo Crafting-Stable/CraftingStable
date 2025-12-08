@@ -4,7 +4,6 @@ import Header from '../components/Header';
 import LoadingScreen from '../components/LoadingScreen';
 
 import bgImg from '../assets/rust.jpg';
-import { fetchWikiInfo } from '../utils/wiki';
 
 type Tool = {
     id: string;
@@ -175,18 +174,8 @@ export default function HomePage(): React.ReactElement {
                 }
 
                 const mapped = data.map(mapApiToUi);
-                const enriched = await Promise.all(mapped.map(async (t) => {
-                    const hasRealImage = !!t.image && !t.image.includes("placehold.co");
-                    if (hasRealImage) return t;
 
-                    // usa util comum
-                    const wiki = await fetchWikiInfo(t.name, 600);
-                    if (wiki?.thumbnail) return { ...t, image: wiki.thumbnail };
-
-                    return t;
-                }));
-
-                if (mounted) setTools(enriched);
+                if (mounted) setTools(mapped);
             } catch (e) {
                 console.error(e);
                 if (mounted) setTools([]);

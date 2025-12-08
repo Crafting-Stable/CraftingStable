@@ -29,7 +29,6 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    // Não retornar a senha em toString; getter/setter mantidos para uso interno
     @Setter
     @NotBlank
     private String password;

@@ -103,6 +103,9 @@ export default function Header(): React.ReactElement {
 
                 <nav style={styles.nav}>
                     <Link to="/catalog" style={{ color: 'inherit', textDecoration: 'none' }}>Catálogo</Link>
+                    {user && (
+                        <Link to="/user/add-rent" style={{ color: 'inherit', textDecoration: 'none' }}>Add Rent</Link>
+                    )}
                     <Link to="/about" style={{ color: 'inherit', textDecoration: 'none' }}>Sobre</Link>
                 </nav>
             </div>

@@ -40,6 +40,8 @@ export default function LoginPage(): React.ReactElement {
         setLoginErrors(errs);
         if (Object.keys(errs).length > 0) return;
 
+        console.log('🔐 Attempting login with email:', login.email);
+
         try {
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
@@ -47,7 +49,10 @@ export default function LoginPage(): React.ReactElement {
                 body: JSON.stringify({ email: login.email, password: login.password })
             });
 
+            console.log('📥 Login response status:', res.status);
+
             const data: any = await res.json().catch(() => ({}));
+            console.log('📦 Login response data:', data);
 
             if (!res.ok) {
                 if (data.errors) setLoginErrors(data.errors);
@@ -57,17 +62,42 @@ export default function LoginPage(): React.ReactElement {
             }
 
             if (data.token) {
+                console.log('🎫 JWT Token received:', data.token.substring(0, 30) + '...');
+
+                // 🔥 IMPORTANTE: Guarda o ID do utilizador
+                const userId = data.id || data.user_id || data.userId;
+                console.log('🆔 User ID from response:', userId);
+
                 localStorage.setItem('jwt', data.token);
-                localStorage.setItem('user', JSON.stringify({ username: data.username, role: data.role }));
+
+                const userToStore = {
+                    username: data.username || data.name,
+                    email: data.email || login.email,
+                    role: data.role,
+                    id: userId  // ✅ GUARDA O ID
+                };
+
+                console.log('💾 Saving user to localStorage:', userToStore);
+                localStorage.setItem('user', JSON.stringify(userToStore));
+
+                // Verifica se guardou corretamente
+                const savedJwt = localStorage.getItem('jwt');
+                const savedUser = localStorage.getItem('user');
+                console.log('✅ JWT saved:', savedJwt ? 'YES' : 'NO');
+                console.log('✅ User saved:', savedUser);
 
                 window.dispatchEvent(new Event('authChanged'));
 
                 setLogin({ ...login, password: '' });
+
+                console.log('🚀 Redirecting to /catalog');
                 navigate('/catalog');
             } else {
+                console.error('❌ No token in response');
                 setLoginErrors({ general: 'Resposta inválida do servidor' });
             }
-        } catch {
+        } catch (e) {
+            console.error('💥 Login exception:', e);
             setLoginErrors({ general: 'Erro de rede' });
         }
     };
@@ -84,6 +114,8 @@ export default function LoginPage(): React.ReactElement {
         setRegErrors(errs);
         if (Object.keys(errs).length > 0) return;
 
+        console.log('📝 Attempting registration with email:', reg.email);
+
         try {
             const res = await fetch('/api/auth/register', {
                 method: 'POST',
@@ -97,7 +129,10 @@ export default function LoginPage(): React.ReactElement {
                 })
             });
 
+            console.log('📥 Register response status:', res.status);
+
             const data: any = await res.json().catch(() => ({}));
+            console.log('📦 Register response data:', data);
 
             if (!res.ok) {
                 if (data.errors) setRegErrors(data.errors);
@@ -106,10 +141,12 @@ export default function LoginPage(): React.ReactElement {
                 return;
             }
 
+            console.log('✅ Registration successful');
             alert('Registo efetuado. Por favor inicie sessão.');
             setReg({ name: '', email: '', password: '', passwordConfirm: '' });
             navigate('/loginPage');
-        } catch {
+        } catch (e) {
+            console.error('💥 Register exception:', e);
             setRegErrors({ general: 'Erro de rede' });
         }
     };
@@ -129,7 +166,7 @@ export default function LoginPage(): React.ReactElement {
                                 <span className="brand-logo" aria-hidden />
                                 <div>
                                     <strong>Já tem conta?</strong>
-                                    <div className="muted">Faça login para continuar com a compra.</div>
+                                    <div className="muted">Faça login para continuar.</div>
                                 </div>
                             </div>
 
@@ -192,7 +229,7 @@ export default function LoginPage(): React.ReactElement {
                                 </div>
                                 <div>
                                     <strong>Primeira vez?</strong>
-                                    <div className="muted">Crie a sua conta para um checkout mais rápido.</div>
+                                    <div className="muted">Crie a sua conta.</div>
                                 </div>
                             </div>
 
@@ -257,7 +294,7 @@ export default function LoginPage(): React.ReactElement {
                 </div>
 
                 <footer style={styles.footer}>
-                    © {new Date().getFullYear()} Crafting Stable — Aluguer de ferramentas. Políticas | Contato
+                    © {new Date().getFullYear()} Crafting Stable — Aluguer de ferramentas.
                 </footer>
             </div>
 

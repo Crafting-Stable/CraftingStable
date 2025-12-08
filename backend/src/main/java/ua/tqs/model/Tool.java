@@ -59,13 +59,4 @@ public class Tool {
     @Column(name = "status", nullable = false)
     private ToolStatus status = ToolStatus.AVAILABLE;
 
-    /* Novos campos para rastrear origem e cache da imagem */
-    @Column(name = "wikidata_id")
-    private String wikidataId;
-
-    @Column(name = "image_fetched_at")
-    private Instant imageFetchedAt;
-
-    @Column(name = "image_source")
-    private String imageSource;
 }

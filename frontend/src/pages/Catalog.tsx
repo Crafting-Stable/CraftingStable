@@ -3,16 +3,17 @@ import { Link } from "react-router-dom";
 import bgImg from '../assets/rust.jpg';
 import Header from '../components/Header';
 import LoadingScreen from '../components/LoadingScreen';
-import { fetchWikiInfo } from '../utils/wiki';
+
+type ToolStatus = "AVAILABLE" | "RENTED" | "UNDER_MAINTENANCE" | "INACTIVE";
 
 type Tool = {
     id: string;
     name: string;
     category: string;
     pricePerDay: number;
-    oldPricePerDay?: number;
     image?: string;
-    promo?: boolean;
+    location?: string;
+    status?: ToolStatus;
 };
 
 const styles: { [k: string]: React.CSSProperties } = {
@@ -71,6 +72,8 @@ const styles: { [k: string]: React.CSSProperties } = {
 export default function CatalogPage(): React.ReactElement {
     const [q, setQ] = useState("");
     const [category, setCategory] = useState("all");
+    const [location, setLocation] = useState("all");
+    const [status, setStatus] = useState<"all" | ToolStatus>("all");
     const [sort, setSort] = useState<"relevance" | "price-asc" | "price-desc">("relevance");
     const [tools, setTools] = useState<Tool[]>([]);
     const [loading, setLoading] = useState(false);
@@ -83,9 +86,9 @@ export default function CatalogPage(): React.ReactElement {
         name: apiTool.name,
         category: apiTool.type || apiTool.category || "Outros",
         pricePerDay: Number(apiTool.dailyPrice ?? apiTool.pricePerDay ?? 0),
-        oldPricePerDay: apiTool.oldPricePerDay ? Number(apiTool.oldPricePerDay) : undefined,
         image: apiTool.imageUrl || apiTool.image || placeholderFor(apiTool.type, apiTool.name),
-        promo: Boolean(apiTool.promo) || false
+        location: apiTool.location ?? apiTool.locationName ?? undefined,
+        status: (apiTool.status ? String(apiTool.status) : undefined) as ToolStatus | undefined
     });
 
     useEffect(() => {
@@ -101,19 +104,12 @@ export default function CatalogPage(): React.ReactElement {
                     return;
                 }
                 const mapped = data.map(mapApiToUi);
-                const enriched = await Promise.all(mapped.map(async (t) => {
+
+                const enriched = mapped.map(t => {
                     const hasRealImage = !!t.image && !t.image.includes("placehold.co");
-                    if (hasRealImage) return t;
+                    return { ...t, image: hasRealImage ? t.image : placeholderFor(t.category, t.name) };
+                });
 
-                    try {
-                        const w = await fetchWikiInfo(t.name, 600);
-                        if (w?.thumbnail) return { ...t, image: w.thumbnail };
-                    } catch (e) {
-                        // ignore wiki errors
-                    }
-
-                    return { ...t, image: placeholderFor(t.category, t.name) };
-                }));
                 if (mounted) setTools(enriched);
             } catch (e) {
                 console.error(e);
@@ -127,6 +123,8 @@ export default function CatalogPage(): React.ReactElement {
     }, []);
 
     const categories = useMemo(() => ["all", ...Array.from(new Set(tools.map(t => t.category)))], [tools]);
+    const locations = useMemo(() => ["all", ...Array.from(new Set(tools.map(t => t.location).filter(Boolean)))], [tools]);
+    const statuses = useMemo(() => ["all", ...Array.from(new Set(tools.map(t => t.status).filter(Boolean)))], [tools]);
 
     const filtered = useMemo(() => {
         let list = tools.slice();
@@ -135,10 +133,12 @@ export default function CatalogPage(): React.ReactElement {
             list = list.filter(t => t.name.toLowerCase().includes(term));
         }
         if (category !== "all") list = list.filter(t => t.category === category);
+        if (location !== "all") list = list.filter(t => t.location === location);
+        if (status !== "all") list = list.filter(t => t.status === status);
         if (sort === "price-asc") list.sort((a, b) => a.pricePerDay - b.pricePerDay);
         if (sort === "price-desc") list.sort((a, b) => b.pricePerDay - a.pricePerDay);
         return list;
-    }, [tools, q, category, sort]);
+    }, [tools, q, category, location, status, sort]);
 
     return (
         <div style={styles.root}>
@@ -150,7 +150,7 @@ export default function CatalogPage(): React.ReactElement {
                 <section style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 18, paddingTop: 12 }}>
                     <div style={{ flex: 1 }}>
                         <h1 style={{ margin: 0, fontSize: 28 }}>Promoções e Ofertas</h1>
-                        <p style={{ margin: "6px 0 12px", color: "rgba(255,255,255,0.9)" }}>Veja as ferramentas em promoção e encontre a opção certa para o seu trabalho — aluguer por dias com descontos exclusivos.</p>
+                        <p style={{ margin: "6px 0 12px", color: "rgba(255,255,255,0.9)" }}>Veja as ferramentas e filtre por localização, categoria e estado.</p>
 
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                             <input
@@ -164,6 +164,14 @@ export default function CatalogPage(): React.ReactElement {
                                 {categories.map(c => <option key={c} value={c}>{c === "all" ? "Todas as categorias" : c}</option>)}
                             </select>
 
+                            <select value={location} onChange={(e) => setLocation(e.target.value)} style={{ padding: "10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "#fff" }}>
+                                {locations.map(l => <option key={l} value={l}>{l === "all" ? "Todas as localizações" : l}</option>)}
+                            </select>
+
+                            <select value={String(status)} onChange={(e) => setStatus(e.target.value as any)} style={{ padding: "10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "#fff" }}>
+                                {statuses.map(s => <option key={String(s)} value={String(s)}>{String(s) === "all" ? "Todos os estados" : String(s)}</option>)}
+                            </select>
+
                             <select value={sort} onChange={(e) => setSort(e.target.value as any)} style={{ padding: "10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "#fff" }}>
                                 <option value="relevance">Relevância</option>
                                 <option value="price-asc">Preço ↑</option>
@@ -173,7 +181,7 @@ export default function CatalogPage(): React.ReactElement {
 
                         <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.06)", cursor: "pointer", fontSize: 13 }} onClick={() => setCategory("all")}>Ver tudo</div>
+                                <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.06)", cursor: "pointer", fontSize: 13 }} onClick={() => { setCategory("all"); setLocation("all"); setStatus("all"); }}>Ver tudo</div>
                                 <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.06)", cursor: "pointer", fontSize: 13 }} onClick={() => setCategory("Jardinagem")}>Jardinagem</div>
                                 <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.06)", cursor: "pointer", fontSize: 13 }} onClick={() => setCategory("Obras")}>Obras</div>
                                 <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.06)", cursor: "pointer", fontSize: 13 }} onClick={() => setCategory("Carpintaria")}>Carpintaria</div>
@@ -202,15 +210,15 @@ export default function CatalogPage(): React.ReactElement {
                                 </div>
 
                                 <div style={{ fontWeight: 700 }}>{tool.name}</div>
+                                {tool.location ? <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 6 }}>{tool.location}</div> : null}
+                                {tool.status ? <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 6 }}>Estado: {tool.status}</div> : null}
 
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
                                     <div>
-                                        {tool.oldPricePerDay ? <span style={{ textDecoration: "line-through", color: "rgba(255,255,255,0.6)", fontSize: 12, marginRight: 8 }}>€{tool.oldPricePerDay}</span> : null}
                                         <span style={{ fontWeight: 800, fontSize: 16 }}>€{tool.pricePerDay}/dia</span>
                                     </div>
 
                                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                        {tool.promo ? <div style={{ background: "#f8b749", color: "#111", padding: "4px 8px", borderRadius: 6, fontWeight: 700, fontSize: 12 }}>Promo</div> : null}
                                         <Link to={`/tools/${tool.id}`} style={{ color: "#f8b749", textDecoration: "none", fontWeight: 700 }}>Ver</Link>
                                     </div>
                                 </div>
