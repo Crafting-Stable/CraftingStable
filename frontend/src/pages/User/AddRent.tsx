@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 import Header from '../../components/Header';
 
 type Tool = {
     id?: number;
     name: string;
     type: string;
-    dailyPrice: number;        // ✅ camelCase
-    depositAmount: number;     // ✅ camelCase
+    dailyPrice: number;
+    depositAmount: number;
     description: string;
     location: string;
     available?: boolean;
-    imageUrl?: string;         // ✅ camelCase
-    ownerId?: number;          // ✅ camelCase
+    imageUrl?: string;
+    ownerId?: number;
     status?: string;
 };
 
@@ -33,7 +33,7 @@ function apiUrl(path: string) {
     return `${protocol}//${hostname}:${API_PORT}${normalized}`;
 }
 
-export default function AddTool(): React.ReactElement {
+export default function AddRent(): React.ReactElement {
     const navigate = useNavigate();
     const [tools, setTools] = useState<Tool[]>([]);
     const [loading, setLoading] = useState(false);
@@ -52,30 +52,22 @@ export default function AddTool(): React.ReactElement {
     const readStoredUser = () => {
         try {
             const userStr = localStorage.getItem('user');
-            console.log('📦 Raw user from localStorage:', userStr);
             if (!userStr) return null;
-            const parsed = JSON.parse(userStr);
-            console.log('👤 Parsed user:', parsed);
-            return parsed;
+            return JSON.parse(userStr);
         } catch (e) {
-            console.error('❌ Error parsing user:', e);
+            console.error('Error parsing stored user', e);
             return null;
         }
     };
 
     const getJwt = () => {
         const jwt = localStorage.getItem('jwt');
-        console.log('🔑 JWT from localStorage:', jwt ? `${jwt.substring(0, 30)}...` : '❌ NOT FOUND');
         return jwt || undefined;
     };
 
     useEffect(() => {
-        console.log('🚀 AddTool mounted - checking authentication');
         const stored = readStoredUser();
         const id = stored?.id ?? stored?.user_id ?? stored?.userId ?? null;
-
-        console.log('🆔 User ID from localStorage:', id);
-
         if (id) {
             setCurrentUserId(Number(id));
             return;
@@ -84,13 +76,11 @@ export default function AddTool(): React.ReactElement {
         const fetchMe = async () => {
             const jwt = getJwt();
             if (!jwt) {
-                console.error('❌ No JWT found - redirecting to login');
                 setError("Utilizador não identificado. Por favor faça login novamente.");
-                setTimeout(() => navigate('/loginPage'), 2000);
+                setTimeout(() => navigate('/loginPage'), 1500);
                 return;
             }
 
-            console.log('📡 Fetching /api/auth/me with token...');
             try {
                 const res = await fetch(apiUrl('/api/auth/me'), {
                     headers: {
@@ -99,43 +89,32 @@ export default function AddTool(): React.ReactElement {
                     }
                 });
 
-                console.log('📥 /api/auth/me response status:', res.status);
-                console.log('📥 Response headers:', Object.fromEntries(res.headers.entries()));
-
                 if (res.ok) {
                     const data = await res.json().catch(() => null);
-                    console.log('✅ /api/auth/me data:', data);
-
                     if (data) {
                         const fetchedId = data?.id ?? data?.user_id ?? data?.userId ?? null;
                         if (fetchedId) {
-                            console.log('🆔 User ID fetched:', fetchedId);
                             setCurrentUserId(Number(fetchedId));
                         }
                         const userToStore = {
-                            username: data.username ?? stored?.username ?? '',
-                            email: data.email ?? stored?.email,
-                            role: data.role ?? stored?.role,
+                            username: data.username ?? '',
+                            email: data.email ?? '',
+                            role: data.role ?? '',
                             id: fetchedId
                         };
-                        console.log('💾 Saving user to localStorage:', userToStore);
                         localStorage.setItem('user', JSON.stringify(userToStore));
                     }
                 } else if (res.status === 401 || res.status === 403) {
-                    console.error('🔒 Unauthorized/Forbidden - token invalid');
-                    const errorText = await res.text().catch(() => '');
-                    console.error('Error response:', errorText);
                     localStorage.removeItem('jwt');
                     localStorage.removeItem('user');
                     setError("Sessão expirada. Por favor faça login novamente.");
-                    setTimeout(() => navigate('/loginPage'), 2000);
+                    setTimeout(() => navigate('/loginPage'), 1500);
                 } else {
                     const text = await res.text().catch(() => res.statusText);
-                    console.error('❌ Error from /api/auth/me:', text);
                     setError(text || "Erro ao obter utilizador");
                 }
             } catch (e: any) {
-                console.error('💥 Exception in fetchMe:', e);
+                console.error('fetchMe exception', e);
                 setError("Erro ao obter utilizador");
             }
         };
@@ -145,21 +124,16 @@ export default function AddTool(): React.ReactElement {
 
     async function loadTools() {
         if (!currentUserId) {
-            console.warn('⚠️ loadTools: no currentUserId');
+            console.warn('loadTools: no currentUserId');
             return;
         }
 
-        console.log(`📡 Loading tools for user ${currentUserId}...`);
         setLoading(true);
         setError(null);
 
         try {
             const jwt = getJwt();
             const url = apiUrl(`/api/tools?owner_id=${currentUserId}`);
-
-            console.log('📤 GET request:', url);
-            console.log('🔑 JWT present:', !!jwt);
-
             const res = await fetch(url, {
                 headers: {
                     'Accept': 'application/json',
@@ -167,19 +141,17 @@ export default function AddTool(): React.ReactElement {
                 }
             });
 
-            console.log('📥 Response status:', res.status);
-
             if (!res.ok) {
-                const text = await res.text();
-                console.error('❌ Error:', text);
+                const text = await res.text().catch(() => res.statusText);
                 throw new Error(text || res.statusText);
             }
 
-            const data: Tool[] = await res.json();
-            console.log('✅ Tools loaded:', data.length);
-            setTools(data);
+            const data: Tool[] = await res.json().catch(() => []);
+            // Filtrar adicionalmente no frontend por segurança
+            const filtered = data.filter(t => Number(t.ownerId) === Number(currentUserId));
+            setTools(filtered);
         } catch (e: any) {
-            console.error('💥 Exception:', e);
+            console.error('loadTools error', e);
             setError(e.message || "Erro ao carregar ferramentas");
         } finally {
             setLoading(false);
@@ -187,26 +159,31 @@ export default function AddTool(): React.ReactElement {
     }
 
     useEffect(() => {
-        if (currentUserId) {
-            console.log('🔄 currentUserId changed:', currentUserId);
-            loadTools();
-        }
+        if (currentUserId) loadTools();
     }, [currentUserId]);
+
+    function clearForm() {
+        setEditingId(null);
+        setName("");
+        setType("");
+        setDailyPrice("");
+        setDepositAmount("");
+        setDescription("");
+        setLocation("");
+        setImageUrl("");
+        setError(null);
+    }
 
     async function handleSubmit(e?: React.FormEvent) {
         e?.preventDefault();
         setError(null);
 
-        console.log('📝 Form submit triggered');
-
         if (!name || !type || !dailyPrice || !depositAmount || !description || !location) {
-            console.warn('⚠️ Missing required fields');
             setError("Preencha todos os campos obrigatórios");
             return;
         }
 
         if (!currentUserId) {
-            console.error('❌ No currentUserId - cannot submit');
             setError("Utilizador não identificado. Por favor faça login novamente.");
             return;
         }
@@ -214,112 +191,122 @@ export default function AddTool(): React.ReactElement {
         const payload = {
             name,
             type,
-            dailyPrice: Number(dailyPrice),        // ✅ camelCase
-            depositAmount: Number(depositAmount),  // ✅ camelCase
+            dailyPrice: Number(dailyPrice),
+            depositAmount: Number(depositAmount),
             description,
             location,
-            imageUrl: imageUrl || undefined,       // ✅ camelCase
-            ownerId: currentUserId,                // ✅ camelCase
+            imageUrl: imageUrl || undefined,
+            ownerId: currentUserId,
             available: true,
             status: "AVAILABLE"
         };
 
-        console.log('📦 Payload:', payload);
-
         setLoading(true);
         try {
             const jwt = getJwt();
+            if (!jwt) throw new Error('Token de autenticação não encontrado');
 
-            if (!jwt) {
-                console.error('❌ No JWT found before submit');
-                throw new Error('Token de autenticação não encontrado');
-            }
-
-            const headers: Record<string, string> = {
+            const headers: Record<string,string> = {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
                 'Authorization': `Bearer ${jwt}`
             };
 
-            console.log('📨 Request headers:', headers);
-
             if (editingId) {
                 const url = apiUrl(`/api/tools/${editingId}`);
-                console.log(`📤 PUT ${url}`);
                 const res = await fetch(url, {
                     method: 'PUT',
                     headers,
                     body: JSON.stringify(payload)
                 });
 
-                console.log('📥 PUT response status:', res.status);
-                console.log('📥 Response headers:', Object.fromEntries(res.headers.entries()));
-
                 if (!res.ok) {
-                    const text = await res.text();
-                    console.error('❌ PUT error:', text);
-
+                    const text = await res.text().catch(() => res.statusText);
                     if (res.status === 401 || res.status === 403) {
                         localStorage.removeItem('jwt');
                         localStorage.removeItem('user');
                         setError("Sessão expirada. Por favor faça login novamente.");
-                        setTimeout(() => navigate('/loginPage'), 2000);
+                        setTimeout(() => navigate('/loginPage'), 1500);
                         return;
                     }
-
                     throw new Error(text || res.statusText);
                 }
-                const updated: Tool = await res.json();
-                setTools(prev => prev.map(t => (t.id === editingId ? updated : t)));
+
+                const updated: Tool = await res.json().catch(() => ({} as Tool));
+                // Garantir UI consistente (só atualizamos se o owner corresponder)
+                if (Number(updated.ownerId) === Number(currentUserId)) {
+                    setTools(prev => prev.map(t => (t.id === editingId ? updated : t)));
+                } else {
+                    // Caso backend altere owner (não deveria) forcamos reload
+                    await loadTools();
+                }
                 alert("Ferramenta atualizada com sucesso!");
             } else {
                 const url = apiUrl('/api/tools');
-                console.log('📤 POST', url);
                 const res = await fetch(url, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(payload)
                 });
 
-                console.log('📥 POST response status:', res.status);
-                console.log('📥 Response headers:', Object.fromEntries(res.headers.entries()));
-
                 if (!res.ok) {
-                    const text = await res.text();
-                    console.error('❌ POST error response:', text);
-
+                    const text = await res.text().catch(() => res.statusText);
                     if (res.status === 401 || res.status === 403) {
-                        console.error('🔒 Authentication error - clearing storage');
                         localStorage.removeItem('jwt');
                         localStorage.removeItem('user');
                         setError("Sessão expirada. Por favor faça login novamente.");
-                        setTimeout(() => navigate('/loginPage'), 2000);
+                        setTimeout(() => navigate('/loginPage'), 1500);
                         return;
                     }
-
                     throw new Error(text || res.statusText);
                 }
-                const created: Tool = await res.json();
-                console.log('✅ Tool created:', created);
-                setTools(prev => [...prev, created]);
+
+                const created: Tool = await res.json().catch(() => ({} as Tool));
+                // Só adicionar se pertencer ao user atual
+                if (Number(created.ownerId) === Number(currentUserId)) {
+                    setTools(prev => [...prev, created]);
+                } else {
+                    await loadTools();
+                }
                 alert("Ferramenta criada com sucesso!");
             }
+
             clearForm();
         } catch (e: any) {
-            console.error('💥 Submit exception:', e);
+            console.error('submit error', e);
             setError(e.message || "Erro ao submeter");
         } finally {
             setLoading(false);
         }
     }
 
+    function onEdit(tool: Tool) {
+        if (Number(tool.ownerId) !== Number(currentUserId)) {
+            setError("Não tem permissão para editar esta ferramenta.");
+            return;
+        }
+        setEditingId(tool.id ?? null);
+        setName(tool.name);
+        setType(tool.type);
+        setDailyPrice(String(tool.dailyPrice));
+        setDepositAmount(String(tool.depositAmount));
+        setDescription(tool.description);
+        setLocation(tool.location);
+        setImageUrl(tool.imageUrl || "");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
     async function onDelete(id?: number) {
         if (!id) return;
+        const tool = tools.find(t => t.id === id);
+        if (!tool) return;
+        if (Number(tool.ownerId) !== Number(currentUserId)) {
+            setError("Não tem permissão para apagar esta ferramenta.");
+            return;
+        }
         if (!confirm("Tem a certeza que pretende apagar esta ferramenta?")) return;
 
-        console.log(`🗑️ Deleting tool ${id}`);
         setLoading(true);
-
         try {
             const jwt = getJwt();
             const url = apiUrl(`/api/tools/${id}`);
@@ -331,57 +318,26 @@ export default function AddTool(): React.ReactElement {
                 }
             });
 
-            console.log('📥 DELETE response status:', res.status);
-
             if (!res.ok) {
-                const text = await res.text();
-                console.error('❌ DELETE error:', text);
-
+                const text = await res.text().catch(() => res.statusText);
                 if (res.status === 401 || res.status === 403) {
                     localStorage.removeItem('jwt');
                     localStorage.removeItem('user');
                     setError("Sessão expirada. Por favor faça login novamente.");
-                    setTimeout(() => navigate('/loginPage'), 2000);
+                    setTimeout(() => navigate('/loginPage'), 1500);
                     return;
                 }
-
                 throw new Error(text || res.statusText);
             }
 
             setTools(prev => prev.filter(t => t.id !== id));
-            console.log('✅ Tool deleted');
             alert("Ferramenta apagada com sucesso!");
         } catch (e: any) {
-            console.error('💥 Delete exception:', e);
+            console.error('delete error', e);
             setError(e.message || "Erro ao apagar");
         } finally {
             setLoading(false);
         }
-    }
-
-    function clearForm() {
-        console.log('🧹 Clearing form');
-        setEditingId(null);
-        setName("");
-        setType("");
-        setDailyPrice("");
-        setDepositAmount("");
-        setDescription("");
-        setLocation("");
-        setImageUrl("");
-    }
-
-    function onEdit(tool: Tool) {
-        console.log('✏️ Editing tool:', tool);
-        setEditingId(tool.id ?? null);
-        setName(tool.name);
-        setType(tool.type);
-        setDailyPrice(String(tool.dailyPrice));      // ✅ camelCase
-        setDepositAmount(String(tool.depositAmount)); // ✅ camelCase
-        setDescription(tool.description);
-        setLocation(tool.location);
-        setImageUrl(tool.imageUrl || "");            // ✅ camelCase
-        window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     const inputStyle: React.CSSProperties = {
@@ -566,10 +522,10 @@ export default function AddTool(): React.ReactElement {
                                             </div>
                                             <div style={{ textAlign: "right" }}>
                                                 <div style={{ fontSize: 20, fontWeight: 700, color: "#f8b749" }}>
-                                                    €{tool.dailyPrice.toFixed(2)}/dia
+                                                    €{(tool.dailyPrice ?? 0).toFixed(2)}/dia
                                                 </div>
                                                 <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-                                                    Caução: €{tool.depositAmount.toFixed(2)}
+                                                    Caução: €{(tool.depositAmount ?? 0).toFixed(2)}
                                                 </div>
                                             </div>
                                         </div>
@@ -578,20 +534,22 @@ export default function AddTool(): React.ReactElement {
                                             {tool.description}
                                         </p>
 
-                                        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                                            <button
-                                                onClick={() => onEdit(tool)}
-                                                style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}
-                                            >
-                                                Editar
-                                            </button>
-                                            <button
-                                                onClick={() => onDelete(tool.id)}
-                                                style={{ background: "#ff5c5c", border: "none", color: "#fff", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}
-                                            >
-                                                Apagar
-                                            </button>
-                                        </div>
+                                        {Number(tool.ownerId) === Number(currentUserId) ? (
+                                            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                                                <button
+                                                    onClick={() => onEdit(tool)}
+                                                    style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}
+                                                >
+                                                    Editar
+                                                </button>
+                                                <button
+                                                    onClick={() => onDelete(tool.id)}
+                                                    style={{ background: "#ff5c5c", border: "none", color: "#fff", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}
+                                                >
+                                                    Apagar
+                                                </button>
+                                            </div>
+                                        ) : null}
                                     </div>
                                 </div>
                             ))}

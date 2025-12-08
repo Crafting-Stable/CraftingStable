@@ -9,6 +9,9 @@ type Tool = {
     name: string;
     category: string;
     pricePerDay: number;
+    depositAmount?: number;
+    ownerId?: number;
+    ownerName?: string;
     image?: string;
     description?: string;
     location?: string;
@@ -132,7 +135,6 @@ export default function ToolDetails(): React.ReactElement {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
-    // Verifica autenticação e redireciona para a página de login se não houver JWT
     useEffect(() => {
         const jwt = localStorage.getItem("jwt");
         if (!jwt) {
@@ -148,10 +150,33 @@ export default function ToolDetails(): React.ReactElement {
 
     useEffect(() => {
         let mounted = true;
+
+        async function fetchOwnerName(ownerId: number | undefined) {
+            if (!ownerId) return undefined;
+            try {
+                // Tenta endpoint com id
+                const res = await fetch(`/api/users/${ownerId}`);
+                if (res.ok) {
+                    const u = await res.json().catch(() => null);
+                    return u?.username ?? u?.name ?? undefined;
+                }
+                // Fallback: buscar lista e procurar
+                const listRes = await fetch("/api/users");
+                if (!listRes.ok) return undefined;
+                const list = await listRes.json().catch(() => []);
+                const found = Array.isArray(list) ? list.find((x: any) => String(x.id) === String(ownerId)) : null;
+                return found ? (found.username ?? found.name) : undefined;
+            } catch (e) {
+                console.warn("Não foi possível obter ownerName:", e);
+                return undefined;
+            }
+        }
+
         async function load() {
             setLoading(true);
             try {
                 let data: any = null;
+
                 const single = id ? await fetch(`/api/tools/${id}`) : null;
                 if (single && single.ok) {
                     data = await single.json();
@@ -171,17 +196,24 @@ export default function ToolDetails(): React.ReactElement {
                     id: String(data.id),
                     name: data.name,
                     category: data.type || data.category || "Outros",
-                    pricePerDay: Number(data.dailyPrice ?? data.pricePerDay ?? data.daily_price ?? 0),
+                    pricePerDay: Number(data.dailyPrice ?? data.pricePerDay ?? 0),
+                    depositAmount: Number(data.depositAmount ?? 0),
+                    ownerId: data.ownerId ?? data.owner_id ?? null,
                     image: data.imageUrl || data.image || undefined,
                     description: data.description ?? undefined,
                     location: data.location ?? undefined
                 };
 
-                // Sem consultas externas (Wikipedia). Usa placeholder quando não houver imagem.
                 mapped.image = mapped.image ?? placeholderFor(mapped.category, mapped.name);
-                mapped.description = mapped.description ?? undefined;
 
-                if (mounted) setTool(mapped);
+                // buscar nome do proprietário se houver ownerId
+                if (mounted) {
+                    setTool(mapped);
+                }
+                const ownerName = await fetchOwnerName(mapped.ownerId as number | undefined);
+                if (mounted && ownerName) {
+                    setTool(prev => prev ? { ...prev, ownerName } : prev);
+                }
             } catch (e) {
                 console.error(e);
                 if (mounted) setTool(null);
@@ -189,11 +221,13 @@ export default function ToolDetails(): React.ReactElement {
                 if (mounted) setLoading(false);
             }
         }
+
         load();
         return () => {
             mounted = false;
         };
     }, [id]);
+
 
     if (loading) {
         return (
@@ -231,24 +265,35 @@ export default function ToolDetails(): React.ReactElement {
 
                     <div style={{ flex: 1, color: "#fff" }}>
                         <h2 style={{ margin: 0 }}>{tool.name}</h2>
-                        <div style={{ marginTop: 8, color: "rgba(255,255,255,0.85)" }}>{tool.description}</div>
-                        {tool.location ? (
-                            <div style={{ marginTop: 8, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>
-                                Localização: <span style={{ fontWeight: 700 }}>{tool.location}</span>
-                            </div>
-                        ) : null}
 
-                        <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 12 }}>
-                            <div>
-                                <div style={{ fontSize: 22, fontWeight: 800 }}>€{tool.pricePerDay}/dia</div>
-                            </div>
-
-                            <div style={{ marginLeft: "auto" }}>
-                                <Link to="/catalog" style={{ color: "#f8b749", fontWeight: 700, textDecoration: "none" }}>Voltar</Link>
-                            </div>
+                        <div style={{ marginTop: 8, color: "rgba(255,255,255,0.85)" }}>
+                            {tool.description}
                         </div>
 
-                        {/* Renderiza o calendário de reserva aqui */}
+                        {tool.location && (
+                            <div style={{ marginTop: 8, color: "rgba(255,255,255,0.8)" }}>
+                                <strong>Localização:</strong> {tool.location}
+                            </div>
+                        )}
+
+                        {tool.ownerId && (
+                            <div style={{ marginTop: 8, color: "rgba(255,255,255,0.8)" }}>
+                                <strong>Vendedor:</strong> {tool.ownerName ?? `Utilizador #${tool.ownerId}`}
+                            </div>
+                        )}
+
+                        <div style={{ marginTop: 18 }}>
+                            <div style={{ fontSize: 22, fontWeight: 800 }}>
+                                €{tool.pricePerDay}/dia
+                            </div>
+
+                            {tool.depositAmount !== undefined && (
+                                <div style={{ fontSize: 16, marginTop: 4, color: "#f8b749" }}>
+                                    Caução: <strong>€{tool.depositAmount}</strong>
+                                </div>
+                            )}
+                        </div>
+
                         <BookingCalendar toolId={tool.id} pricePerDay={tool.pricePerDay} />
                     </div>
                 </div>
