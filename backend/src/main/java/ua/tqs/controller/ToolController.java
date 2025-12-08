@@ -5,12 +5,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ua.tqs.dto.ToolDTO;
+import ua.tqs.enums.ToolStatus;
 import ua.tqs.exception.ResourceNotFoundException;
 import ua.tqs.model.Tool;
 import ua.tqs.service.ToolService;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -60,6 +62,33 @@ public class ToolController {
         Tool f = toolService.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ferramenta não encontrada: " + id));
         return ResponseEntity.ok(ToolDTO.fromModel(f));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ToolDTO> update(@PathVariable Long id, @Valid @RequestBody ToolDTO dto) {
+        Tool updates = dto.toModel();
+        Tool updated = toolService.update(id, updates);
+        ToolDTO result = ToolDTO.fromModel(updated);
+        return ResponseEntity.ok(result);
+    }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<ToolDTO> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String statusStr = body.get("status");
+        if (statusStr == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        ToolStatus newStatus;
+        try {
+            newStatus = ToolStatus.valueOf(statusStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Tool updated = toolService.updateStatus(id, newStatus);
+        ToolDTO result = ToolDTO.fromModel(updated);
+        return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/{id}")

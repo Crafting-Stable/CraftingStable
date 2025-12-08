@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ua.tqs.dto.AdminStatsDTO;
 import ua.tqs.dto.ClientStatsDTO;
 import ua.tqs.enums.RentStatus;
+import ua.tqs.enums.UserRole;
 import ua.tqs.exception.ResourceNotFoundException;
 import ua.tqs.model.Rent;
 import ua.tqs.model.Tool;
@@ -26,12 +27,14 @@ public class UserService {
     private final UserRepository userRepository;
     private final RentRepository rentRepository;
     private final ToolRepository toolRepository;
+    private final ua.tqs.repository.AnalyticsRepository analyticsRepository;
 
     @Autowired
-    public UserService(UserRepository userRepository, RentRepository rentRepository, ToolRepository toolRepository) {
+    public UserService(UserRepository userRepository, RentRepository rentRepository, ToolRepository toolRepository, ua.tqs.repository.AnalyticsRepository analyticsRepository) {
         this.userRepository = userRepository;
         this.rentRepository = rentRepository;
         this.toolRepository = toolRepository;
+        this.analyticsRepository = analyticsRepository;
     }
 
     public List<User> getAllUsers() {
@@ -44,10 +47,47 @@ public class UserService {
 
     public AdminStatsDTO getAdminStats() {
         List<Rent> rents = rentRepository.findAll();
+        List<Tool> tools = toolRepository.findAll();
 
+        // Basic counts
         long totalRents = rents.size();
         long totalUsers = userRepository.count();
+        long totalTools = tools.size();
 
+        // Rent status breakdown
+        long pendingRents = rents.stream()
+                .filter(r -> r.getStatus() == RentStatus.PENDING)
+                .count();
+
+        long approvedRents = rents.stream()
+                .filter(r -> r.getStatus() == RentStatus.APPROVED || r.getStatus() == RentStatus.ACTIVE)
+                .count();
+
+        long rejectedRents = rents.stream()
+                .filter(r -> r.getStatus() == RentStatus.REJECTED)
+                .count();
+
+        // Calculate approval rate
+        long totalProcessed = approvedRents + rejectedRents;
+        double approvalRate = totalProcessed > 0 ? (approvedRents * 100.0 / totalProcessed) : 0.0;
+
+        // Tool status breakdown
+        long availableTools = tools.stream()
+                .filter(t -> t.getStatus() == ua.tqs.enums.ToolStatus.AVAILABLE)
+                .count();
+
+        long rentedTools = tools.stream()
+                .filter(t -> t.getStatus() == ua.tqs.enums.ToolStatus.RENTED)
+                .count();
+
+        // Active users (users with activity in last 30 days)
+        LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
+        Long activeUsers = analyticsRepository.countUniqueUsersSince(thirtyDaysAgo);
+        if (activeUsers == null) {
+            activeUsers = 0L;
+        }
+
+        // Average rent duration
         double averageRentDurationDays = rents.stream()
                 .filter(r -> r.getStartDate() != null && r.getEndDate() != null && !r.getEndDate().isBefore(r.getStartDate()))
                 .mapToDouble(r -> {
@@ -57,6 +97,7 @@ public class UserService {
                 .average()
                 .orElse(0.0);
 
+        // Find most rented tool
         Map<Long, Long> counts = rents.stream()
                 .collect(Collectors.groupingBy(Rent::getToolId, Collectors.counting()));
 
@@ -67,7 +108,20 @@ public class UserService {
             mostRentedTool = toolOpt.map(Tool::getName).orElse("tool-" + mostRentedToolId);
         }
 
-        return new AdminStatsDTO(totalRents, totalUsers, mostRentedTool, averageRentDurationDays);
+        return AdminStatsDTO.builder()
+                .totalRents(totalRents)
+                .totalUsers(totalUsers)
+                .mostRentedTool(mostRentedTool)
+                .averageRentDurationDays(averageRentDurationDays)
+                .totalTools(totalTools)
+                .pendingRents(pendingRents)
+                .approvedRents(approvedRents)
+                .rejectedRents(rejectedRents)
+                .approvalRate(approvalRate)
+                .activeUsers(activeUsers)
+                .availableTools(availableTools)
+                .rentedTools(rentedTools)
+                .build();
     }
 
     public ClientStatsDTO getClientStats(Long id) {
@@ -155,5 +209,29 @@ public class UserService {
     @Transactional
     public void delete(Long id) {
         userRepository.deleteById(id);
+    }
+
+    @Transactional
+    public User activateUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        user.setActive(true);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User deactivateUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        user.setActive(false);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User changeUserRole(Long id, UserRole newRole) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        user.setType(newRole);
+        return userRepository.save(user);
     }
 }

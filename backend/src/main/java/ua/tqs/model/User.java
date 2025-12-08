@@ -40,6 +40,11 @@ public class User {
     @Column(nullable = false)
     private UserRole type = UserRole.CUSTOMER;
 
+    @Setter
+    @NotNull
+    @Column(nullable = false)
+    private Boolean active = true;
+
     public User() {
     }
 

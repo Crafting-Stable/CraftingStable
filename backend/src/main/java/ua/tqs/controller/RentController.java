@@ -6,6 +6,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ua.tqs.dto.ApiResponse;
 import ua.tqs.dto.RentRequestDTO;
 import ua.tqs.dto.RentResponseDTO;
 import ua.tqs.model.Rent;
@@ -42,13 +43,19 @@ public class RentController {
     }
 
     @PostMapping
-    public ResponseEntity<RentResponseDTO> create(
+    public ResponseEntity<ApiResponse<RentResponseDTO>> create(
             @Valid @RequestBody RentRequestDTO rentRequestDTO) {
 
         Rent rentEntity = toEntity(rentRequestDTO);
         Rent created = rentService.create(rentEntity);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(toDto(created));
+        ApiResponse<RentResponseDTO> response = ApiResponse.success(
+            toDto(created),
+            "Sucesso",
+            "Reserva criada com sucesso!"
+        );
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping
@@ -69,12 +76,47 @@ public class RentController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         if (rentService.findById(id).isEmpty()) {
             return ResponseEntity.notFound().build();
         }
         rentService.delete(id);
-        return ResponseEntity.noContent().build();
+
+        ApiResponse<Void> response = ApiResponse.success(null, "Reserva cancelada com sucesso!");
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/approve")
+    public ResponseEntity<ApiResponse<RentResponseDTO>> approveRent(
+            @PathVariable Long id,
+            @RequestParam Long ownerId) {
+
+        Rent approved = rentService.approveRent(id, ownerId);
+
+        ApiResponse<RentResponseDTO> response = ApiResponse.success(
+            toDto(approved),
+            "Sucesso",
+            "Reserva aprovada! O utilizador foi notificado por email."
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/reject")
+    public ResponseEntity<ApiResponse<RentResponseDTO>> rejectRent(
+            @PathVariable Long id,
+            @RequestParam Long ownerId,
+            @RequestParam(required = false) String message) {
+
+        Rent rejected = rentService.rejectRent(id, ownerId, message);
+
+        ApiResponse<RentResponseDTO> response = ApiResponse.success(
+            toDto(rejected),
+            "Reserva rejeitada",
+            "Reserva rejeitada. O utilizador foi notificado por email."
+        );
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/interval")
