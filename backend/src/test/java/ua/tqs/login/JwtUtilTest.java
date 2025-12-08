@@ -2,7 +2,6 @@ package ua.tqs.login;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,7 +50,7 @@ public class JwtUtilTest {
     public void invalidTokenIsRejected() {
         String bad = "this.is.not.a.valid.jwt";
         assertFalse(jwtUtil.validateToken(bad));
-        assertThrows(JwtException.class, () -> jwtUtil.getUsername(bad));
+        assertNull(jwtUtil.getUsername(bad));
     }
 
     @Test
@@ -68,6 +67,6 @@ public class JwtUtilTest {
                 .compact();
 
         assertFalse(jwtUtil.validateToken(expiredToken));
-        assertThrows(JwtException.class, () -> jwtUtil.getUsername(expiredToken));
+        assertNull(jwtUtil.getUsername(expiredToken));
     }
 }
