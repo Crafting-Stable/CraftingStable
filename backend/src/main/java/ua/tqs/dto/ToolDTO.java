@@ -9,7 +9,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import ua.tqs.model.Tool;
 import ua.tqs.enums.ToolStatus;
-
 import java.math.BigDecimal;
 
 @Data

@@ -7,6 +7,10 @@ import  LoginPage from "./pages/LoginPage";
 import  User from "./pages/UserDetailsPage";
 import ToolDetails from "./pages/User/ToolDetails";
 import AddRent from "./pages/User/AddRent";
+import  AdminDashboard from "./pages/Admin/AdminDashboard";
+import  AdminUsers from "./pages/Admin/AdminUsers";
+import  AdminTools from "./pages/Admin/AdminTools";
+import  AdminAnalytics from "./pages/Admin/AdminAnalytics";
 export default function App(): React.ReactElement {
     return (
         <BrowserRouter>
@@ -19,6 +23,11 @@ export default function App(): React.ReactElement {
                 <Route path="/user" element={<User />} />
                 <Route path="/tools/:id" element={<ToolDetails />} />
                 <Route path="/user/add-rent" element={<AddRent />} />
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/tools" element={<AdminTools />} />
+                <Route path="/admin/analytics" element={<AdminAnalytics />} />
+
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </BrowserRouter>

@@ -110,6 +110,25 @@ public class RentController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/{id}/approve")
+    public ResponseEntity<RentResponseDTO> approveRent(
+            @PathVariable Long id,
+            @RequestParam Long ownerId) {
+
+        Rent approved = rentService.approveRent(id, ownerId);
+        return ResponseEntity.ok(toDto(approved));
+    }
+
+    @PutMapping("/{id}/reject")
+    public ResponseEntity<RentResponseDTO> rejectRent(
+            @PathVariable Long id,
+            @RequestParam Long ownerId,
+            @RequestParam(required = false) String message) {
+
+        Rent rejected = rentService.rejectRent(id, ownerId, message);
+        return ResponseEntity.ok(toDto(rejected));
+    }
+
     @GetMapping("/interval")
     public ResponseEntity<List<RentResponseDTO>> findByInterval(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,

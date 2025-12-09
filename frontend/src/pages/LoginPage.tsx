@@ -90,8 +90,13 @@ export default function LoginPage(): React.ReactElement {
 
                 setLogin({ ...login, password: '' });
 
-                console.log('🚀 Redirecting to /catalog');
-                navigate('/catalog');
+                if (data.role === 'ADMIN') {
+                    console.log('🚀 Redirecting ADMIN to /admin');
+                    navigate('/admin');
+                } else {
+                    console.log('🚀 Redirecting CUSTOMER to /catalog');
+                    navigate('/catalog');
+                }
             } else {
                 console.error('❌ No token in response');
                 setLoginErrors({ general: 'Resposta inválida do servidor' });

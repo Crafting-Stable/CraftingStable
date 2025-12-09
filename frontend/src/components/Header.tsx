@@ -106,6 +106,9 @@ export default function Header(): React.ReactElement {
                     {user && (
                         <Link to="/user/add-rent" style={{ color: 'inherit', textDecoration: 'none' }}>Add Rent</Link>
                     )}
+                    {user?.role === 'ADMIN' && (
+                        <Link to="/admin" style={{ color: 'inherit', textDecoration: 'none' }}>Admin</Link>
+                    )}
                     <Link to="/about" style={{ color: 'inherit', textDecoration: 'none' }}>Sobre</Link>
                 </nav>
             </div>

@@ -6,10 +6,13 @@ import org.springframework.transaction.annotation.Transactional;
 import ua.tqs.dto.AdminStatsDTO;
 import ua.tqs.dto.ClientStatsDTO;
 import ua.tqs.enums.RentStatus;
+import ua.tqs.enums.ToolStatus;
+import ua.tqs.enums.UserRole;
 import ua.tqs.exception.ResourceNotFoundException;
 import ua.tqs.model.Rent;
 import ua.tqs.model.Tool;
 import ua.tqs.model.User;
+import ua.tqs.repository.AnalyticsRepository;
 import ua.tqs.repository.RentRepository;
 import ua.tqs.repository.ToolRepository;
 import ua.tqs.repository.UserRepository;
@@ -26,12 +29,17 @@ public class UserService {
     private final UserRepository userRepository;
     private final RentRepository rentRepository;
     private final ToolRepository toolRepository;
+    private final AnalyticsRepository analyticsRepository;
 
     @Autowired
-    public UserService(UserRepository userRepository, RentRepository rentRepository, ToolRepository toolRepository) {
+    public UserService(UserRepository userRepository,
+                       RentRepository rentRepository,
+                       ToolRepository toolRepository,
+                       AnalyticsRepository analyticsRepository) {
         this.userRepository = userRepository;
         this.rentRepository = rentRepository;
         this.toolRepository = toolRepository;
+        this.analyticsRepository = analyticsRepository;
     }
 
     public List<User> getAllUsers() {
@@ -44,9 +52,40 @@ public class UserService {
 
     public AdminStatsDTO getAdminStats() {
         List<Rent> rents = rentRepository.findAll();
+        List<Tool> tools = toolRepository.findAll();
 
         long totalRents = rents.size();
         long totalUsers = userRepository.count();
+        long totalTools = tools.size();
+
+        long pendingRents = rents.stream()
+                .filter(r -> r.getStatus() == RentStatus.PENDING)
+                .count();
+
+        long approvedRents = rents.stream()
+                .filter(r -> r.getStatus() == RentStatus.APPROVED || r.getStatus() == RentStatus.ACTIVE)
+                .count();
+
+        long rejectedRents = rents.stream()
+                .filter(r -> r.getStatus() == RentStatus.REJECTED)
+                .count();
+
+        long totalProcessed = approvedRents + rejectedRents;
+        double approvalRate = totalProcessed > 0 ? (approvedRents * 100.0 / totalProcessed) : 0.0;
+
+        long availableTools = tools.stream()
+                .filter(t -> t.getStatus() == ToolStatus.AVAILABLE)
+                .count();
+
+        long rentedTools = tools.stream()
+                .filter(t -> t.getStatus() == ToolStatus.RENTED)
+                .count();
+
+        LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
+        Long activeUsers = analyticsRepository.countUniqueUsersSince(thirtyDaysAgo);
+        if (activeUsers == null) {
+            activeUsers = 0L;
+        }
 
         double averageRentDurationDays = rents.stream()
                 .filter(r -> r.getStartDate() != null && r.getEndDate() != null && !r.getEndDate().isBefore(r.getStartDate()))
@@ -67,7 +106,20 @@ public class UserService {
             mostRentedTool = toolOpt.map(Tool::getName).orElse("tool-" + mostRentedToolId);
         }
 
-        return new AdminStatsDTO(totalRents, totalUsers, mostRentedTool, averageRentDurationDays);
+        return AdminStatsDTO.builder()
+                .totalRents(totalRents)
+                .totalUsers(totalUsers)
+                .mostRentedTool(mostRentedTool)
+                .averageRentDurationDays(averageRentDurationDays)
+                .totalTools(totalTools)
+                .pendingRents(pendingRents)
+                .approvedRents(approvedRents)
+                .rejectedRents(rejectedRents)
+                .approvalRate(approvalRate)
+                .activeUsers(activeUsers)
+                .availableTools(availableTools)
+                .rentedTools(rentedTools)
+                .build();
     }
 
     public ClientStatsDTO getClientStats(Long id) {
@@ -103,8 +155,7 @@ public class UserService {
                     }
                     double days = Duration.between(r.getStartDate(), r.getEndDate()).toSeconds() / 86400.0;
                     if (days < 0) days = 0;
-                    BigDecimal price = toolOpt.get().getDailyPrice().multiply(BigDecimal.valueOf(days));
-                    return price;
+                    return toolOpt.get().getDailyPrice().multiply(BigDecimal.valueOf(days));
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -114,7 +165,7 @@ public class UserService {
     @Transactional
     public User create(User user) {
         if (user.getType() == null) {
-            user.setType(ua.tqs.enums.UserRole.CUSTOMER);
+            user.setType(UserRole.CUSTOMER);
         }
         return userRepository.save(user);
     }
@@ -135,25 +186,41 @@ public class UserService {
     public User update(Long id, User updates) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
-        if (updates.getName() != null) {
-            user.setName(updates.getName());
-        }
-        if (updates.getEmail() != null) {
-            user.setEmail(updates.getEmail());
-        }
-        if (updates.getPassword() != null) {
-            user.setPassword(updates.getPassword());
-        }
-        if (updates.getType() != null) {
-            user.setType(updates.getType());
-        }
-        
+
+        if (updates.getName() != null) user.setName(updates.getName());
+        if (updates.getEmail() != null) user.setEmail(updates.getEmail());
+        if (updates.getPassword() != null) user.setPassword(updates.getPassword());
+        if (updates.getType() != null) user.setType(updates.getType());
+
         return userRepository.save(user);
     }
 
     @Transactional
     public void delete(Long id) {
         userRepository.deleteById(id);
+    }
+
+    @Transactional
+    public User activateUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        user.setActive(true);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User deactivateUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        user.setActive(false);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User changeUserRole(Long id, UserRole newRole) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        user.setType(newRole);
+        return userRepository.save(user);
     }
 }

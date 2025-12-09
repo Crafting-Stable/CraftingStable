@@ -15,6 +15,11 @@ import ua.tqs.enums.UserRole;
 @Table(name = "users")
 public class User {
 
+    @Setter
+    @NotNull
+    @Column(nullable = false)
+    private Boolean active = true;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
