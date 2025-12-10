@@ -27,7 +27,12 @@ const AdminDashboard: React.FC = () => {
 
     const fetchStats = async () => {
         try {
-            const response = await fetch('/api/users/admin/stats');
+            const token = localStorage.getItem('jwt');
+            const response = await fetch('/api/users/stats/admin', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             if (!response.ok) {
                 throw new Error('Failed to fetch stats');
             }
