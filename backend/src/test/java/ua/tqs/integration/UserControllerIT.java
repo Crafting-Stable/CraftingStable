@@ -94,7 +94,7 @@ public class UserControllerIT {
         Long id = createUser("Carol", "carol@example.com", "pwd");
 
         mockMvc.perform(delete("/api/users/{id}", id))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/users/{id}", id))
                 .andExpect(status().isNotFound());

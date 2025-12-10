@@ -6,6 +6,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.test.context.support.WithMockUser;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -26,6 +27,7 @@ public class RentControllerIT {
     }
 
     @Test
+    @WithMockUser(username = "testuser", roles = {"ADMIN"})
     void getAllRents_returnsOk() throws Exception {
         mockMvc.perform(get("/api/rents")
                         .accept(MediaType.APPLICATION_JSON))

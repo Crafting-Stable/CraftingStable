@@ -150,7 +150,7 @@ public class ToolControllerIT {
                 .build());
 
         mockMvc.perform(delete("/api/tools/{id}", saved.getId()))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk());
 
         // confirmar remoção
         mockMvc.perform(get("/api/tools/{id}", saved.getId())

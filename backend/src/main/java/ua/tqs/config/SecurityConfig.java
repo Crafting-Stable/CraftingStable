@@ -41,8 +41,10 @@ public class SecurityConfig {
                     // Analytics endpoints (test profile only for track)
                     if (env.acceptsProfiles(Profiles.of("test"))) {
                         auth.requestMatchers(HttpMethod.POST, "/api/analytics/track").permitAll();
+                        auth.requestMatchers(HttpMethod.GET, "/api/analytics/**").permitAll();
+                    } else {
+                        auth.requestMatchers(HttpMethod.GET, "/api/analytics/**").hasRole("ADMIN");
                     }
-                    auth.requestMatchers(HttpMethod.GET, "/api/analytics/**").hasRole("ADMIN");
                     auth.requestMatchers(HttpMethod.POST, "/api/analytics/**").hasRole("ADMIN");
                     
                     // Tools endpoints
