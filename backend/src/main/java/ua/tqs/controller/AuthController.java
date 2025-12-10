@@ -1,20 +1,29 @@
 package ua.tqs.controller;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.*;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import ua.tqs.dto.AuthRequestDTO;
 import ua.tqs.dto.AuthResponseDTO;
 import ua.tqs.login.JwtUtil;
 import ua.tqs.service.UserDetailsServiceImpl;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -105,7 +114,7 @@ public class AuthController {
                     role
             );
             logger.info("✅ User registered successfully: {}", request.getEmail());
-            return ResponseEntity.ok("User registered successfully");
+            return ResponseEntity.status(201).body("User registered successfully");
         } catch (IllegalArgumentException e) {
             logger.error("❌ Invalid role for registration: {}", role);
             return ResponseEntity.badRequest().body("Invalid role: must be CUSTOMER or ADMIN");

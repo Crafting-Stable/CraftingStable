@@ -1,18 +1,25 @@
 package ua.tqs.controller;
 
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import ua.tqs.dto.AdminStatsDTO;
 import ua.tqs.dto.ClientStatsDTO;
 import ua.tqs.enums.UserRole;
 import ua.tqs.model.User;
 import ua.tqs.service.UserService;
-
-import java.net.URI;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/users")
@@ -40,7 +47,7 @@ public class UserController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable("id") Long id) {
         userService.delete(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/total-users")
@@ -49,7 +56,13 @@ public class UserController {
         return ResponseEntity.ok(totalUsers);
     }
 
-    @GetMapping("/admin/stats")
+    @GetMapping("/count")
+    public ResponseEntity<Long> getUserCount() {
+        long totalUsers = userService.getTotalUsers();
+        return ResponseEntity.ok(totalUsers);
+    }
+
+    @GetMapping("/stats/admin")
     public ResponseEntity<AdminStatsDTO> getAdminStats() {
         return ResponseEntity.ok(userService.getAdminStats());
     }

@@ -1,5 +1,7 @@
 package ua.tqs.config;
 
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -17,9 +19,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import ua.tqs.login.JwtAuthFilter;
 
-import java.util.List;
+import ua.tqs.login.JwtAuthFilter;
 
 @Configuration
 public class SecurityConfig {
@@ -32,25 +33,43 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> {
+                    // Public endpoints
                     auth.requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**", "/actuator/health", "/actuator/info").permitAll();
-                    auth.requestMatchers(HttpMethod.GET, "/api/**").permitAll();
                     auth.requestMatchers(HttpMethod.GET, "/api/slots/**").permitAll();
                     auth.requestMatchers(HttpMethod.POST, "/api/slots/dto").permitAll();
-
+                    
+                    // Analytics endpoints (test profile only for track)
+                    if (env.acceptsProfiles(Profiles.of("test"))) {
+                        auth.requestMatchers(HttpMethod.POST, "/api/analytics/track").permitAll();
+                    }
+                    auth.requestMatchers(HttpMethod.GET, "/api/analytics/**").hasRole("ADMIN");
+                    auth.requestMatchers(HttpMethod.POST, "/api/analytics/**").hasRole("ADMIN");
+                    
+                    // Tools endpoints
+                    auth.requestMatchers(HttpMethod.GET, "/api/tools/**").permitAll();
                     auth.requestMatchers(HttpMethod.POST, "/api/tools", "/api/tools/**").authenticated();
                     auth.requestMatchers(HttpMethod.PUT, "/api/tools", "/api/tools/**").authenticated();
                     auth.requestMatchers(HttpMethod.DELETE, "/api/tools", "/api/tools/**").authenticated();
-
+                    
+                    // Rents/Reservations endpoints
+                    auth.requestMatchers(HttpMethod.POST, "/api/rents/**").authenticated();
+                    auth.requestMatchers(HttpMethod.PUT, "/api/rents/**").authenticated();
+                    auth.requestMatchers(HttpMethod.DELETE, "/api/rents/**").hasRole("ADMIN");
+                    auth.requestMatchers(HttpMethod.GET, "/api/rents/**").authenticated();
                     auth.requestMatchers(HttpMethod.POST, "/api/reservations/**").authenticated();
                     auth.requestMatchers(HttpMethod.GET, "/api/reservations/all").authenticated();
-                    auth.requestMatchers("/api/reservations/admin/**").hasRole("ADMIN"); // <- alterado
-                    auth.requestMatchers("/api/users/**").hasRole("ADMIN"); // <- alterado
+                    auth.requestMatchers("/api/reservations/admin/**").hasRole("ADMIN");
+                    
+                    // Users endpoints
+                    auth.requestMatchers("/api/users/stats/admin").hasRole("ADMIN");
+                    auth.requestMatchers("/api/users/*/stats").authenticated();
+                    auth.requestMatchers(HttpMethod.GET, "/api/users/**").hasRole("ADMIN");
+                    auth.requestMatchers("/api/users/**").hasRole("ADMIN");
+                    
+                    // OPTIONS for CORS
                     auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
-
-                    if (env.acceptsProfiles(Profiles.of("test"))) {
-                        auth.requestMatchers("/api/analytics/track").permitAll();
-                    }
-
+                    
+                    // Everything else requires authentication
                     auth.anyRequest().authenticated();
                 })
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
