@@ -28,7 +28,9 @@ const AdminDashboard: React.FC = () => {
     const fetchStats = async () => {
         try {
             const token = localStorage.getItem('jwt');
-            const response = await fetch('/api/users/stats/admin', {
+            const protocol = globalThis.location.protocol;
+            const hostname = globalThis.location.hostname;
+            const response = await fetch(`${protocol}//${hostname}:8081/api/users/stats/admin`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }

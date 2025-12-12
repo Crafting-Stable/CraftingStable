@@ -10,7 +10,12 @@ interface User {
 }
 
 const AdminUsers: React.FC = () => {
-    const API_BASE = 'http://localhost:8081';
+    const apiUrl = (path: string) => {
+        const protocol = globalThis.location.protocol;
+        const hostname = globalThis.location.hostname;
+        const normalized = path.startsWith('/') ? path : `/${path}`;
+        return `${protocol}//${hostname}:8081${normalized}`;
+    };
 
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
@@ -23,11 +28,11 @@ const AdminUsers: React.FC = () => {
 
     const fetchUsers = async () => {
         try {
-            const token = localStorage.getItem('jwt'); // ✅ corrigido
+            const token = localStorage.getItem('jwt');
 
-            const response = await fetch(`${API_BASE}/api/users`, {
+            const response = await fetch(apiUrl('/api/users'), {
                 headers: {
-                    'Authorization': `Bearer ${token}` // ✅ agora envia o token
+                    'Authorization': `Bearer ${token}`
                 }
             });
 
@@ -47,7 +52,7 @@ const handleActivateUser = async (id: number) => {
     try {
         const token = localStorage.getItem('jwt'); // 🔥
 
-        const response = await fetch(`${API_BASE}/api/users/${id}/activate`, {
+        const response = await fetch(apiUrl(`/api/users/${id}/activate`), {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -68,7 +73,7 @@ const handleDeactivateUser = async (id: number) => {
     try {
         const token = localStorage.getItem('jwt');
 
-        const response = await fetch(`${API_BASE}/api/users/${id}/deactivate`, {
+        const response = await fetch(apiUrl(`/api/users/${id}/deactivate`), {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -91,7 +96,7 @@ const handleChangeRole = async (id: number, newRole: 'CUSTOMER' | 'ADMIN') => {
     try {
         const token = localStorage.getItem('jwt');
 
-        const response = await fetch(`${API_BASE}/api/users/${id}/role`, {
+        const response = await fetch(apiUrl(`/api/users/${id}/role`), {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',

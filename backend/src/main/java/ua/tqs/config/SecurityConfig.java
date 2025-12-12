@@ -62,6 +62,9 @@ public class SecurityConfig {
                     auth.requestMatchers(HttpMethod.GET, "/api/reservations/all").authenticated();
                     auth.requestMatchers("/api/reservations/admin/**").hasRole("ADMIN");
                     
+                    // PayPal payment endpoints
+                    auth.requestMatchers("/api/paypal/**").authenticated();
+                    
                     // Users endpoints
                     auth.requestMatchers("/api/users/stats/admin").hasRole("ADMIN");
                     auth.requestMatchers("/api/users/*/stats").authenticated();

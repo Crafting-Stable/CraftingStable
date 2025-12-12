@@ -9,6 +9,13 @@ interface AnalyticsSummary {
 }
 
 const AdminAnalytics: React.FC = () => {
+    const apiUrl = (path: string) => {
+        const protocol = globalThis.location.protocol;
+        const hostname = globalThis.location.hostname;
+        const normalized = path.startsWith('/') ? path : `/${path}`;
+        return `${protocol}//${hostname}:8081${normalized}`;
+    };
+
     const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -23,9 +30,15 @@ const AdminAnalytics: React.FC = () => {
             setLoading(true);
             const daysAgo = new Date();
             daysAgo.setDate(daysAgo.getDate() - timeRange);
+            const token = localStorage.getItem('jwt');
 
             const response = await fetch(
-                `/api/analytics/summary?since=${encodeURIComponent(daysAgo.toISOString())}`
+                apiUrl(`/api/analytics/summary?since=${encodeURIComponent(daysAgo.toISOString())}`),
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }
             );
             if (!response.ok) {
                 throw new Error('Failed to fetch analytics');

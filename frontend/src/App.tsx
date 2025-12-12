@@ -11,6 +11,9 @@ import  AdminDashboard from "./pages/Admin/AdminDashboard";
 import  AdminUsers from "./pages/Admin/AdminUsers";
 import  AdminTools from "./pages/Admin/AdminTools";
 import  AdminAnalytics from "./pages/Admin/AdminAnalytics";
+import PaymentSuccess from "./pages/Payment/PaymentSuccess";
+import PaymentCancel from "./pages/Payment/PaymentCancel";
+
 export default function App(): React.ReactElement {
     return (
         <BrowserRouter>
@@ -27,6 +30,8 @@ export default function App(): React.ReactElement {
                 <Route path="/admin/users" element={<AdminUsers />} />
                 <Route path="/admin/tools" element={<AdminTools />} />
                 <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                <Route path="/payment/success" element={<PaymentSuccess />} />
+                <Route path="/payment/cancel" element={<PaymentCancel />} />
 
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

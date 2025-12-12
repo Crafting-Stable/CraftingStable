@@ -1,11 +1,15 @@
 package ua.tqs.controller;
 
 import java.net.URI;
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
@@ -21,8 +26,11 @@ import lombok.RequiredArgsConstructor;
 import ua.tqs.dto.ToolDTO;
 import ua.tqs.enums.ToolStatus;
 import ua.tqs.exception.ResourceNotFoundException;
+import ua.tqs.model.Rent;
 import ua.tqs.model.Tool;
+import ua.tqs.service.RentService;
 import ua.tqs.service.ToolService;
+import ua.tqs.service.UserDetailsServiceImpl;
 
 @RestController
 @RequestMapping("/api/tools")
@@ -31,6 +39,8 @@ import ua.tqs.service.ToolService;
 public class ToolController {
 
     private final ToolService toolService;
+    private final RentService rentService;
+    private final UserDetailsServiceImpl userDetailsService;
 
     @PostMapping
     public ResponseEntity<ToolDTO> create(@Valid @RequestBody ToolDTO dto) {
@@ -103,5 +113,52 @@ public class ToolController {
         Tool updated = toolService.updateStatus(id, newStatus);
         ToolDTO result = ToolDTO.fromModel(updated);
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/{id}/check-availability")
+    public ResponseEntity<Map<String, Object>> checkAvailability(
+            @PathVariable Long id,
+            @RequestParam String startDate,
+            @RequestParam String endDate,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // Get tool
+            Tool tool = toolService.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Tool not found"));
+            
+            // Check if user is the owner
+            Long userId = userDetailsService.getUserId(userDetails);
+            boolean isOwner = tool.getOwnerId().equals(userId);
+            
+            if (isOwner) {
+                response.put("available", false);
+                response.put("reason", "You cannot rent your own tool");
+                return ResponseEntity.ok(response);
+            }
+            
+            // Check for overlapping bookings
+            Rent testRent = new Rent();
+            testRent.setToolId(id);
+            testRent.setUserId(userId);
+            testRent.setStartDate(LocalDateTime.parse(startDate));
+            testRent.setEndDate(LocalDateTime.parse(endDate));
+            
+            boolean hasOverlap = rentService.hasOverlap(testRent);
+            
+            response.put("available", !hasOverlap);
+            if (hasOverlap) {
+                response.put("reason", "Tool is already booked for the selected dates");
+            }
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            response.put("available", false);
+            response.put("reason", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 }

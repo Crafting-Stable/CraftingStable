@@ -27,6 +27,14 @@ public class RentService {
         // Validate booking dates
         validateBookingDates(rent);
         
+        // Check that user is not renting their own tool
+        Tool tool = toolRepository.findById(rent.getToolId())
+                .orElseThrow(() -> new ResourceNotFoundException("Tool not found with ID: " + rent.getToolId()));
+        
+        if (tool.getOwnerId().equals(rent.getUserId())) {
+            throw new IllegalArgumentException("You cannot rent your own tool");
+        }
+        
         // Check for overlapping bookings
         if (hasOverlap(rent)) {
             throw new IllegalArgumentException("This tool is already booked for the selected dates");
