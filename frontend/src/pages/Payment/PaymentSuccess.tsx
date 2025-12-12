@@ -71,10 +71,10 @@ export default function PaymentSuccess(): React.ReactElement {
                 <div style={successIconStyle}>
                     ✓
                 </div>
-                
-                <h1 style={{ 
-                    fontSize: 28, 
-                    fontWeight: 700, 
+
+                <h1 style={{
+                    fontSize: 28,
+                    fontWeight: 700,
                     marginBottom: 16,
                     background: "linear-gradient(135deg, #22c55e, #16a34a)",
                     WebkitBackgroundClip: "text",
@@ -82,10 +82,10 @@ export default function PaymentSuccess(): React.ReactElement {
                 }}>
                     Payment Successful!
                 </h1>
-                
-                <p style={{ 
-                    fontSize: 16, 
-                    color: "#9ca3af", 
+
+                <p style={{
+                    fontSize: 16,
+                    color: "#9ca3af",
                     marginBottom: 24,
                     lineHeight: 1.6
                 }}>
@@ -104,8 +104,8 @@ export default function PaymentSuccess(): React.ReactElement {
                         <p style={{ fontSize: 14, color: "#9ca3af", marginBottom: 8 }}>
                             <strong>Transaction ID:</strong>
                         </p>
-                        <p style={{ 
-                            fontSize: 12, 
+                        <p style={{
+                            fontSize: 12,
                             color: "#22c55e",
                             fontFamily: "monospace",
                             wordBreak: "break-all"
@@ -127,10 +127,18 @@ export default function PaymentSuccess(): React.ReactElement {
                             e.currentTarget.style.transform = "translateY(0)";
                             e.currentTarget.style.boxShadow = "none";
                         }}
+                        onFocus={(e) => {
+                            e.currentTarget.style.transform = "translateY(-2px)";
+                            e.currentTarget.style.boxShadow = "0 4px 12px rgba(59, 130, 246, 0.4)";
+                        }}
+                        onBlur={(e) => {
+                            e.currentTarget.style.transform = "translateY(0)";
+                            e.currentTarget.style.boxShadow = "none";
+                        }}
                     >
                         View My Rentals
                     </button>
-                    
+
                     <button
                         style={{
                             ...buttonStyle,
@@ -142,6 +150,12 @@ export default function PaymentSuccess(): React.ReactElement {
                             e.currentTarget.style.borderColor = "#6b7280";
                         }}
                         onMouseOut={(e) => {
+                            e.currentTarget.style.borderColor = "#4b5563";
+                        }}
+                        onFocus={(e) => {
+                            e.currentTarget.style.borderColor = "#6b7280";
+                        }}
+                        onBlur={(e) => {
                             e.currentTarget.style.borderColor = "#4b5563";
                         }}
                     >

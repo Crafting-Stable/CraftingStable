@@ -49,7 +49,7 @@ export default function PaymentCancel(): React.ReactElement {
     const navigate = useNavigate();
 
     const handleRetryPayment = () => {
-        navigate(-1); // Go back to the previous page (checkout)
+        navigate(-1);
     };
 
     const handleViewRentals = () => {
@@ -67,10 +67,10 @@ export default function PaymentCancel(): React.ReactElement {
                 <div style={cancelIconStyle}>
                     ✕
                 </div>
-                
-                <h1 style={{ 
-                    fontSize: 28, 
-                    fontWeight: 700, 
+
+                <h1 style={{
+                    fontSize: 28,
+                    fontWeight: 700,
                     marginBottom: 16,
                     background: "linear-gradient(135deg, #f59e0b, #d97706)",
                     WebkitBackgroundClip: "text",
@@ -78,14 +78,14 @@ export default function PaymentCancel(): React.ReactElement {
                 }}>
                     Payment Cancelled
                 </h1>
-                
-                <p style={{ 
-                    fontSize: 16, 
-                    color: "#9ca3af", 
+
+                <p style={{
+                    fontSize: 16,
+                    color: "#9ca3af",
                     marginBottom: 24,
                     lineHeight: 1.6
                 }}>
-                    Your payment was cancelled. Don't worry – your rental request is still pending 
+                    Your payment was cancelled. Don't worry – your rental request is still pending
                     and you can complete the payment at any time.
                 </p>
 
@@ -97,7 +97,7 @@ export default function PaymentCancel(): React.ReactElement {
                     marginBottom: 20
                 }}>
                     <p style={{ fontSize: 14, color: "#f59e0b" }}>
-                        <strong>Note:</strong> If you experienced any issues during checkout, 
+                        <strong>Note:</strong> If you experienced any issues during checkout,
                         please contact our support team for assistance.
                     </p>
                 </div>
@@ -114,10 +114,18 @@ export default function PaymentCancel(): React.ReactElement {
                             e.currentTarget.style.transform = "translateY(0)";
                             e.currentTarget.style.boxShadow = "none";
                         }}
+                        onFocus={(e) => {
+                            e.currentTarget.style.transform = "translateY(-2px)";
+                            e.currentTarget.style.boxShadow = "0 4px 12px rgba(59, 130, 246, 0.4)";
+                        }}
+                        onBlur={(e) => {
+                            e.currentTarget.style.transform = "translateY(0)";
+                            e.currentTarget.style.boxShadow = "none";
+                        }}
                     >
                         Try Again
                     </button>
-                    
+
                     <button
                         style={{
                             ...buttonStyle,
@@ -129,6 +137,12 @@ export default function PaymentCancel(): React.ReactElement {
                             e.currentTarget.style.borderColor = "#6b7280";
                         }}
                         onMouseOut={(e) => {
+                            e.currentTarget.style.borderColor = "#4b5563";
+                        }}
+                        onFocus={(e) => {
+                            e.currentTarget.style.borderColor = "#6b7280";
+                        }}
+                        onBlur={(e) => {
                             e.currentTarget.style.borderColor = "#4b5563";
                         }}
                     >
@@ -146,6 +160,12 @@ export default function PaymentCancel(): React.ReactElement {
                             e.currentTarget.style.borderColor = "#6b7280";
                         }}
                         onMouseOut={(e) => {
+                            e.currentTarget.style.borderColor = "#4b5563";
+                        }}
+                        onFocus={(e) => {
+                            e.currentTarget.style.borderColor = "#6b7280";
+                        }}
+                        onBlur={(e) => {
                             e.currentTarget.style.borderColor = "#4b5563";
                         }}
                     >
