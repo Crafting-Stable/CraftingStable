@@ -28,13 +28,39 @@ export default function LoginPage(): React.ReactElement {
 
     const emailValid = (e: string) => /\S+@\S+\.\S+/.test(e);
 
+    // Helpers
+    const safeJson = async (res: Response) => {
+        return await res.json().catch(() => ({}));
+    };
+
+    const extractServerErrors = (data: any, defaultMsg: string) => {
+        if (data && typeof data === 'object') {
+            if (data.errors) return data.errors;
+            if (data.message) return { general: data.message };
+        }
+        return { general: defaultMsg };
+    };
+
+    const saveAuthData = (data: any, fallbackEmail: string) => {
+        const userId = data.id || data.user_id || data.userId;
+        localStorage.setItem('jwt', data.token);
+        const userToStore = {
+            username: data.username || data.name,
+            email: data.email || fallbackEmail,
+            role: data.role,
+            id: userId
+        };
+        localStorage.setItem('user', JSON.stringify(userToStore));
+        console.log('💾 Saving user to localStorage:', userToStore);
+    };
+
+    // Refatorado handleLoginSubmit
     const handleLoginSubmit = async (ev?: React.FormEvent) => {
         ev?.preventDefault();
         const errs: Record<string, string> = {};
 
         if (!login.email) errs.email = 'Email obrigatório';
         else if (!emailValid(login.email)) errs.email = 'Email inválido';
-
         if (!login.password) errs.password = 'Password obrigatória';
 
         setLoginErrors(errs);
@@ -50,57 +76,29 @@ export default function LoginPage(): React.ReactElement {
             });
 
             console.log('📥 Login response status:', res.status);
-
-            const data: any = await res.json().catch(() => ({}));
+            const data: any = await safeJson(res);
             console.log('📦 Login response data:', data);
 
             if (!res.ok) {
-                if (data.errors) setLoginErrors(data.errors);
-                else if (data.message) setLoginErrors({ general: data.message });
-                else setLoginErrors({ general: 'Erro no login' });
+                setLoginErrors(extractServerErrors(data, 'Erro no login'));
                 return;
             }
 
-            if (data.token) {
-                console.log('🎫 JWT Token received:', data.token.substring(0, 30) + '...');
-
-                // 🔥 IMPORTANTE: Guarda o ID do utilizador
-                const userId = data.id || data.user_id || data.userId;
-                console.log('🆔 User ID from response:', userId);
-
-                localStorage.setItem('jwt', data.token);
-
-                const userToStore = {
-                    username: data.username || data.name,
-                    email: data.email || login.email,
-                    role: data.role,
-                    id: userId  // ✅ GUARDA O ID
-                };
-
-                console.log('💾 Saving user to localStorage:', userToStore);
-                localStorage.setItem('user', JSON.stringify(userToStore));
-
-                // Verifica se guardou corretamente
-                const savedJwt = localStorage.getItem('jwt');
-                const savedUser = localStorage.getItem('user');
-                console.log('✅ JWT saved:', savedJwt ? 'YES' : 'NO');
-                console.log('✅ User saved:', savedUser);
-
-                window.dispatchEvent(new Event('authChanged'));
-
-                setLogin({ ...login, password: '' });
-
-                if (data.role === 'ADMIN') {
-                    console.log('🚀 Redirecting ADMIN to /admin');
-                    navigate('/admin');
-                } else {
-                    console.log('🚀 Redirecting CUSTOMER to /catalog');
-                    navigate('/catalog');
-                }
-            } else {
+            if (!data.token) {
                 console.error('❌ No token in response');
                 setLoginErrors({ general: 'Resposta inválida do servidor' });
+                return;
             }
+
+            console.log('🎫 JWT Token received:', data.token.substring(0, 30) + '...');
+            saveAuthData(data, login.email);
+
+            window.dispatchEvent(new Event('authChanged'));
+            setLogin({ ...login, password: '' });
+
+            const route = data.role === 'ADMIN' ? '/admin' : '/catalog';
+            console.log('🚀 Redirecting to', route);
+            navigate(route);
         } catch (e) {
             console.error('💥 Login exception:', e);
             setLoginErrors({ general: 'Erro de rede' });
@@ -135,14 +133,11 @@ export default function LoginPage(): React.ReactElement {
             });
 
             console.log('📥 Register response status:', res.status);
-
-            const data: any = await res.json().catch(() => ({}));
+            const data: any = await safeJson(res);
             console.log('📦 Register response data:', data);
 
             if (!res.ok) {
-                if (data.errors) setRegErrors(data.errors);
-                else if (data.message) setRegErrors({ general: data.message });
-                else setRegErrors({ general: 'Erro no registo' });
+                setRegErrors(extractServerErrors(data, 'Erro no registo'));
                 return;
             }
 

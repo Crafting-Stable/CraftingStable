@@ -71,7 +71,12 @@ public class SecurityConfig {
 
                     auth.requestMatchers("/api/users/stats/admin").hasRole(ROLE_ADMIN);
                     auth.requestMatchers("/api/users/*/stats").authenticated();
-                    auth.requestMatchers(HttpMethod.GET, API_USERS_WILDCARD).hasRole(ROLE_ADMIN);
+
+                    // Permitir que utilizadores autenticados vejam um único utilizador por id
+                    auth.requestMatchers(HttpMethod.GET, "/api/users/*").authenticated();
+
+                    // Manter listagem geral e operações sensíveis apenas para ADMIN
+                    auth.requestMatchers(HttpMethod.GET, "/api/users").hasRole(ROLE_ADMIN);
                     auth.requestMatchers(API_USERS_WILDCARD).hasRole(ROLE_ADMIN);
 
                     auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
