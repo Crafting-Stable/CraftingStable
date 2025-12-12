@@ -49,8 +49,13 @@ public class RentSteps {
 
     @Given("a tool exists with name {string} and status {string}")
     public void toolExistsWithNameAndStatus(String name, String status) {
+        // Create an owner for the tool (different from the renter)
+        User owner = TestDataFactory.createUser("owner_" + System.nanoTime() + "@example.com", "password123", ua.tqs.enums.UserRole.CUSTOMER);
+        userRepository.save(owner);
+        
         Tool tool = TestDataFactory.createTool(name);
         tool.setStatus(ua.tqs.enums.ToolStatus.valueOf(status));
+        tool.setOwnerId(owner.getId()); // Set owner different from renter
         toolRepository.save(tool);
         lastCreatedTool = tool;
     }
@@ -62,7 +67,10 @@ public class RentSteps {
         
         RentRequestDTO rentRequest = new RentRequestDTO();
         rentRequest.setToolId(lastCreatedTool.getId());
-        rentRequest.setUserId(1L); // Mock user ID
+        // Use the logged-in user's ID from SharedState instead of hardcoded value
+        if (sharedState.lastCreatedUser != null) {
+            rentRequest.setUserId(sharedState.lastCreatedUser.getId());
+        }
         rentRequest.setStartDate(LocalDateTime.parse(dates.get("startDate"), formatter));
         rentRequest.setEndDate(LocalDateTime.parse(dates.get("endDate"), formatter));
         

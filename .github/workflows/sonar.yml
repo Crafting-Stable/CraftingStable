@@ -72,6 +72,8 @@ jobs:
         run: |
           # Regenerate package-lock.json to sync with updated package.json (React 19 + @testing-library/react 16)
           npm install
+          # Run tests with coverage for SonarCloud
+          npm run test:coverage || true
           npm run build
 
       - name: Build backend
@@ -102,8 +104,9 @@ jobs:
           which sonar-scanner || true
 
           echo "Building sonar-scanner args..."
-          # Tell Sonar where compiled Java classes are located so the Java analyzer can run
-          ARGS="-Dsonar.projectKey=Goncasgamer20_CraftingStable -Dsonar.host.url=https://sonarcloud.io -Dsonar.java.binaries=backend/target/classes -Dsonar.coverage.jacoco.xmlReportPaths=backend/target/site/jacoco/jacoco.xml -Dsonar.exclusions=**/test/**/*,**/integration/**/*,frontend/vite.config.ts,frontend/*.config.js,frontend/*.config.ts,**/data.sql -Dsonar.coverage.exclusions=**/test/**/*,**/integration/**/*"
+          # Base args - most config is in sonar-project.properties
+          ARGS="-Dsonar.host.url=https://sonarcloud.io"
+          
           if [ -n "${SONAR_ORGANIZATION:-}" ]; then
             ARGS="$ARGS -Dsonar.organization=${SONAR_ORGANIZATION}"
           else
