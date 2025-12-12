@@ -1,4 +1,3 @@
-// typescript
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import craftingstable from '../assets/craftingstable.png';
@@ -54,6 +53,23 @@ function getStatusLabel(status: string) {
     };
     return labels[status] ?? status;
 }
+
+interface HeaderProps {
+    onBack: () => void;
+    onLogout: () => void;
+}
+const Header: React.FC<HeaderProps> = ({ onBack, onLogout }) => (
+    <header style={{ width: '100%', maxWidth: 1100, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <img src={craftingstable} alt="logo" style={{ width: 48 }} />
+            <div style={{ fontWeight: 700 }}>CraftingStable</div>
+        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button onClick={onBack} style={{ marginRight: 12 }}>Voltar</button>
+            <button onClick={onLogout} style={{ background: '#f8b749', border: 'none', padding: '8px 12px', borderRadius: 8, cursor: 'pointer' }}>Sair</button>
+        </div>
+    </header>
+);
 
 export default function UserDetailsPage(): React.ReactElement {
     const navigate = useNavigate();
@@ -197,19 +213,6 @@ export default function UserDetailsPage(): React.ReactElement {
     }
 
     // Small presentational components
-    const Header = () => (
-        <header style={{ width: '100%', maxWidth: 1100, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-            <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <img src={craftingstable} alt="logo" style={{ width: 48 }} />
-                <div style={{ fontWeight: 700 }}>CraftingStable</div>
-            </Link>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <button onClick={() => navigate('/')} style={{ marginRight: 12 }}>Voltar</button>
-                <button onClick={handleLogout} style={{ background: '#f8b749', border: 'none', padding: '8px 12px', borderRadius: 8, cursor: 'pointer' }}>Sair</button>
-            </div>
-        </header>
-    );
-
     const Tabs = () => (
         <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#fff', padding: 8, borderRadius: 8 }}>
             {[
@@ -385,10 +388,9 @@ export default function UserDetailsPage(): React.ReactElement {
         </div>
     );
 
-    // Main render: use switch to keep structure simple
     return (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 24, background: '#f5f5f5' }}>
-            <Header />
+            <Header onBack={() => navigate('/')} onLogout={handleLogout} />
             <main style={{ width: '100%', maxWidth: 1100 }}>
                 <Tabs />
                 {activeTab === 'profile' && <ProfileView />}
