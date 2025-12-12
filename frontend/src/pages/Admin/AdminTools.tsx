@@ -269,14 +269,14 @@ const AdminTools: React.FC = () => {
                         <h2 style={styles.modalTitle}>Edit Tool #{editingTool.id}</h2>
 
                         <div style={styles.formGroup}>
-                            <label htmlFor={`name-${editingTool!.id}`} style={styles.label}>Name</label>
-                            <input id={`name-${editingTool!.id}`} style={styles.input} value={editingTool.name} onChange={(e) => setEditingTool(prev => prev ? { ...prev, name: e.target.value } : prev)} />
+                            <label htmlFor={`name-${editingTool.id}`} style={styles.label}>Name</label>
+                            <input id={`name-${editingTool.id}`} style={styles.input} value={editingTool.name} onChange={(e) => setEditingTool(prev => prev ? { ...prev, name: e.target.value } : prev)} />
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label htmlFor={`type-${editingTool!.id}`} style={styles.label}>Type</label>
+                            <label htmlFor={`type-${editingTool.id}`} style={styles.label}>Type</label>
                             <select
-                                id={`type-${editingTool!.id}`}
+                                id={`type-${editingTool.id}`}
                                 value={editingTool.type ?? ''}
                                 onChange={(e) => setEditingTool(prev => prev ? { ...prev, type: e.target.value } : prev)}
                                 style={styles.input as React.CSSProperties}
@@ -290,24 +290,24 @@ const AdminTools: React.FC = () => {
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label htmlFor={`location-${editingTool!.id}`} style={styles.label}>Location</label>
-                            <input id={`location-${editingTool!.id}`} style={styles.input} value={editingTool.location} onChange={(e) => setEditingTool(prev => prev ? { ...prev, location: e.target.value } : prev)} />
+                            <label htmlFor={`location-${editingTool.id}`} style={styles.label}>Location</label>
+                            <input id={`location-${editingTool.id}`} style={styles.input} value={editingTool.location} onChange={(e) => setEditingTool(prev => prev ? { ...prev, location: e.target.value } : prev)} />
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label htmlFor={`dailyPrice-${editingTool!.id}`} style={styles.label}>Daily Price</label>
-                            <input id={`dailyPrice-${editingTool!.id}`} style={styles.input} type="number" value={editingTool.dailyPrice} onChange={(e) => setEditingTool(prev => prev ? { ...prev, dailyPrice: Number(e.target.value) } : prev)} />
+                            <label htmlFor={`dailyPrice-${editingTool.id}`} style={styles.label}>Daily Price</label>
+                            <input id={`dailyPrice-${editingTool.id}`} style={styles.input} type="number" value={editingTool.dailyPrice} onChange={(e) => setEditingTool(prev => prev ? { ...prev, dailyPrice: Number(e.target.value) } : prev)} />
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label htmlFor={`depositAmount-${editingTool!.id}`} style={styles.label}>Deposit Amount</label>
-                            <input id={`depositAmount-${editingTool!.id}`} style={styles.input} type="number" value={editingTool.depositAmount} onChange={(e) => setEditingTool(prev => prev ? { ...prev, depositAmount: Number(e.target.value) } : prev)} />
+                            <label htmlFor={`depositAmount-${editingTool.id}`} style={styles.label}>Deposit Amount</label>
+                            <input id={`depositAmount-${editingTool.id}`} style={styles.input} type="number" value={editingTool.depositAmount} onChange={(e) => setEditingTool(prev => prev ? { ...prev, depositAmount: Number(e.target.value) } : prev)} />
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label htmlFor={`imageUrl-${editingTool!.id}`} style={styles.label}>Image URL</label>
+                            <label htmlFor={`imageUrl-${editingTool.id}`} style={styles.label}>Image URL</label>
                             <input
-                                id={`imageUrl-${editingTool!.id}`}
+                                id={`imageUrl-${editingTool.id}`}
                                 style={styles.input}
                                 value={editingTool.imageUrl ?? ''}
                                 onChange={(e) => setEditingTool(prev => prev ? { ...prev, imageUrl: e.target.value || null } : prev)}
@@ -316,8 +316,8 @@ const AdminTools: React.FC = () => {
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label htmlFor={`description-${editingTool!.id}`} style={styles.label}>Description</label>
-                            <textarea id={`description-${editingTool!.id}`} style={{ ...styles.input, height: 100 }} value={editingTool.description} onChange={(e) => setEditingTool(prev => prev ? { ...prev, description: e.target.value } : prev)} />
+                            <label htmlFor={`description-${editingTool.id}`} style={styles.label}>Description</label>
+                            <textarea id={`description-${editingTool.id}`} style={{ ...styles.input, height: 100 }} value={editingTool.description} onChange={(e) => setEditingTool(prev => prev ? { ...prev, description: e.target.value } : prev)} />
                         </div>
 
                         <div style={styles.modalActions}>

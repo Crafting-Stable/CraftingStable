@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
-// Props for existing rent payment (when rentId is already created)
 interface PayPalCheckoutWithRentProps {
     rentId: number;
     amount: string;
@@ -12,7 +11,6 @@ interface PayPalCheckoutWithRentProps {
     onCancel?: () => void;
 }
 
-// Props for new rent flow (rent created after payment)
 interface PayPalCheckoutNewRentProps {
     toolId: number;
     amount: string;
@@ -63,17 +61,16 @@ interface PayPalOrderResponse {
 const API_PORT = '8081';
 
 function apiUrl(path: string): string {
-    const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
+    const protocol = globalThis.location?.protocol ?? 'http:';
+    const hostname = globalThis.location?.hostname ?? 'localhost';
     const normalized = path.startsWith('/') ? path : `/${path}`;
     return `${protocol}//${hostname}:${API_PORT}${normalized}`;
 }
 
 function getJwt(): string | null {
-    return localStorage.getItem('jwt');
+    return globalThis.localStorage?.getItem('jwt') ?? null;
 }
 
-// Type guard to determine which props we have
 function isNewRentFlow(props: PayPalCheckoutProps): props is PayPalCheckoutNewRentProps {
     return 'toolId' in props && 'startDate' in props && 'endDate' in props;
 }
@@ -107,7 +104,7 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
 
         try {
             const rentIdValue = isNewRent ? 0 : (props as PayPalCheckoutWithRentProps).rentId;
-            
+
             const params = new URLSearchParams({
                 rentId: rentIdValue.toString(),
                 amount: amount,
@@ -149,10 +146,8 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
 
         try {
             if (isNewRent) {
-                // NEW RENT FLOW: First capture payment, then create rent
                 const newRentProps = props as PayPalCheckoutNewRentProps;
-                
-                // Step 1: Capture the PayPal payment
+
                 const captureResponse = await fetch(
                     apiUrl(`/api/paypal/orders/${data.orderID}/capture?rentId=0`),
                     {
@@ -170,7 +165,7 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                 }
 
                 const captureData: CaptureData = await captureResponse.json();
-                
+
                 if (captureData.status !== "COMPLETED") {
                     onError(`Pagamento não concluído. Estado: ${captureData.status}`);
                     return;
@@ -178,7 +173,6 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
 
                 console.log("✅ PayPal payment captured:", captureData);
 
-                // Step 2: Create the rent in the backend with PENDING status
                 const startDateTime = `${newRentProps.startDate}T10:00:00`;
                 const endDateTime = `${newRentProps.endDate}T18:00:00`;
 
@@ -205,7 +199,6 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                 if (!rentResponse.ok) {
                     const errorText = await rentResponse.text();
                     console.error("❌ Rent creation failed after payment:", errorText);
-                    // Payment was successful but rent creation failed - inform user
                     onError(`Pagamento processado mas erro ao criar reserva: ${errorText}. Contacte o suporte com o ID: ${captureData.orderId}`);
                     return;
                 }
@@ -226,9 +219,8 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
 
                 (newRentProps.onSuccess as (data: RentCreatedData) => void)(successData);
             } else {
-                // EXISTING RENT FLOW: Just capture payment for existing rent
                 const existingRentProps = props as PayPalCheckoutWithRentProps;
-                
+
                 const response = await fetch(
                     apiUrl(`/api/paypal/orders/${data.orderID}/capture?rentId=${existingRentProps.rentId}`),
                     {
@@ -246,7 +238,7 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                 }
 
                 const captureData: CaptureData = await response.json();
-                
+
                 if (captureData.status === "COMPLETED") {
                     (existingRentProps.onSuccess as (data: CaptureData) => void)(captureData);
                 } else {

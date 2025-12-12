@@ -1,3 +1,4 @@
+// typescript
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import bgImg from "../../assets/rust.jpg";
@@ -86,6 +87,7 @@ function BookingCalendar({
         const checkAvailability = async () => {
             if (!start || !end || days <= 0) {
                 setIsAvailable(false);
+                setAvailabilityMessage(null);
                 return;
             }
 
@@ -98,7 +100,7 @@ function BookingCalendar({
             try {
                 const startDateTime = `${start}T10:00:00`;
                 const endDateTime = `${end}T18:00:00`;
-                
+
                 const response = await fetch(
                     apiUrl(`/api/tools/${toolId}/check-availability?startDate=${encodeURIComponent(startDateTime)}&endDate=${encodeURIComponent(endDateTime)}`),
                     {
@@ -108,10 +110,12 @@ function BookingCalendar({
                     }
                 );
 
-                const data = await response.json();
-                setIsAvailable(data.available);
+                const data = await response.json().catch(() => ({ available: false }));
+                setIsAvailable(Boolean(data.available));
                 if (!data.available && data.reason) {
                     setAvailabilityMessage(data.reason);
+                } else if (data.available) {
+                    setAvailabilityMessage(null);
                 }
             } catch (err) {
                 console.error('Error checking availability:', err);
@@ -154,6 +158,95 @@ function BookingCalendar({
     const jwt = getJwt();
     const isLoggedIn = !!jwt;
 
+    // Extracted paymentSection to avoid nested ternary in JSX
+    let paymentSection: React.ReactNode;
+    if (!isLoggedIn) {
+        paymentSection = (
+            <div style={{
+                background: "rgba(239, 68, 68, 0.2)",
+                border: "1px solid #ef4444",
+                color: "#fca5a5",
+                padding: "10px 14px",
+                borderRadius: 6,
+                textAlign: "center"
+            }}>
+                <p>Por favor <Link to="/loginPage" style={{ color: "#f8b749", textDecoration: "underline" }}>faça login</Link> para reservar esta ferramenta.</p>
+            </div>
+        );
+    } else if (days <= 0) {
+        paymentSection = (
+            <div style={{
+                background: "rgba(251, 191, 36, 0.2)",
+                border: "1px solid #fbbf24",
+                color: "#fcd34d",
+                padding: "10px 14px",
+                borderRadius: 6,
+                textAlign: "center"
+            }}>
+                <p>Por favor selecione datas válidas (data de fim após data de início).</p>
+            </div>
+        );
+    } else if (checkingAvailability) {
+        paymentSection = (
+            <div style={{
+                background: "rgba(59, 130, 246, 0.2)",
+                border: "1px solid #3b82f6",
+                color: "#93c5fd",
+                padding: "10px 14px",
+                borderRadius: 6,
+                textAlign: "center"
+            }}>
+                <p>🔍 A verificar disponibilidade...</p>
+            </div>
+        );
+    } else if (!isAvailable) {
+        paymentSection = (
+            <div style={{
+                background: "rgba(239, 68, 68, 0.2)",
+                border: "1px solid #ef4444",
+                color: "#fca5a5",
+                padding: "10px 14px",
+                borderRadius: 6,
+                textAlign: "center"
+            }}>
+                <p>❌ {availabilityMessage || "Esta ferramenta não está disponível para as datas selecionadas"}</p>
+            </div>
+        );
+    } else if (success) {
+        paymentSection = (
+            <div style={{
+                background: "rgba(34, 197, 94, 0.2)",
+                border: "1px solid #22c55e",
+                color: "#86efac",
+                padding: "10px 14px",
+                borderRadius: 6,
+                textAlign: "center"
+            }}>
+                <p>A redirecionar para a sua página de reservas...</p>
+            </div>
+        );
+    } else {
+        paymentSection = (
+            <div style={{ maxWidth: 400 }}>
+                <p style={{ color: "#ccc", fontSize: 13, marginBottom: 10, textAlign: "center" }}>
+                    Pague com segurança via PayPal para confirmar a sua reserva
+                </p>
+                <PayPalCheckout
+                    toolId={Number(toolId)}
+                    amount={total.toFixed(2)}
+                    startDate={start}
+                    endDate={end}
+                    currency={currency}
+                    description={`Reserva de ferramenta #${toolId} - ${days} dia(s)`}
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                    onCancel={handlePaymentCancel}
+                    disabled={days <= 0}
+                />
+            </div>
+        );
+    }
+
     return (
         <div style={{ marginTop: 16, background: "rgba(0,0,0,0.45)", padding: 12, borderRadius: 8 }}>
             {error && (
@@ -169,7 +262,7 @@ function BookingCalendar({
                     ⚠️ {error}
                 </div>
             )}
-            
+
             {success && (
                 <div style={{
                     background: "rgba(34, 197, 94, 0.2)",
@@ -216,80 +309,7 @@ function BookingCalendar({
 
             {/* PayPal Buttons Section */}
             <div style={{ marginTop: 16 }}>
-                {!isLoggedIn ? (
-                    <div style={{
-                        background: "rgba(239, 68, 68, 0.2)",
-                        border: "1px solid #ef4444",
-                        color: "#fca5a5",
-                        padding: "10px 14px",
-                        borderRadius: 6,
-                        textAlign: "center"
-                    }}>
-                        <p>Por favor <Link to="/loginPage" style={{ color: "#f8b749", textDecoration: "underline" }}>faça login</Link> para reservar esta ferramenta.</p>
-                    </div>
-                ) : days <= 0 ? (
-                    <div style={{
-                        background: "rgba(251, 191, 36, 0.2)",
-                        border: "1px solid #fbbf24",
-                        color: "#fcd34d",
-                        padding: "10px 14px",
-                        borderRadius: 6,
-                        textAlign: "center"
-                    }}>
-                        <p>Por favor selecione datas válidas (data de fim após data de início).</p>
-                    </div>
-                ) : checkingAvailability ? (
-                    <div style={{
-                        background: "rgba(59, 130, 246, 0.2)",
-                        border: "1px solid #3b82f6",
-                        color: "#93c5fd",
-                        padding: "10px 14px",
-                        borderRadius: 6,
-                        textAlign: "center"
-                    }}>
-                        <p>🔍 A verificar disponibilidade...</p>
-                    </div>
-                ) : !isAvailable ? (
-                    <div style={{
-                        background: "rgba(239, 68, 68, 0.2)",
-                        border: "1px solid #ef4444",
-                        color: "#fca5a5",
-                        padding: "10px 14px",
-                        borderRadius: 6,
-                        textAlign: "center"
-                    }}>
-                        <p>❌ {availabilityMessage || "Esta ferramenta não está disponível para as datas selecionadas"}</p>
-                    </div>
-                ) : success ? (
-                    <div style={{
-                        background: "rgba(34, 197, 94, 0.2)",
-                        border: "1px solid #22c55e",
-                        color: "#86efac",
-                        padding: "10px 14px",
-                        borderRadius: 6,
-                        textAlign: "center"
-                    }}>
-                        <p>A redirecionar para a sua página de reservas...</p>
-                    </div>
-                ) : (
-                    <div style={{ maxWidth: 400 }}>
-                        <p style={{ color: "#ccc", fontSize: 13, marginBottom: 10, textAlign: "center" }}>
-                            Pague com segurança via PayPal para confirmar a sua reserva
-                        </p>
-                        <PayPalCheckout
-                            toolId={Number(toolId)}
-                            amount={total.toFixed(2)}
-                            startDate={start}
-                            endDate={end}
-                            currency={currency}
-                            description={`Reserva de ferramenta #${toolId} - ${days} dia(s)`}
-                            onSuccess={handlePaymentSuccess}
-                            onError={handlePaymentError}
-                            onCancel={handlePaymentCancel}
-                            disabled={days <= 0}
-                        />
-                    </div>
-                )}
+                {paymentSection}
             </div>
 
             {/* Success Modal */}
@@ -336,7 +356,7 @@ export default function ToolDetails(): React.ReactElement {
                 'Accept': 'application/json',
                 ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
             };
-            
+
             try {
                 // Tenta endpoint com id
                 const res = await fetch(apiUrl(`/api/users/${ownerId}`), { headers });
@@ -363,7 +383,7 @@ export default function ToolDetails(): React.ReactElement {
                 'Accept': 'application/json',
                 ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
             };
-            
+
             try {
                 let data: any = null;
 
