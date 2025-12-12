@@ -166,16 +166,17 @@ export default function HomePage(): React.ReactElement {
             setLoading(true);
             try {
                 const res = await fetch("/api/tools");
-                if (!res.ok) throw new Error("Erro ao obter ferramentas");
-                const data = await res.json();
-                if (!Array.isArray(data)) {
-                    if (mounted) setTools([]);
-                    return;
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data)) {
+                        const mapped = data.map(mapApiToUi);
+                        if (mounted) setTools(mapped);
+                    } else {
+                        if (mounted) setTools([]);
+                    }
+                } else {
+                    throw new Error("Erro ao obter ferramentas");
                 }
-
-                const mapped = data.map(mapApiToUi);
-
-                if (mounted) setTools(mapped);
             } catch (e) {
                 console.error(e);
                 if (mounted) setTools([]);
@@ -189,9 +190,10 @@ export default function HomePage(): React.ReactElement {
 
     const scroll = (dir: "left" | "right") => {
         const el = carouselRef.current;
-        if (!el) return;
-        const amount = Math.floor(el.clientWidth * 0.8);
-        el.scrollBy({ left: dir === "left" ? -amount : amount, behavior: "smooth" });
+        if (el) {
+            const amount = Math.floor(el.clientWidth * 0.8);
+            el.scrollBy({ left: dir === "left" ? -amount : amount, behavior: "smooth" });
+        }
     };
 
     const filteredTools = searchQuery.trim()

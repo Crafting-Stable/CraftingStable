@@ -7,10 +7,10 @@ export default function Header(): React.ReactElement {
 
     const readUserFromStorage = () => {
         try {
-            const jwt = localStorage.getItem('jwt');
+            const jwt = globalThis.localStorage.getItem('jwt');
             if (!jwt) return null;
 
-            const userStr = localStorage.getItem('user');
+            const userStr = globalThis.localStorage.getItem('user');
             if (!userStr) return null;
 
             return JSON.parse(userStr);
@@ -26,21 +26,21 @@ export default function Header(): React.ReactElement {
             setUser(readUserFromStorage());
         };
 
-        window.addEventListener('storage', handleAuthChange);
-        window.addEventListener('authChanged', handleAuthChange);
+        globalThis.addEventListener('storage', handleAuthChange);
+        globalThis.addEventListener('authChanged', handleAuthChange);
 
         return () => {
-            window.removeEventListener('storage', handleAuthChange);
-            window.removeEventListener('authChanged', handleAuthChange);
+            globalThis.removeEventListener('storage', handleAuthChange);
+            globalThis.removeEventListener('authChanged', handleAuthChange);
         };
     }, []);
 
     const handleLogout = () => {
-        localStorage.removeItem('jwt');
-        localStorage.removeItem('user');
+        globalThis.localStorage.removeItem('jwt');
+        globalThis.localStorage.removeItem('user');
         setUser(null);
 
-        window.dispatchEvent(new Event('authChanged'));
+        globalThis.dispatchEvent(new Event('authChanged'));
 
         navigate('/');
     };

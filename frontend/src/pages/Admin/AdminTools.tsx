@@ -18,14 +18,14 @@ interface Tool {
 const API_PORT = '8081';
 
 function apiUrl(path: string) {
-    const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
+    const protocol = globalThis.location.protocol;
+    const hostname = globalThis.location.hostname;
     const normalized = path.startsWith('/') ? path : `/${path}`;
     return `${protocol}//${hostname}:${API_PORT}${normalized}`;
 }
 
 const getJwt = () => {
-    const jwt = localStorage.getItem('jwt');
+    const jwt = globalThis.localStorage.getItem('jwt');
     return jwt || undefined;
 };
 
@@ -44,8 +44,8 @@ const AdminTools: React.FC = () => {
 
     const handleAuthError = (status?: number, statusText?: string) => {
         if (status === 401 || status === 403) {
-            localStorage.removeItem('jwt');
-            localStorage.removeItem('user');
+            globalThis.localStorage.removeItem('jwt');
+            globalThis.localStorage.removeItem('user');
             setError('Sessão expirada. Por favor faça login novamente.');
             setTimeout(() => navigate('/loginPage'), 1200);
             return true;
@@ -269,13 +269,14 @@ const AdminTools: React.FC = () => {
                         <h2 style={styles.modalTitle}>Edit Tool #{editingTool.id}</h2>
 
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>Name</label>
-                            <input style={styles.input} value={editingTool.name} onChange={(e) => setEditingTool(prev => prev ? { ...prev, name: e.target.value } : prev)} />
+                            <label htmlFor={`name-${editingTool!.id}`} style={styles.label}>Name</label>
+                            <input id={`name-${editingTool!.id}`} style={styles.input} value={editingTool.name} onChange={(e) => setEditingTool(prev => prev ? { ...prev, name: e.target.value } : prev)} />
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>Type</label>
+                            <label htmlFor={`type-${editingTool!.id}`} style={styles.label}>Type</label>
                             <select
+                                id={`type-${editingTool!.id}`}
                                 value={editingTool.type ?? ''}
                                 onChange={(e) => setEditingTool(prev => prev ? { ...prev, type: e.target.value } : prev)}
                                 style={styles.input as React.CSSProperties}
@@ -289,23 +290,24 @@ const AdminTools: React.FC = () => {
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>Location</label>
-                            <input style={styles.input} value={editingTool.location} onChange={(e) => setEditingTool(prev => prev ? { ...prev, location: e.target.value } : prev)} />
+                            <label htmlFor={`location-${editingTool!.id}`} style={styles.label}>Location</label>
+                            <input id={`location-${editingTool!.id}`} style={styles.input} value={editingTool.location} onChange={(e) => setEditingTool(prev => prev ? { ...prev, location: e.target.value } : prev)} />
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>Daily Price</label>
-                            <input style={styles.input} type="number" value={editingTool.dailyPrice} onChange={(e) => setEditingTool(prev => prev ? { ...prev, dailyPrice: Number(e.target.value) } : prev)} />
+                            <label htmlFor={`dailyPrice-${editingTool!.id}`} style={styles.label}>Daily Price</label>
+                            <input id={`dailyPrice-${editingTool!.id}`} style={styles.input} type="number" value={editingTool.dailyPrice} onChange={(e) => setEditingTool(prev => prev ? { ...prev, dailyPrice: Number(e.target.value) } : prev)} />
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>Deposit Amount</label>
-                            <input style={styles.input} type="number" value={editingTool.depositAmount} onChange={(e) => setEditingTool(prev => prev ? { ...prev, depositAmount: Number(e.target.value) } : prev)} />
+                            <label htmlFor={`depositAmount-${editingTool!.id}`} style={styles.label}>Deposit Amount</label>
+                            <input id={`depositAmount-${editingTool!.id}`} style={styles.input} type="number" value={editingTool.depositAmount} onChange={(e) => setEditingTool(prev => prev ? { ...prev, depositAmount: Number(e.target.value) } : prev)} />
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>Image URL</label>
+                            <label htmlFor={`imageUrl-${editingTool!.id}`} style={styles.label}>Image URL</label>
                             <input
+                                id={`imageUrl-${editingTool!.id}`}
                                 style={styles.input}
                                 value={editingTool.imageUrl ?? ''}
                                 onChange={(e) => setEditingTool(prev => prev ? { ...prev, imageUrl: e.target.value || null } : prev)}
@@ -314,8 +316,8 @@ const AdminTools: React.FC = () => {
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>Description</label>
-                            <textarea style={{ ...styles.input, height: 100 }} value={editingTool.description} onChange={(e) => setEditingTool(prev => prev ? { ...prev, description: e.target.value } : prev)} />
+                            <label htmlFor={`description-${editingTool!.id}`} style={styles.label}>Description</label>
+                            <textarea id={`description-${editingTool!.id}`} style={{ ...styles.input, height: 100 }} value={editingTool.description} onChange={(e) => setEditingTool(prev => prev ? { ...prev, description: e.target.value } : prev)} />
                         </div>
 
                         <div style={styles.modalActions}>

@@ -1,3 +1,4 @@
+// src/pages/User/AddRent.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from '../../components/Header';
@@ -375,8 +376,9 @@ export default function AddRent(): React.ReactElement {
                     <div>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 16 }}>
                             <div>
-                                <label style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Nome da Ferramenta *</label>
+                                <label htmlFor="name-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Nome da Ferramenta *</label>
                                 <input
+                                    id="name-input"
                                     placeholder="Ex: Berbequim Bosch"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
@@ -385,8 +387,9 @@ export default function AddRent(): React.ReactElement {
                             </div>
 
                             <div>
-                                <label style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Categoria *</label>
+                                <label htmlFor="type-select" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Categoria *</label>
                                 <select
+                                    id="type-select"
                                     value={type}
                                     onChange={(e) => setType(e.target.value)}
                                     style={{ ...inputStyle, cursor: "pointer" }}
@@ -400,8 +403,9 @@ export default function AddRent(): React.ReactElement {
                             </div>
 
                             <div>
-                                <label style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Preço por Dia (€) *</label>
+                                <label htmlFor="dailyPrice-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Preço por Dia (€) *</label>
                                 <input
+                                    id="dailyPrice-input"
                                     type="number"
                                     step="0.01"
                                     placeholder="10.00"
@@ -412,8 +416,9 @@ export default function AddRent(): React.ReactElement {
                             </div>
 
                             <div>
-                                <label style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Caução (€) *</label>
+                                <label htmlFor="depositAmount-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Caução (€) *</label>
                                 <input
+                                    id="depositAmount-input"
                                     type="number"
                                     step="0.01"
                                     placeholder="50.00"
@@ -424,8 +429,9 @@ export default function AddRent(): React.ReactElement {
                             </div>
 
                             <div>
-                                <label style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Localização *</label>
+                                <label htmlFor="location-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Localização *</label>
                                 <input
+                                    id="location-input"
                                     placeholder="Ex: Lisboa, Coimbra"
                                     value={location}
                                     onChange={(e) => setLocation(e.target.value)}
@@ -434,8 +440,9 @@ export default function AddRent(): React.ReactElement {
                             </div>
 
                             <div>
-                                <label style={{ display: "block", marginBottom: 6, fontSize: 14 }}>URL da Imagem</label>
+                                <label htmlFor="imageUrl-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>URL da Imagem</label>
                                 <input
+                                    id="imageUrl-input"
                                     placeholder="https://exemplo.com/imagem.jpg"
                                     value={imageUrl}
                                     onChange={(e) => setImageUrl(e.target.value)}
@@ -445,8 +452,9 @@ export default function AddRent(): React.ReactElement {
                         </div>
 
                         <div style={{ marginBottom: 16 }}>
-                            <label style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Descrição *</label>
+                            <label htmlFor="description-textarea" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Descrição *</label>
                             <textarea
+                                id="description-textarea"
                                 placeholder="Descreva a ferramenta, estado, características..."
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
