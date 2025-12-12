@@ -1,4 +1,3 @@
-// src/pages/User/AddRent.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from '../../components/Header';
@@ -28,8 +27,8 @@ const pageStyle: React.CSSProperties = {
 const API_PORT = '8081';
 
 function apiUrl(path: string) {
-    const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
+    const protocol = globalThis.location.protocol;
+    const hostname = globalThis.location.hostname;
     const normalized = path.startsWith('/') ? path : `/${path}`;
     return `${protocol}//${hostname}:${API_PORT}${normalized}`;
 }
@@ -66,6 +65,44 @@ export default function AddRent(): React.ReactElement {
         return jwt || undefined;
     };
 
+    const signOutAndRedirect = (msg = "Sessão expirada. Por favor faça login novamente.") => {
+        localStorage.removeItem('jwt');
+        localStorage.removeItem('user');
+        setError(msg);
+        setTimeout(() => navigate('/loginPage'), 1500);
+    };
+
+    const sendRequest = async (method: string, url: string, body?: any) => {
+        const jwt = getJwt();
+        if (!jwt) {
+            signOutAndRedirect("Token de autenticação não encontrado. Por favor faça login novamente.");
+            throw new Error('auth');
+        }
+
+        const headers: Record<string,string> = {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${jwt}`
+        };
+        if (body !== undefined) headers['Content-Type'] = 'application/json';
+
+        const res = await fetch(url, {
+            method,
+            headers,
+            body: body !== undefined ? JSON.stringify(body) : undefined
+        });
+
+        if (!res.ok) {
+            const text = await res.text().catch(() => res.statusText);
+            if (res.status === 401 || res.status === 403) {
+                signOutAndRedirect();
+                throw new Error('auth');
+            }
+            throw new Error(text || res.statusText);
+        }
+
+        return await res.json().catch(() => ({} as any));
+    };
+
     useEffect(() => {
         const stored = readStoredUser();
         const id = stored?.id ?? stored?.user_id ?? stored?.userId ?? null;
@@ -94,9 +131,7 @@ export default function AddRent(): React.ReactElement {
                     const data = await res.json().catch(() => null);
                     if (data) {
                         const fetchedId = data?.id ?? data?.user_id ?? data?.userId ?? null;
-                        if (fetchedId) {
-                            setCurrentUserId(Number(fetchedId));
-                        }
+                        if (fetchedId) setCurrentUserId(Number(fetchedId));
                         const userToStore = {
                             username: data.username ?? '',
                             email: data.email ?? '',
@@ -131,29 +166,16 @@ export default function AddRent(): React.ReactElement {
 
         setLoading(true);
         setError(null);
-
         try {
-            const jwt = getJwt();
             const url = apiUrl(`/api/tools?owner_id=${currentUserId}`);
-            const res = await fetch(url, {
-                headers: {
-                    'Accept': 'application/json',
-                    ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
-                }
-            });
-
-            if (!res.ok) {
-                const text = await res.text().catch(() => res.statusText);
-                throw new Error(text || res.statusText);
-            }
-
-            const data: Tool[] = await res.json().catch(() => []);
-            // Filtrar adicionalmente no frontend por segurança
-            const filtered = data.filter(t => Number(t.ownerId) === Number(currentUserId));
+            const data: Tool[] = await sendRequest('GET', url).catch((err) => { throw err; });
+            const filtered = Array.isArray(data) ? data.filter(t => Number(t.ownerId) === Number(currentUserId)) : [];
             setTools(filtered);
         } catch (e: any) {
-            console.error('loadTools error', e);
-            setError(e.message || "Erro ao carregar ferramentas");
+            if (e.message !== 'auth') {
+                console.error('loadTools error', e);
+                setError(e.message || "Erro ao carregar ferramentas");
+            }
         } finally {
             setLoading(false);
         }
@@ -173,6 +195,24 @@ export default function AddRent(): React.ReactElement {
         setLocation("");
         setImageUrl("");
         setError(null);
+    }
+
+    async function handleCreated(created: Tool) {
+        if (Number(created.ownerId) === Number(currentUserId)) {
+            setTools(prev => [...prev, created]);
+        } else {
+            await loadTools();
+        }
+        alert("Ferramenta criada com sucesso!");
+    }
+
+    async function handleUpdated(updated: Tool, id: number | null) {
+        if (Number(updated.ownerId) === Number(currentUserId)) {
+            setTools(prev => prev.map(t => (t.id === id ? updated : t)));
+        } else {
+            await loadTools();
+        }
+        alert("Ferramenta atualizada com sucesso!");
     }
 
     async function handleSubmit(e?: React.FormEvent) {
@@ -204,78 +244,22 @@ export default function AddRent(): React.ReactElement {
 
         setLoading(true);
         try {
-            const jwt = getJwt();
-            if (!jwt) throw new Error('Token de autenticação não encontrado');
-
-            const headers: Record<string,string> = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'Authorization': `Bearer ${jwt}`
-            };
-
             if (editingId) {
                 const url = apiUrl(`/api/tools/${editingId}`);
-                const res = await fetch(url, {
-                    method: 'PUT',
-                    headers,
-                    body: JSON.stringify(payload)
-                });
-
-                if (!res.ok) {
-                    const text = await res.text().catch(() => res.statusText);
-                    if (res.status === 401 || res.status === 403) {
-                        localStorage.removeItem('jwt');
-                        localStorage.removeItem('user');
-                        setError("Sessão expirada. Por favor faça login novamente.");
-                        setTimeout(() => navigate('/loginPage'), 1500);
-                        return;
-                    }
-                    throw new Error(text || res.statusText);
-                }
-
-                const updated: Tool = await res.json().catch(() => ({} as Tool));
-                // Garantir UI consistente (só atualizamos se o owner corresponder)
-                if (Number(updated.ownerId) === Number(currentUserId)) {
-                    setTools(prev => prev.map(t => (t.id === editingId ? updated : t)));
-                } else {
-                    // Caso backend altere owner (não deveria) forcamos reload
-                    await loadTools();
-                }
-                alert("Ferramenta atualizada com sucesso!");
+                const updated = await sendRequest('PUT', url, payload) as Tool;
+                await handleUpdated(updated, editingId);
             } else {
                 const url = apiUrl('/api/tools');
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify(payload)
-                });
-
-                if (!res.ok) {
-                    const text = await res.text().catch(() => res.statusText);
-                    if (res.status === 401 || res.status === 403) {
-                        localStorage.removeItem('jwt');
-                        localStorage.removeItem('user');
-                        setError("Sessão expirada. Por favor faça login novamente.");
-                        setTimeout(() => navigate('/loginPage'), 1500);
-                        return;
-                    }
-                    throw new Error(text || res.statusText);
-                }
-
-                const created: Tool = await res.json().catch(() => ({} as Tool));
-                // Só adicionar se pertencer ao user atual
-                if (Number(created.ownerId) === Number(currentUserId)) {
-                    setTools(prev => [...prev, created]);
-                } else {
-                    await loadTools();
-                }
-                alert("Ferramenta criada com sucesso!");
+                const created = await sendRequest('POST', url, payload) as Tool;
+                await handleCreated(created);
             }
 
             clearForm();
         } catch (e: any) {
-            console.error('submit error', e);
-            setError(e.message || "Erro ao submeter");
+            if (e.message !== 'auth') {
+                console.error('submit error', e);
+                setError(e.message || "Erro ao submeter");
+            }
         } finally {
             setLoading(false);
         }
@@ -294,7 +278,7 @@ export default function AddRent(): React.ReactElement {
         setDescription(tool.description);
         setLocation(tool.location);
         setImageUrl(tool.imageUrl || "");
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        globalThis.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     async function onDelete(id?: number) {
@@ -309,33 +293,15 @@ export default function AddRent(): React.ReactElement {
 
         setLoading(true);
         try {
-            const jwt = getJwt();
             const url = apiUrl(`/api/tools/${id}`);
-            const res = await fetch(url, {
-                method: 'DELETE',
-                headers: {
-                    'Accept': 'application/json',
-                    ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
-                }
-            });
-
-            if (!res.ok) {
-                const text = await res.text().catch(() => res.statusText);
-                if (res.status === 401 || res.status === 403) {
-                    localStorage.removeItem('jwt');
-                    localStorage.removeItem('user');
-                    setError("Sessão expirada. Por favor faça login novamente.");
-                    setTimeout(() => navigate('/loginPage'), 1500);
-                    return;
-                }
-                throw new Error(text || res.statusText);
-            }
-
+            await sendRequest('DELETE', url);
             setTools(prev => prev.filter(t => t.id !== id));
             alert("Ferramenta apagada com sucesso!");
         } catch (e: any) {
-            console.error('delete error', e);
-            setError(e.message || "Erro ao apagar");
+            if (e.message !== 'auth') {
+                console.error('delete error', e);
+                setError(e.message || "Erro ao apagar");
+            }
         } finally {
             setLoading(false);
         }

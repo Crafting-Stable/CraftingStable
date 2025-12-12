@@ -31,14 +31,20 @@ type BookingCalendarProps = {
 const API_PORT = '8081';
 
 function apiUrl(path: string): string {
-    const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
+    const loc = (globalThis as any).location;
+    const protocol = loc?.protocol ?? "http:";
+    const hostname = loc?.hostname ?? "localhost";
     const normalized = path.startsWith('/') ? path : `/${path}`;
     return `${protocol}//${hostname}:${API_PORT}${normalized}`;
 }
 
 function getJwt(): string | null {
-    return localStorage.getItem('jwt');
+    try {
+        const ls = (globalThis as any).localStorage;
+        return ls?.getItem?.('jwt') ?? null;
+    } catch {
+        return null;
+    }
 }
 
 function toIsoDateString(d: Date) {
@@ -82,7 +88,6 @@ function BookingCalendar({
 
     const fmt = new Intl.NumberFormat("pt-PT", { style: "currency", currency });
 
-    // Check availability when dates change
     useEffect(() => {
         const checkAvailability = async () => {
             if (!start || !end || days <= 0) {
@@ -129,7 +134,6 @@ function BookingCalendar({
         checkAvailability();
     }, [toolId, start, end, days]);
 
-    // Handler for successful PayPal payment and rent creation
     const handlePaymentSuccess = (data: RentCreatedData) => {
         console.log("✅ Payment and rent creation successful:", data);
         setRentData(data);
@@ -142,23 +146,19 @@ function BookingCalendar({
         navigate('/user');
     };
 
-    // Handler for PayPal errors
     const handlePaymentError = (errorMsg: string) => {
         console.error("❌ Payment error:", errorMsg);
         setError(errorMsg);
     };
 
-    // Handler for PayPal cancellation
     const handlePaymentCancel = () => {
         console.log("⚠️ Payment cancelled by user");
         setError("Pagamento cancelado. Pode tentar novamente quando estiver pronto.");
     };
 
-    // Check if user is logged in
     const jwt = getJwt();
     const isLoggedIn = !!jwt;
 
-    // Extracted paymentSection to avoid nested ternary in JSX
     let paymentSection: React.ReactNode;
     if (!isLoggedIn) {
         paymentSection = (
@@ -307,12 +307,10 @@ function BookingCalendar({
                 </div>
             </div>
 
-            {/* PayPal Buttons Section */}
             <div style={{ marginTop: 16 }}>
                 {paymentSection}
             </div>
 
-            {/* Success Modal */}
             {showModal && <RentSuccessModal rentData={rentData} onClose={handleCloseModal} />}
         </div>
     );
@@ -334,7 +332,7 @@ export default function ToolDetails(): React.ReactElement {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const jwt = localStorage.getItem("jwt");
+        const jwt = getJwt();
         if (!jwt) {
             navigate("/loginPage");
         }
@@ -358,13 +356,11 @@ export default function ToolDetails(): React.ReactElement {
             };
 
             try {
-                // Tenta endpoint com id
                 const res = await fetch(apiUrl(`/api/users/${ownerId}`), { headers });
                 if (res.ok) {
                     const u = await res.json().catch(() => null);
                     return u?.username ?? u?.name ?? undefined;
                 }
-                // Fallback: buscar lista e procurar
                 const listRes = await fetch(apiUrl("/api/users"), { headers });
                 if (!listRes.ok) return undefined;
                 const list = await listRes.json().catch(() => []);
@@ -416,7 +412,6 @@ export default function ToolDetails(): React.ReactElement {
 
                 mapped.image = mapped.image ?? placeholderFor(mapped.category, mapped.name);
 
-                // buscar nome do proprietário se houver ownerId
                 if (mounted) {
                     setTool(mapped);
                 }

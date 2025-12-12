@@ -35,7 +35,13 @@ public class PayPalService {
 
     private static final String INTENT_CAPTURE = "CAPTURE";
     private static final String CURRENCY_CODE = "currency_code";
-    
+
+    // JSON field names
+    private static final String FIELD_STATUS = "status";
+    private static final String FIELD_PURCHASE_UNITS = "purchase_units";
+    private static final String FIELD_AMOUNT = "amount";
+    private static final String FIELD_VALUE = "value";
+
     @Value("${paypal.client-id}")
     private String clientId;
 
@@ -68,12 +74,12 @@ public class PayPalService {
      */
     public PayPalOrderDTO createOrder(Long rentId, BigDecimal amount, String currency, String description) {
         log.info("Creating PayPal order for rent ID: {}, amount: {} {}", rentId, amount, currency);
-        
+
         // If rentId is provided and not 0, verify the rent exists and is approved
         if (rentId != null && rentId > 0) {
             Rent rent = rentRepository.findById(rentId)
                     .orElseThrow(() -> new ResourceNotFoundException("Rent not found with ID: " + rentId));
-            
+
             // Verify rent is in a valid state for payment
             if (rent.getStatus() != RentStatus.APPROVED) {
                 throw new IllegalArgumentException("Only approved rentals can be paid. Current status: " + rent.getStatus());
@@ -82,9 +88,9 @@ public class PayPalService {
         // If rentId is 0 or null, this is a "pay first" flow - proceed without validation
 
         String accessToken = getAccessToken();
-        
+
         String requestBody = buildOrderRequestBody(amount, currency, description);
-        
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(accessToken);
@@ -101,9 +107,9 @@ public class PayPalService {
             );
 
             JsonNode responseBody = objectMapper.readTree(response.getBody());
-            
+
             String orderId = responseBody.get("id").asText();
-            String status = responseBody.get("status").asText();
+            String status = responseBody.get(FIELD_STATUS).asText();
             String approvalUrl = extractApprovalUrl(responseBody);
 
             log.info("PayPal order created successfully. Order ID: {}, Status: {}", orderId, status);
@@ -147,9 +153,9 @@ public class PayPalService {
             );
 
             JsonNode responseBody = objectMapper.readTree(response.getBody());
-            
-            String status = responseBody.get("status").asText();
-            
+
+            String status = responseBody.get(FIELD_STATUS).asText();
+
             PayPalCaptureDTO captureDTO = PayPalCaptureDTO.builder()
                     .orderId(orderId)
                     .status(status)
@@ -166,15 +172,15 @@ public class PayPalService {
             }
 
             // Extract capture details
-            if (responseBody.has("purchase_units")) {
-                JsonNode purchaseUnits = responseBody.get("purchase_units");
+            if (responseBody.has(FIELD_PURCHASE_UNITS)) {
+                JsonNode purchaseUnits = responseBody.get(FIELD_PURCHASE_UNITS);
                 if (purchaseUnits.isArray() && purchaseUnits.size() > 0) {
                     JsonNode captures = purchaseUnits.get(0).path("payments").path("captures");
                     if (captures.isArray() && captures.size() > 0) {
                         JsonNode capture = captures.get(0);
                         captureDTO.setCaptureId(capture.get("id").asText());
-                        JsonNode captureAmount = capture.get("amount");
-                        captureDTO.setAmount(new BigDecimal(captureAmount.get("value").asText()));
+                        JsonNode captureAmount = capture.get(FIELD_AMOUNT);
+                        captureDTO.setAmount(new BigDecimal(captureAmount.get(FIELD_VALUE).asText()));
                         captureDTO.setCurrency(captureAmount.get(CURRENCY_CODE).asText());
                     }
                 }
@@ -219,15 +225,15 @@ public class PayPalService {
 
             PayPalOrderDTO orderDTO = PayPalOrderDTO.builder()
                     .orderId(responseBody.get("id").asText())
-                    .status(responseBody.get("status").asText())
+                    .status(responseBody.get(FIELD_STATUS).asText())
                     .build();
 
             // Extract amount
-            if (responseBody.has("purchase_units")) {
-                JsonNode purchaseUnits = responseBody.get("purchase_units");
+            if (responseBody.has(FIELD_PURCHASE_UNITS)) {
+                JsonNode purchaseUnits = responseBody.get(FIELD_PURCHASE_UNITS);
                 if (purchaseUnits.isArray() && purchaseUnits.size() > 0) {
-                    JsonNode amount = purchaseUnits.get(0).path("amount");
-                    orderDTO.setAmount(new BigDecimal(amount.get("value").asText()));
+                    JsonNode amount = purchaseUnits.get(0).path(FIELD_AMOUNT);
+                    orderDTO.setAmount(new BigDecimal(amount.get(FIELD_VALUE).asText()));
                     orderDTO.setCurrency(amount.get(CURRENCY_CODE).asText());
                 }
             }
@@ -281,16 +287,16 @@ public class PayPalService {
             // Purchase units
             List<Map<String, Object>> purchaseUnits = new ArrayList<>();
             Map<String, Object> purchaseUnit = new LinkedHashMap<>();
-            
+
             Map<String, String> amountMap = new LinkedHashMap<>();
             amountMap.put(CURRENCY_CODE, currency);
-            amountMap.put("value", amount.setScale(2).toPlainString());
-            
-            purchaseUnit.put("amount", amountMap);
+            amountMap.put(FIELD_VALUE, amount.setScale(2).toPlainString());
+
+            purchaseUnit.put(FIELD_AMOUNT, amountMap);
             purchaseUnit.put("description", description);
             purchaseUnits.add(purchaseUnit);
-            
-            orderRequest.put("purchase_units", purchaseUnits);
+
+            orderRequest.put(FIELD_PURCHASE_UNITS, purchaseUnits);
 
             // Application context (redirect URLs and checkout preferences)
             Map<String, Object> applicationContext = new LinkedHashMap<>();
@@ -300,7 +306,7 @@ public class PayPalService {
             applicationContext.put("user_action", "PAY_NOW");
             // NO_SHIPPING = Don't collect shipping address (tool rentals don't need shipping)
             applicationContext.put("shipping_preference", "NO_SHIPPING");
-            
+
             orderRequest.put("application_context", applicationContext);
 
             return objectMapper.writeValueAsString(orderRequest);

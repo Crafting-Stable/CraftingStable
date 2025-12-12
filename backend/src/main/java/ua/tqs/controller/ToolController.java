@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -38,6 +37,9 @@ import ua.tqs.service.UserDetailsServiceImpl;
 @RequiredArgsConstructor
 public class ToolController {
 
+    private static final String AVAILABLE_KEY = "available";
+    private static final String REASON_KEY = "reason";
+
     private final ToolService toolService;
     private final RentService rentService;
     private final UserDetailsServiceImpl userDetailsService;
@@ -55,7 +57,7 @@ public class ToolController {
         List<ToolDTO> dtos = toolService.listAll()
                 .stream()
                 .map(ToolDTO::fromModel)
-                .collect(Collectors.toList());
+                .toList();
         return ResponseEntity.ok(dtos);
     }
 
@@ -64,7 +66,7 @@ public class ToolController {
         List<ToolDTO> dtos = toolService.listAvailable()
                 .stream()
                 .map(ToolDTO::fromModel)
-                .collect(Collectors.toList());
+                .toList();
         return ResponseEntity.ok(dtos);
     }
 
@@ -73,7 +75,7 @@ public class ToolController {
         List<ToolDTO> dtos = toolService.findByType(type)
                 .stream()
                 .map(ToolDTO::fromModel)
-                .collect(Collectors.toList());
+                .toList();
         return ResponseEntity.ok(dtos);
     }
 
@@ -121,43 +123,40 @@ public class ToolController {
             @RequestParam String startDate,
             @RequestParam String endDate,
             @AuthenticationPrincipal UserDetails userDetails) {
-        
+
         Map<String, Object> response = new HashMap<>();
-        
+
         try {
-            // Get tool
             Tool tool = toolService.findById(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Tool not found"));
-            
-            // Check if user is the owner
+
             Long userId = userDetailsService.getUserId(userDetails);
             boolean isOwner = tool.getOwnerId().equals(userId);
-            
+
             if (isOwner) {
-                response.put("available", false);
-                response.put("reason", "You cannot rent your own tool");
+                response.put(AVAILABLE_KEY, false);
+                response.put(REASON_KEY, "You cannot rent your own tool");
                 return ResponseEntity.ok(response);
             }
-            
-            // Check for overlapping bookings
+
             Rent testRent = new Rent();
             testRent.setToolId(id);
             testRent.setUserId(userId);
             testRent.setStartDate(LocalDateTime.parse(startDate));
             testRent.setEndDate(LocalDateTime.parse(endDate));
-            
+
             boolean hasOverlap = rentService.hasOverlap(testRent);
-            
-            response.put("available", !hasOverlap);
+
+            response.put(AVAILABLE_KEY, !hasOverlap);
             if (hasOverlap) {
-                response.put("reason", "Tool is already booked for the selected dates");
+                response.put(REASON_KEY, "Tool is already booked for the selected dates");
             }
-            
+
             return ResponseEntity.ok(response);
-            
+
         } catch (Exception e) {
-            response.put("available", false);
-            response.put("reason", e.getMessage());
+            response.put(AVAILABLE_KEY, false);
+            response.put(REASON_KEY, e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
     }

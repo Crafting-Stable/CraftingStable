@@ -1,3 +1,4 @@
+// typescript
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import craftingstable from '../assets/craftingstable.png';
@@ -27,6 +28,32 @@ function apiUrl(path: string): string {
     const hostname = globalThis.location.hostname;
     const normalized = path.startsWith('/') ? path : `/${path}`;
     return `${protocol}//${hostname}:${API_PORT}${normalized}`;
+}
+
+// Estilos e rótulos de status extraídos
+const STATUS_STYLES: Record<string, { background: string; color: string }> = {
+    PENDING: { background: '#fef3c7', color: '#92400e' },
+    APPROVED: { background: '#d1fae5', color: '#065f46' },
+    REJECTED: { background: '#fee2e2', color: '#991b1b' },
+    ACTIVE: { background: '#dbeafe', color: '#1e40af' },
+    COMPLETED: { background: '#f3f4f6', color: '#374151' },
+    CANCELLED: { background: '#f3f4f6', color: '#374151' }
+};
+
+function getStatusStyles(status: string) {
+    return STATUS_STYLES[status] ?? { background: '#f3f4f6', color: '#374151' };
+}
+
+function getStatusLabel(status: string) {
+    const labels: Record<string, string> = {
+        PENDING: '⏳ Pendente',
+        APPROVED: '✅ Aprovado',
+        REJECTED: '❌ Rejeitado',
+        ACTIVE: '🚀 Ativo',
+        COMPLETED: '✔️ Concluído',
+        CANCELLED: '🚫 Cancelado'
+    };
+    return labels[status] ?? status;
 }
 
 export default function UserDetailsPage(): React.ReactElement {
@@ -95,7 +122,7 @@ export default function UserDetailsPage(): React.ReactElement {
 
         try {
             console.log('📊 Loading rents for user ID:', userId);
-            
+
             // Load all rents
             const rentsResponse = await fetch(apiUrl('/api/rents'), {
                 headers: { Authorization: `Bearer ${token}` }
@@ -109,7 +136,7 @@ export default function UserDetailsPage(): React.ReactElement {
             });
             const allTools: Tool[] = await toolsResponse.json();
             console.log('🔧 All tools:', allTools);
-            
+
             const toolsMap = new Map(allTools.map(t => [t.id, t]));
             setTools(toolsMap);
 
@@ -121,7 +148,7 @@ export default function UserDetailsPage(): React.ReactElement {
             // Filter pending rents on my tools (as owner)
             const myToolIds = allTools.filter(t => t.ownerId === userId).map(t => t.id);
             console.log('🔧 My tool IDs:', myToolIds);
-            
+
             const ownerPendingRents = allRents.filter(
                 r => myToolIds.includes(r.toolId) && r.status === 'PENDING'
             );
@@ -295,50 +322,42 @@ export default function UserDetailsPage(): React.ReactElement {
                             <p style={{ color: '#666' }}>Ainda não tem reservas.</p>
                         ) : (
                             <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
-                                {myRents.map(rent => (
-                                    <div key={rent.id} style={{ border: '1px solid #e5e5e5', borderRadius: 8, padding: 16 }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                                            <div>
-                                                <h3 style={{ margin: '0 0 8px 0' }}>
-                                                    {tools.get(rent.toolId)?.name || `Ferramenta #${rent.toolId}`}
-                                                </h3>
-                                                <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>
-                                                    📅 {new Date(rent.startDate).toLocaleDateString('pt-PT')} - {new Date(rent.endDate).toLocaleDateString('pt-PT')}
-                                                </p>
-                                                {rent.message && (
-                                                    <p style={{ margin: '8px 0 0 0', fontSize: 13, color: '#999', fontStyle: 'italic' }}>
-                                                        💬 {rent.message}
+                                {myRents.map(rent => {
+                                    const { background, color } = getStatusStyles(rent.status);
+                                    const statusLabel = getStatusLabel(rent.status);
+                                    return (
+                                        <div key={rent.id} style={{ border: '1px solid #e5e5e5', borderRadius: 8, padding: 16 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                                <div>
+                                                    <h3 style={{ margin: '0 0 8px 0' }}>
+                                                        {tools.get(rent.toolId)?.name || `Ferramenta #${rent.toolId}`}
+                                                    </h3>
+                                                    <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>
+                                                        📅 {new Date(rent.startDate).toLocaleDateString('pt-PT')} - {new Date(rent.endDate).toLocaleDateString('pt-PT')}
                                                     </p>
-                                                )}
+                                                    {rent.message && (
+                                                        <p style={{ margin: '8px 0 0 0', fontSize: 13, color: '#999', fontStyle: 'italic' }}>
+                                                            💬 {rent.message}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <span style={{
+                                                    padding: '6px 14px',
+                                                    borderRadius: 16,
+                                                    fontSize: 13,
+                                                    fontWeight: 600,
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: 4,
+                                                    background,
+                                                    color
+                                                }}>
+                                                    {statusLabel}
+                                                </span>
                                             </div>
-                                            <span style={{
-                                                padding: '6px 14px',
-                                                borderRadius: 16,
-                                                fontSize: 13,
-                                                fontWeight: 600,
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: 4,
-                                                background: rent.status === 'PENDING' ? '#fef3c7' :
-                                                    rent.status === 'APPROVED' ? '#d1fae5' :
-                                                        rent.status === 'REJECTED' ? '#fee2e2' :
-                                                        rent.status === 'ACTIVE' ? '#dbeafe' : '#f3f4f6',
-                                                color: rent.status === 'PENDING' ? '#92400e' :
-                                                    rent.status === 'APPROVED' ? '#065f46' :
-                                                        rent.status === 'REJECTED' ? '#991b1b' :
-                                                        rent.status === 'ACTIVE' ? '#1e40af' : '#374151'
-                                            }}>
-                                                {rent.status === 'PENDING' && '⏳ Pendente'}
-                                                {rent.status === 'APPROVED' && '✅ Aprovado'}
-                                                {rent.status === 'REJECTED' && '❌ Rejeitado'}
-                                                {rent.status === 'ACTIVE' && '🚀 Ativo'}
-                                                {rent.status === 'COMPLETED' && '✔️ Concluído'}
-                                                {rent.status === 'CANCELLED' && '🚫 Cancelado'}
-                                                {!['PENDING', 'APPROVED', 'REJECTED', 'ACTIVE', 'COMPLETED', 'CANCELLED'].includes(rent.status) && rent.status}
-                                            </span>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -354,10 +373,10 @@ export default function UserDetailsPage(): React.ReactElement {
                         {loadingRents ? (
                             <p style={{ color: '#666', marginTop: 20 }}>🔄 A carregar reservas...</p>
                         ) : pendingRents.length === 0 ? (
-                            <div style={{ 
-                                background: '#f3f4f6', 
-                                padding: 20, 
-                                borderRadius: 8, 
+                            <div style={{
+                                background: '#f3f4f6',
+                                padding: 20,
+                                borderRadius: 8,
                                 marginTop: 20,
                                 textAlign: 'center',
                                 color: '#6b7280'

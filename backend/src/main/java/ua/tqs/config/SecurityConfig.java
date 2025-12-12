@@ -27,54 +27,55 @@ public class SecurityConfig {
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
 
+    private static final String API_ANALYTICS = "/api/analytics/**";
+    private static final String API_TOOLS = "/api/tools";
+    private static final String API_TOOLS_WILDCARD = "/api/tools/**";
+    private static final String API_RENTS_WILDCARD = "/api/rents/**";
+    private static final String API_RESERVATIONS_WILDCARD = "/api/reservations/**";
+    private static final String API_USERS_WILDCARD = "/api/users/**";
+
+    private static final String ROLE_ADMIN = "ADMIN";
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthFilter jwtFilter, Environment env) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> {
-                    // Public endpoints
                     auth.requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**", "/actuator/health", "/actuator/info").permitAll();
                     auth.requestMatchers(HttpMethod.GET, "/api/slots/**").permitAll();
                     auth.requestMatchers(HttpMethod.POST, "/api/slots/dto").permitAll();
-                    
-                    // Analytics endpoints (test profile only for track)
+
                     if (env.acceptsProfiles(Profiles.of("test"))) {
                         auth.requestMatchers(HttpMethod.POST, "/api/analytics/track").permitAll();
-                        auth.requestMatchers(HttpMethod.GET, "/api/analytics/**").permitAll();
+                        auth.requestMatchers(HttpMethod.GET, API_ANALYTICS).permitAll();
                     } else {
-                        auth.requestMatchers(HttpMethod.GET, "/api/analytics/**").hasRole("ADMIN");
+                        auth.requestMatchers(HttpMethod.GET, API_ANALYTICS).hasRole(ROLE_ADMIN);
                     }
-                    auth.requestMatchers(HttpMethod.POST, "/api/analytics/**").hasRole("ADMIN");
-                    
-                    // Tools endpoints
-                    auth.requestMatchers(HttpMethod.GET, "/api/tools/**").permitAll();
-                    auth.requestMatchers(HttpMethod.POST, "/api/tools", "/api/tools/**").authenticated();
-                    auth.requestMatchers(HttpMethod.PUT, "/api/tools", "/api/tools/**").authenticated();
-                    auth.requestMatchers(HttpMethod.DELETE, "/api/tools", "/api/tools/**").authenticated();
-                    
-                    // Rents/Reservations endpoints
-                    auth.requestMatchers(HttpMethod.POST, "/api/rents/**").authenticated();
-                    auth.requestMatchers(HttpMethod.PUT, "/api/rents/**").authenticated();
-                    auth.requestMatchers(HttpMethod.DELETE, "/api/rents/**").hasRole("ADMIN");
-                    auth.requestMatchers(HttpMethod.GET, "/api/rents/**").authenticated();
-                    auth.requestMatchers(HttpMethod.POST, "/api/reservations/**").authenticated();
+                    auth.requestMatchers(HttpMethod.POST, API_ANALYTICS).hasRole(ROLE_ADMIN);
+
+                    auth.requestMatchers(HttpMethod.GET, API_TOOLS_WILDCARD).permitAll();
+                    auth.requestMatchers(HttpMethod.POST, API_TOOLS, API_TOOLS_WILDCARD).authenticated();
+                    auth.requestMatchers(HttpMethod.PUT, API_TOOLS, API_TOOLS_WILDCARD).authenticated();
+                    auth.requestMatchers(HttpMethod.DELETE, API_TOOLS, API_TOOLS_WILDCARD).authenticated();
+
+                    auth.requestMatchers(HttpMethod.POST, API_RENTS_WILDCARD).authenticated();
+                    auth.requestMatchers(HttpMethod.PUT, API_RENTS_WILDCARD).authenticated();
+                    auth.requestMatchers(HttpMethod.DELETE, API_RENTS_WILDCARD).hasRole(ROLE_ADMIN);
+                    auth.requestMatchers(HttpMethod.GET, API_RENTS_WILDCARD).authenticated();
+                    auth.requestMatchers(HttpMethod.POST, API_RESERVATIONS_WILDCARD).authenticated();
                     auth.requestMatchers(HttpMethod.GET, "/api/reservations/all").authenticated();
-                    auth.requestMatchers("/api/reservations/admin/**").hasRole("ADMIN");
-                    
-                    // PayPal payment endpoints
+                    auth.requestMatchers("/api/reservations/admin/**").hasRole(ROLE_ADMIN);
+
                     auth.requestMatchers("/api/paypal/**").authenticated();
-                    
-                    // Users endpoints
-                    auth.requestMatchers("/api/users/stats/admin").hasRole("ADMIN");
+
+                    auth.requestMatchers("/api/users/stats/admin").hasRole(ROLE_ADMIN);
                     auth.requestMatchers("/api/users/*/stats").authenticated();
-                    auth.requestMatchers(HttpMethod.GET, "/api/users/**").hasRole("ADMIN");
-                    auth.requestMatchers("/api/users/**").hasRole("ADMIN");
-                    
-                    // OPTIONS for CORS
+                    auth.requestMatchers(HttpMethod.GET, API_USERS_WILDCARD).hasRole(ROLE_ADMIN);
+                    auth.requestMatchers(API_USERS_WILDCARD).hasRole(ROLE_ADMIN);
+
                     auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
-                    
-                    // Everything else requires authentication
+
                     auth.anyRequest().authenticated();
                 })
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
