@@ -1,19 +1,20 @@
 package ua.tqs.service;
 
-import lombok.RequiredArgsConstructor;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import lombok.RequiredArgsConstructor;
 import ua.tqs.enums.RentStatus;
 import ua.tqs.exception.ResourceNotFoundException;
 import ua.tqs.model.Rent;
 import ua.tqs.model.Tool;
 import ua.tqs.repository.RentRepository;
 import ua.tqs.repository.ToolRepository;
-
-import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -115,7 +116,7 @@ public class RentService {
      */
     public boolean hasOverlap(Rent rent) {
         // Only check against PENDING and APPROVED rents (CANCELED and REJECTED don't block)
-        List<RentStatus> blockingStatuses = Arrays.asList(RentStatus.PENDING, RentStatus.APPROVED);
+        List<RentStatus> blockingStatuses = Arrays.asList(RentStatus.PENDING, RentStatus.APPROVED, RentStatus.ACTIVE);
         
         List<Rent> overlapping = rentRepository.findOverlappingRents(
             rent.getToolId(),
@@ -130,6 +131,14 @@ public class RentService {
         }
         
         return !overlapping.isEmpty();
+    }
+
+    /**
+     * Get all rents that block availability for a tool (PENDING, APPROVED, ACTIVE)
+     */
+    public List<Rent> getBlockingRentsForTool(Long toolId) {
+        List<RentStatus> blockingStatuses = Arrays.asList(RentStatus.PENDING, RentStatus.APPROVED, RentStatus.ACTIVE);
+        return rentRepository.findByToolIdAndStatusIn(toolId, blockingStatuses);
     }
 
     /**

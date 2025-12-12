@@ -3,6 +3,9 @@ package ua.tqs.functional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import ua.tqs.enums.ToolStatus;
 import ua.tqs.enums.UserRole;
 import ua.tqs.model.Rent;
@@ -17,15 +20,17 @@ public class TestDataFactory {
 
     private static int userCounter = 1;
     private static int toolCounter = 1;
+    private static final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     /**
-     * Create a User with all required fields
+     * Create a User with all required fields.
+     * Password is BCrypt-encoded to match the security configuration.
      */
     public static User createUser(String email, String password, UserRole role) {
         User user = new User();
         user.setName("Test User " + userCounter++);
         user.setEmail(email);
-        user.setPassword(password);
+        user.setPassword(passwordEncoder.encode(password));
         user.setType(role);
         user.setActive(true);
         return user;

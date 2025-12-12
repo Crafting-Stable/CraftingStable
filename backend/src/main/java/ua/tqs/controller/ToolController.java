@@ -161,4 +161,25 @@ public class ToolController {
             return ResponseEntity.badRequest().body(response);
         }
     }
+
+    /**
+     * Get blocked date ranges for a tool (dates that are already booked)
+     * Returns list of {startDate, endDate} objects for PENDING/APPROVED/ACTIVE rents
+     */
+    @GetMapping("/{id}/blocked-dates")
+    public ResponseEntity<List<Map<String, String>>> getBlockedDates(@PathVariable Long id) {
+        List<Rent> blockedRents = rentService.getBlockingRentsForTool(id);
+        
+        List<Map<String, String>> blockedRanges = blockedRents.stream()
+            .map(rent -> {
+                Map<String, String> range = new HashMap<>();
+                range.put("startDate", rent.getStartDate().toLocalDate().toString());
+                range.put("endDate", rent.getEndDate().toLocalDate().toString());
+                range.put("status", rent.getStatus().name());
+                return range;
+            })
+            .collect(Collectors.toList());
+        
+        return ResponseEntity.ok(blockedRanges);
+    }
 }

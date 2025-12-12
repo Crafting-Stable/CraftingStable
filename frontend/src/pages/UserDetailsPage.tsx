@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import craftingstable from '../assets/craftingstable.png';
+import bgImg from '../assets/rust.jpg';
 
-type User = { username: string; email?: string; role?: string; id?: number } | null;
+type User = { username: string; email?: string; role?: string; id?: number; paypalEmail?: string } | null;
 
 interface Rent {
     id: number;
@@ -38,6 +39,8 @@ export default function UserDetailsPage(): React.ReactElement {
     const [tools, setTools] = useState<Map<number, Tool>>(new Map());
     const [loadingRents, setLoadingRents] = useState(false);
     const [activeTab, setActiveTab] = useState<'profile' | 'myRents' | 'pending'>('profile');
+    const [paypalEmail, setPaypalEmail] = useState<string>('');
+    const [savingPaypal, setSavingPaypal] = useState(false);
 
     useEffect(() => {
         const load = async () => {
@@ -191,6 +194,46 @@ export default function UserDetailsPage(): React.ReactElement {
         navigate('/');
     };
 
+    const handleSavePaypalEmail = async () => {
+        if (!user?.id || !paypalEmail) return;
+        
+        const token = localStorage.getItem('jwt');
+        if (!token) return;
+
+        setSavingPaypal(true);
+        try {
+            const response = await fetch(apiUrl(`/api/users/${user.id}/paypal-email`), {
+                method: 'PUT',
+                headers: { 
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ paypalEmail })
+            });
+
+            if (response.ok) {
+                const updatedUser = { ...user, paypalEmail };
+                setUser(updatedUser);
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+                alert('Email PayPal guardado com sucesso!');
+            } else {
+                alert('Erro ao guardar email PayPal');
+            }
+        } catch (error) {
+            console.error('Failed to save PayPal email:', error);
+            alert('Erro ao guardar email PayPal');
+        } finally {
+            setSavingPaypal(false);
+        }
+    };
+
+    // Initialize paypalEmail from user data
+    useEffect(() => {
+        if (user?.paypalEmail) {
+            setPaypalEmail(user.paypalEmail);
+        }
+    }, [user?.paypalEmail]);
+
     if (loading) {
         return <div style={{ padding: 24 }}>A carregar...</div>;
     }
@@ -206,19 +249,33 @@ export default function UserDetailsPage(): React.ReactElement {
     }
 
     return (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 24, background: '#f5f5f5' }}>
-            <header style={{ width: '100%', maxWidth: 1100, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ 
+            minHeight: '100vh', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            padding: 24, 
+            backgroundImage: `url(${bgImg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            position: 'relative'
+        }}>
+            {/* Dark overlay for better readability */}
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1 }} />
+            
+            <header style={{ width: '100%', maxWidth: 1100, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, position: 'relative', zIndex: 2 }}>
+                <Link to="/" style={{ textDecoration: 'none', color: '#fff', display: 'flex', alignItems: 'center', gap: 12 }}>
                     <img src={craftingstable} alt="logo" style={{ width: 48 }} />
                     <div style={{ fontWeight: 700 }}>CraftingStable</div>
                 </Link>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <button onClick={() => navigate('/')} style={{ marginRight: 12 }}>Voltar</button>
-                    <button onClick={handleLogout} style={{ background: '#f8b749', border: 'none', padding: '8px 12px', borderRadius: 8, cursor: 'pointer' }}>Sair</button>
+                    <button onClick={() => navigate('/')} style={{ marginRight: 12, background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 8, cursor: 'pointer' }}>Voltar</button>
+                    <button onClick={handleLogout} style={{ background: '#f8b749', border: 'none', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Sair</button>
                 </div>
             </header>
 
-            <main style={{ width: '100%', maxWidth: 1100 }}>
+            <main style={{ width: '100%', maxWidth: 1100, position: 'relative', zIndex: 2 }}>
                 {/* Tab Navigation */}
                 <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#fff', padding: 8, borderRadius: 8 }}>
                     <button
@@ -281,6 +338,49 @@ export default function UserDetailsPage(): React.ReactElement {
                                 <div style={{ color: '#666', fontSize: 14 }}>{user.role ?? 'Utilizador'}</div>
                                 <div style={{ color: '#999', marginTop: 4 }}>{user.email ?? 'Email não disponível'}</div>
                             </div>
+                        </div>
+
+                        {/* PayPal Email for Payouts */}
+                        <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid #e5e5e5' }}>
+                            <h3 style={{ marginBottom: 12, fontSize: 16, color: '#333' }}>💰 Configuração de Pagamentos</h3>
+                            <p style={{ color: '#666', fontSize: 13, marginBottom: 12 }}>
+                                Configure o seu email PayPal para receber pagamentos quando as suas ferramentas forem alugadas.
+                            </p>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <input
+                                    type="email"
+                                    placeholder="seu-email@paypal.com"
+                                    value={paypalEmail}
+                                    onChange={(e) => setPaypalEmail(e.target.value)}
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px 14px',
+                                        border: '1px solid #ddd',
+                                        borderRadius: 6,
+                                        fontSize: 14
+                                    }}
+                                />
+                                <button
+                                    onClick={handleSavePaypalEmail}
+                                    disabled={savingPaypal || !paypalEmail}
+                                    style={{
+                                        padding: '10px 20px',
+                                        background: savingPaypal ? '#ccc' : '#0070ba',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: 6,
+                                        cursor: savingPaypal ? 'not-allowed' : 'pointer',
+                                        fontWeight: 600
+                                    }}
+                                >
+                                    {savingPaypal ? 'A guardar...' : 'Guardar'}
+                                </button>
+                            </div>
+                            {user.paypalEmail && (
+                                <p style={{ color: '#22c55e', fontSize: 12, marginTop: 8 }}>
+                                    ✅ Email PayPal configurado: {user.paypalEmail}
+                                </p>
+                            )}
                         </div>
                     </div>
                 )}

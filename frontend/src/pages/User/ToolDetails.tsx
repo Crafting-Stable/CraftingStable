@@ -59,6 +59,12 @@ function daysBetween(startStr: string, endStr: string, inclusive: boolean) {
     return diff > 0 ? diff : 0;
 }
 
+interface BlockedDateRange {
+    startDate: string;
+    endDate: string;
+    status: string;
+}
+
 function BookingCalendar({
                              toolId,
                              pricePerDay,
@@ -76,11 +82,28 @@ function BookingCalendar({
     const [isAvailable, setIsAvailable] = useState<boolean>(true);
     const [availabilityMessage, setAvailabilityMessage] = useState<string | null>(null);
     const [checkingAvailability, setCheckingAvailability] = useState(false);
+    const [blockedDates, setBlockedDates] = useState<BlockedDateRange[]>([]);
 
     const days = useMemo(() => daysBetween(start, end, inclusive), [start, end, inclusive]);
     const total = useMemo(() => Number((days * pricePerDay).toFixed(2)), [days, pricePerDay]);
 
     const fmt = new Intl.NumberFormat("pt-PT", { style: "currency", currency });
+
+    // Fetch blocked dates on mount
+    useEffect(() => {
+        const fetchBlockedDates = async () => {
+            try {
+                const response = await fetch(apiUrl(`/api/tools/${toolId}/blocked-dates`));
+                if (response.ok) {
+                    const data = await response.json();
+                    setBlockedDates(data);
+                }
+            } catch (err) {
+                console.error('Error fetching blocked dates:', err);
+            }
+        };
+        fetchBlockedDates();
+    }, [toolId]);
 
     // Check availability when dates change
     useEffect(() => {
@@ -306,6 +329,40 @@ function BookingCalendar({
                     <div style={{ fontSize: 18, marginTop: 6 }}>Total: <strong>{fmt.format(total)}</strong></div>
                 </div>
             </div>
+
+            {/* Blocked Dates Display */}
+            {blockedDates.length > 0 && (
+                <div style={{
+                    marginTop: 12,
+                    padding: 10,
+                    background: "rgba(251, 191, 36, 0.15)",
+                    border: "1px solid #fbbf24",
+                    borderRadius: 6
+                }}>
+                    <div style={{ color: "#fcd34d", fontWeight: 600, marginBottom: 8, fontSize: 13 }}>
+                        📅 Datas Indisponíveis:
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {blockedDates.map((range, idx) => (
+                            <span key={idx} style={{
+                                background: range.status === 'PENDING' ? '#fef3c7' : 
+                                           range.status === 'APPROVED' ? '#d1fae5' : '#dbeafe',
+                                color: range.status === 'PENDING' ? '#92400e' : 
+                                       range.status === 'APPROVED' ? '#065f46' : '#1e40af',
+                                padding: "4px 8px",
+                                borderRadius: 4,
+                                fontSize: 12,
+                                fontWeight: 500
+                            }}>
+                                {new Date(range.startDate).toLocaleDateString('pt-PT')} - {new Date(range.endDate).toLocaleDateString('pt-PT')}
+                                <span style={{ marginLeft: 4, opacity: 0.7 }}>
+                                    ({range.status === 'PENDING' ? '⏳' : range.status === 'APPROVED' ? '✅' : '🚀'})
+                                </span>
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* PayPal Buttons Section */}
             <div style={{ marginTop: 16 }}>
