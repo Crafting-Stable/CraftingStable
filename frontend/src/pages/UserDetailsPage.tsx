@@ -58,6 +58,7 @@ interface HeaderProps {
     onBack: () => void;
     onLogout: () => void;
 }
+
 const Header: React.FC<HeaderProps> = ({ onBack, onLogout }) => (
     <header style={{ width: '100%', maxWidth: 1100, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -70,6 +71,48 @@ const Header: React.FC<HeaderProps> = ({ onBack, onLogout }) => (
         </div>
     </header>
 );
+
+interface RentItemProps {
+    rent: Rent;
+    tools: Map<number, Tool>;
+}
+
+const RentItem: React.FC<RentItemProps> = ({ rent, tools }) => {
+    const { background, color } = getStatusStyles(rent.status);
+    const statusLabel = getStatusLabel(rent.status);
+    return (
+        <div key={rent.id} style={{ border: '1px solid #e5e5e5', borderRadius: 8, padding: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                <div>
+                    <h3 style={{ margin: '0 0 8px 0' }}>
+                        {tools.get(rent.toolId)?.name || `Ferramenta #${rent.toolId}`}
+                    </h3>
+                    <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>
+                        📅 {new Date(rent.startDate).toLocaleDateString('pt-PT')} - {new Date(rent.endDate).toLocaleDateString('pt-PT')}
+                    </p>
+                    {rent.message && (
+                        <p style={{ margin: '8px 0 0 0', fontSize: 13, color: '#999', fontStyle: 'italic' }}>
+                            💬 {rent.message}
+                        </p>
+                    )}
+                </div>
+                <span style={{
+                    padding: '6px 14px',
+                    borderRadius: 16,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background,
+                    color
+                }}>
+                    {statusLabel}
+                </span>
+            </div>
+        </div>
+    );
+};
 
 export default function UserDetailsPage(): React.ReactElement {
     const navigate = useNavigate();
@@ -259,43 +302,6 @@ export default function UserDetailsPage(): React.ReactElement {
         </div>
     );
 
-    const RentItem = ({ rent }: { rent: Rent }) => {
-        const { background, color } = getStatusStyles(rent.status);
-        const statusLabel = getStatusLabel(rent.status);
-        return (
-            <div key={rent.id} style={{ border: '1px solid #e5e5e5', borderRadius: 8, padding: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                    <div>
-                        <h3 style={{ margin: '0 0 8px 0' }}>
-                            {tools.get(rent.toolId)?.name || `Ferramenta #${rent.toolId}`}
-                        </h3>
-                        <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>
-                            📅 {new Date(rent.startDate).toLocaleDateString('pt-PT')} - {new Date(rent.endDate).toLocaleDateString('pt-PT')}
-                        </p>
-                        {rent.message && (
-                            <p style={{ margin: '8px 0 0 0', fontSize: 13, color: '#999', fontStyle: 'italic' }}>
-                                💬 {rent.message}
-                            </p>
-                        )}
-                    </div>
-                    <span style={{
-                        padding: '6px 14px',
-                        borderRadius: 16,
-                        fontSize: 13,
-                        fontWeight: 600,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        background,
-                        color
-                    }}>
-                        {statusLabel}
-                    </span>
-                </div>
-            </div>
-        );
-    };
-
     const MyRentsView = () => (
         <div style={{ background: '#fff', padding: 28, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
             <h2>Minhas Reservas</h2>
@@ -305,7 +311,7 @@ export default function UserDetailsPage(): React.ReactElement {
                 <p style={{ color: '#666' }}>Ainda não tem reservas.</p>
             ) : (
                 <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
-                    {myRents.map(r => <RentItem key={r.id} rent={r} />)}
+                    {myRents.map(r => <RentItem key={r.id} rent={r} tools={tools} />)}
                 </div>
             )}
         </div>

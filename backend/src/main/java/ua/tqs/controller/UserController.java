@@ -58,8 +58,10 @@ public class UserController {
 
     @GetMapping("/count")
     public ResponseEntity<Long> getUserCount() {
-        long totalUsers = userService.getTotalUsers();
-        return ResponseEntity.ok(totalUsers);
+        long adminCount = userService.listAll().stream()
+                .filter(u -> u.getType() != null && u.getType() == UserRole.ADMIN)
+                .count();
+        return ResponseEntity.ok(adminCount);
     }
 
     @GetMapping("/stats/admin")

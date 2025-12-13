@@ -33,6 +33,74 @@ function apiUrl(path: string) {
     return `${protocol}//${hostname}:${API_PORT}${normalized}`;
 }
 
+/* Helpers moved to module scope to avoid deep nesting inside the component */
+function readStoredUser() {
+    try {
+        const userStr = localStorage.getItem('user');
+        if (!userStr) return null;
+        return JSON.parse(userStr);
+    } catch {
+        return null;
+    }
+}
+
+function getJwt() {
+    return localStorage.getItem('jwt') || undefined;
+}
+
+async function fetchAndStoreMe(
+    navigate: (path: string) => void,
+    setError: (s: string | null) => void,
+    setCurrentUserId: (id: number | null) => void
+) {
+    const jwt = getJwt();
+    if (!jwt) {
+        setError("Utilizador não identificado. Por favor faça login novamente.");
+        setTimeout(() => navigate('/loginPage'), 1500);
+        return null;
+    }
+
+    try {
+        const res = await fetch(apiUrl('/api/auth/me'), {
+            headers: {
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${jwt}`
+            }
+        });
+
+        if (res.status === 401 || res.status === 403) {
+            localStorage.removeItem('jwt');
+            localStorage.removeItem('user');
+            setError("Sessão expirada. Por favor faça login novamente.");
+            setTimeout(() => navigate('/loginPage'), 1500);
+            return null;
+        }
+
+        if (!res.ok) {
+            const text = await res.text().catch(() => res.statusText);
+            setError(text || "Erro ao obter utilizador");
+            return null;
+        }
+
+        const data = await res.json().catch(() => null);
+        if (data) {
+            const fetchedId = data?.id ?? data?.user_id ?? data?.userId ?? null;
+            if (fetchedId) setCurrentUserId(Number(fetchedId));
+            const userToStore = {
+                username: data.username ?? '',
+                email: data.email ?? '',
+                role: data.role ?? '',
+                id: fetchedId
+            };
+            localStorage.setItem('user', JSON.stringify(userToStore));
+            return data;
+        }
+    } catch {
+        setError("Erro ao obter utilizador");
+    }
+    return null;
+}
+
 export default function AddRent(): React.ReactElement {
     const navigate = useNavigate();
     const [tools, setTools] = useState<Tool[]>([]);
@@ -49,26 +117,12 @@ export default function AddRent(): React.ReactElement {
     const [location, setLocation] = useState("");
     const [imageUrl, setImageUrl] = useState("");
 
-    const readStoredUser = () => {
-        try {
-            const userStr = localStorage.getItem('user');
-            if (!userStr) return null;
-            return JSON.parse(userStr);
-        } catch {
-            return null;
-        }
-    };
-
-    const getJwt = () => {
-        return localStorage.getItem('jwt') || undefined;
-    };
-
-    const signOutAndRedirect = (msg = "Sessão expirada. Por favor faça login novamente.") => {
+    function signOutAndRedirect(msg = "Sessão expirada. Por favor faça login novamente.") {
         localStorage.removeItem('jwt');
         localStorage.removeItem('user');
         setError(msg);
         setTimeout(() => navigate('/loginPage'), 1500);
-    };
+    }
 
     async function sendRequest<T = any>(method: string, url: string, body?: any): Promise<T> {
         const jwt = getJwt();
@@ -101,7 +155,6 @@ export default function AddRent(): React.ReactElement {
             throw new Error(text || res.statusText);
         }
 
-        // No content
         if (res.status === 204) return {} as T;
 
         return await res.json().catch(() => ({} as T));
@@ -114,50 +167,8 @@ export default function AddRent(): React.ReactElement {
             setCurrentUserId(Number(id));
             return;
         }
-
-        const fetchMe = async () => {
-            const jwt = getJwt();
-            if (!jwt) {
-                setError("Utilizador não identificado. Por favor faça login novamente.");
-                setTimeout(() => navigate('/loginPage'), 1500);
-                return;
-            }
-
-            try {
-                const data = await fetch(apiUrl('/api/auth/me'), {
-                    headers: {
-                        'Accept': 'application/json',
-                        'Authorization': `Bearer ${jwt}`
-                    }
-                }).then(r => {
-                    if (r.ok) return r.json().catch(() => null);
-                    if (r.status === 401 || r.status === 403) {
-                        localStorage.removeItem('jwt');
-                        localStorage.removeItem('user');
-                        setError("Sessão expirada. Por favor faça login novamente.");
-                        setTimeout(() => navigate('/loginPage'), 1500);
-                        return null;
-                    }
-                    return r.text().then(t => { setError(t || "Erro ao obter utilizador"); return null; }).catch(() => null);
-                });
-
-                if (data) {
-                    const fetchedId = data?.id ?? data?.user_id ?? data?.userId ?? null;
-                    if (fetchedId) setCurrentUserId(Number(fetchedId));
-                    const userToStore = {
-                        username: data.username ?? '',
-                        email: data.email ?? '',
-                        role: data.role ?? '',
-                        id: fetchedId
-                    };
-                    localStorage.setItem('user', JSON.stringify(userToStore));
-                }
-            } catch {
-                setError("Erro ao obter utilizador");
-            }
-        };
-
-        fetchMe();
+        // chama a função movida para o escopo do módulo
+        fetchAndStoreMe(navigate, setError, setCurrentUserId);
     }, [navigate]);
 
     async function loadTools() {
@@ -293,6 +304,77 @@ export default function AddRent(): React.ReactElement {
         } finally {
             setLoading(false);
         }
+    }
+
+    /* pequenas funções auxiliares para reduzir arrow functions inline */
+    function handleImageError(e: React.SyntheticEvent<HTMLImageElement>) {
+        e.currentTarget.style.display = 'none';
+    }
+
+    function renderTool(tool: Tool) {
+        return (
+            <div
+                key={tool.id}
+                style={{
+                    padding: 16,
+                    background: "rgba(255,255,255,0.03)",
+                    borderRadius: 8,
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    display: "flex",
+                    gap: 16,
+                    alignItems: "flex-start"
+                }}
+            >
+                {tool.imageUrl && (
+                    <img
+                        src={tool.imageUrl}
+                        alt={tool.name}
+                        style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
+                        onError={handleImageError}
+                    />
+                )}
+
+                <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                        <div>
+                            <h4 style={{ margin: 0, fontSize: 18 }}>{tool.name}</h4>
+                            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>
+                                {tool.type} • {tool.location}
+                            </div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                            <div style={{ fontSize: 20, fontWeight: 700, color: "#f8b749" }}>
+                                €{(tool.dailyPrice ?? 0).toFixed(2)}/dia
+                            </div>
+                            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+                                Caução: €{(tool.depositAmount ?? 0).toFixed(2)}
+                            </div>
+                        </div>
+                    </div>
+
+                    <p style={{ margin: "8px 0", fontSize: 14, color: "rgba(255,255,255,0.8)", lineHeight: 1.5 }}>
+                        {tool.description}
+                    </p>
+
+                    {Number(tool.ownerId) === Number(currentUserId) ? (
+                        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                            <button
+                                onClick={() => onEdit(tool)}
+                                style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}
+                            >
+                                Editar
+                            </button>
+                            <button
+                                onClick={() => onDelete(tool.id)}
+                                style={{ background: "#ff5c5c", border: "none", color: "#fff", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}
+                            >
+                                Apagar
+                            </button>
+                        </div>
+                    ) : null}
+                </div>
+            </div>
+        );
     }
 
     const inputStyle: React.CSSProperties = {
@@ -452,69 +534,7 @@ export default function AddRent(): React.ReactElement {
                         </div>
                     ) : (
                         <div style={{ display: "grid", gap: 16 }}>
-                            {tools.map(tool => (
-                                <div
-                                    key={tool.id}
-                                    style={{
-                                        padding: 16,
-                                        background: "rgba(255,255,255,0.03)",
-                                        borderRadius: 8,
-                                        border: "1px solid rgba(255,255,255,0.1)",
-                                        display: "flex",
-                                        gap: 16,
-                                        alignItems: "flex-start"
-                                    }}
-                                >
-                                    {tool.imageUrl && (
-                                        <img
-                                            src={tool.imageUrl}
-                                            alt={tool.name}
-                                            style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
-                                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                        />
-                                    )}
-
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                                            <div>
-                                                <h4 style={{ margin: 0, fontSize: 18 }}>{tool.name}</h4>
-                                                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>
-                                                    {tool.type} • {tool.location}
-                                                </div>
-                                            </div>
-                                            <div style={{ textAlign: "right" }}>
-                                                <div style={{ fontSize: 20, fontWeight: 700, color: "#f8b749" }}>
-                                                    €{(tool.dailyPrice ?? 0).toFixed(2)}/dia
-                                                </div>
-                                                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-                                                    Caução: €{(tool.depositAmount ?? 0).toFixed(2)}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <p style={{ margin: "8px 0", fontSize: 14, color: "rgba(255,255,255,0.8)", lineHeight: 1.5 }}>
-                                            {tool.description}
-                                        </p>
-
-                                        {Number(tool.ownerId) === Number(currentUserId) ? (
-                                            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                                                <button
-                                                    onClick={() => onEdit(tool)}
-                                                    style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}
-                                                >
-                                                    Editar
-                                                </button>
-                                                <button
-                                                    onClick={() => onDelete(tool.id)}
-                                                    style={{ background: "#ff5c5c", border: "none", color: "#fff", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}
-                                                >
-                                                    Apagar
-                                                </button>
-                                            </div>
-                                        ) : null}
-                                    </div>
-                                </div>
-                            ))}
+                            {tools.map(renderTool)}
                         </div>
                     )}
                 </section>

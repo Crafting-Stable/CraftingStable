@@ -60,7 +60,9 @@ class UserControllerTest {
             Constructor<User> ctor = null;
             try {
                 ctor = (Constructor<User>) User.class.getConstructor(Long.class, String.class, String.class);
-            } catch (NoSuchMethodException ignored) {
+            } catch (NoSuchMethodException e) {
+                // Ignorado intencionalmente: se o construtor (Long, String, String) não existir,
+                // o código fará um fallback instanciando via construtor padrão e definindo campos por reflexão.
             }
             if (ctor != null) {
                 return ctor.newInstance(id, "Alice", "alice@example.com");
