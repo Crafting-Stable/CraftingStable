@@ -43,18 +43,26 @@ export default function LoginPage(): React.ReactElement {
 
     const saveAuthData = (data: any, fallbackEmail: string) => {
         const userId = data.id || data.user_id || data.userId;
-        localStorage.setItem('jwt', data.token);
+        try {
+            globalThis.localStorage?.setItem('jwt', data.token);
+        } catch (e) {
+            // localStorage não disponível — silencioso
+        }
+
         const userToStore = {
             username: data.username || data.name,
             email: data.email || fallbackEmail,
             role: data.role,
             id: userId
         };
-        localStorage.setItem('user', JSON.stringify(userToStore));
-        console.log('💾 Saving user to localStorage:', userToStore);
+
+        try {
+            globalThis.localStorage?.setItem('user', JSON.stringify(userToStore));
+        } catch (e) {
+            // falha ao gravar user — silencioso
+        }
     };
 
-    // Refatorado handleLoginSubmit
     const handleLoginSubmit = async (ev?: React.FormEvent) => {
         ev?.preventDefault();
         const errs: Record<string, string> = {};
@@ -66,8 +74,6 @@ export default function LoginPage(): React.ReactElement {
         setLoginErrors(errs);
         if (Object.keys(errs).length > 0) return;
 
-        console.log('🔐 Attempting login with email:', login.email);
-
         try {
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
@@ -75,9 +81,7 @@ export default function LoginPage(): React.ReactElement {
                 body: JSON.stringify({ email: login.email, password: login.password })
             });
 
-            console.log('📥 Login response status:', res.status);
             const data: any = await safeJson(res);
-            console.log('📦 Login response data:', data);
 
             if (!res.ok) {
                 setLoginErrors(extractServerErrors(data, 'Erro no login'));
@@ -85,22 +89,23 @@ export default function LoginPage(): React.ReactElement {
             }
 
             if (!data.token) {
-                console.error('❌ No token in response');
                 setLoginErrors({ general: 'Resposta inválida do servidor' });
                 return;
             }
 
-            console.log('🎫 JWT Token received:', data.token.substring(0, 30) + '...');
             saveAuthData(data, login.email);
 
-            window.dispatchEvent(new Event('authChanged'));
+            try {
+                globalThis.dispatchEvent(new Event('authChanged'));
+            } catch (e) {
+                // dispatchEvent não disponível — silencioso
+            }
+
             setLogin({ ...login, password: '' });
 
             const route = data.role === 'ADMIN' ? '/admin' : '/catalog';
-            console.log('🚀 Redirecting to', route);
             navigate(route);
         } catch (e) {
-            console.error('💥 Login exception:', e);
             setLoginErrors({ general: 'Erro de rede' });
         }
     };
@@ -117,8 +122,6 @@ export default function LoginPage(): React.ReactElement {
         setRegErrors(errs);
         if (Object.keys(errs).length > 0) return;
 
-        console.log('📝 Attempting registration with email:', reg.email);
-
         try {
             const res = await fetch('/api/auth/register', {
                 method: 'POST',
@@ -132,21 +135,17 @@ export default function LoginPage(): React.ReactElement {
                 })
             });
 
-            console.log('📥 Register response status:', res.status);
             const data: any = await safeJson(res);
-            console.log('📦 Register response data:', data);
 
             if (!res.ok) {
                 setRegErrors(extractServerErrors(data, 'Erro no registo'));
                 return;
             }
 
-            console.log('✅ Registration successful');
-            alert('Registo efetuado. Por favor inicie sessão.');
+            globalThis.alert?.('Registo efetuado. Por favor inicie sessão.');
             setReg({ name: '', email: '', password: '', passwordConfirm: '' });
             navigate('/loginPage');
         } catch (e) {
-            console.error('💥 Register exception:', e);
             setRegErrors({ general: 'Erro de rede' });
         }
     };
@@ -212,10 +211,6 @@ export default function LoginPage(): React.ReactElement {
                                         />
                                         <span className="muted">Lembrar-me</span>
                                     </label>
-
-                                    <button type="button" className="btn secondary" onClick={() => alert('Recuperação de password (simulado)')}>
-                                        Esqueceu a password?
-                                    </button>
                                 </div>
 
                                 <button type="submit" className="btn">Entrar</button>

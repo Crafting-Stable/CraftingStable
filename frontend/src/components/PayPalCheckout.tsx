@@ -87,8 +87,6 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
     const [clientId, setClientId] = useState<string>("");
     const [loading, setLoading] = useState(true);
 
-    const isNewRent = isNewRentFlow(props);
-
     useEffect(() => {
         const paypalClientId = import.meta.env.VITE_PAYPAL_CLIENT_ID || "YOUR_SANDBOX_CLIENT_ID";
         setClientId(paypalClientId);
@@ -103,7 +101,12 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
         }
 
         try {
-            const rentIdValue = isNewRent ? 0 : (props as PayPalCheckoutWithRentProps).rentId;
+            let rentIdValue: number;
+            if (isNewRentFlow(props)) {
+                rentIdValue = 0;
+            } else {
+                rentIdValue = props.rentId;
+            }
 
             const params = new URLSearchParams({
                 rentId: rentIdValue.toString(),
@@ -145,8 +148,8 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
         }
 
         try {
-            if (isNewRent) {
-                const newRentProps = props as PayPalCheckoutNewRentProps;
+            if (isNewRentFlow(props)) {
+                const newRentProps = props;
 
                 const captureResponse = await fetch(
                     apiUrl(`/api/paypal/orders/${data.orderID}/capture?rentId=0`),
@@ -167,7 +170,7 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                 const captureData: CaptureData = await captureResponse.json();
 
                 if (captureData.status !== "COMPLETED") {
-                    onError(`Pagamento não concluído. Estado: ${captureData.status}`);
+                    newRentProps.onError(`Pagamento não concluído. Estado: ${captureData.status}`);
                     return;
                 }
 
@@ -199,7 +202,7 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                 if (!rentResponse.ok) {
                     const errorText = await rentResponse.text();
                     console.error("❌ Rent creation failed after payment:", errorText);
-                    onError(`Pagamento processado mas erro ao criar reserva: ${errorText}. Contacte o suporte com o ID: ${captureData.orderId}`);
+                    newRentProps.onError(`Pagamento processado mas erro ao criar reserva: ${errorText}. Contacte o suporte com o ID: ${captureData.orderId}`);
                     return;
                 }
 
@@ -217,9 +220,9 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                     paypalCaptureId: captureData.captureId
                 };
 
-                (newRentProps.onSuccess as (data: RentCreatedData) => void)(successData);
+                newRentProps.onSuccess(successData);
             } else {
-                const existingRentProps = props as PayPalCheckoutWithRentProps;
+                const existingRentProps = props;
 
                 const response = await fetch(
                     apiUrl(`/api/paypal/orders/${data.orderID}/capture?rentId=${existingRentProps.rentId}`),
@@ -240,9 +243,9 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                 const captureData: CaptureData = await response.json();
 
                 if (captureData.status === "COMPLETED") {
-                    (existingRentProps.onSuccess as (data: CaptureData) => void)(captureData);
+                    existingRentProps.onSuccess(captureData);
                 } else {
-                    onError(`Pagamento não concluído. Estado: ${captureData.status}`);
+                    existingRentProps.onError(`Pagamento não concluído. Estado: ${captureData.status}`);
                 }
             }
         } catch (error: any) {
@@ -295,14 +298,15 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
         );
     }
 
+    const disabled = isNewRentFlow(props) ? (props.disabled ?? false) : false;
+
     return (
         <PayPalScriptProvider
             options={{
                 clientId: clientId,
                 currency: currency,
                 intent: "capture",
-                // Disable shipping to simplify checkout - no address needed for digital/service rentals
-                disableFunding: "credit,card",  // Optional: only show PayPal button (not card form)
+                disableFunding: "credit,card",
             }}
         >
             <div style={{ minHeight: 150 }}>
@@ -318,7 +322,7 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                     onApprove={onApprove}
                     onCancel={handleCancel}
                     onError={handleError}
-                    disabled={isNewRent ? (props.disabled ?? false) : false}
+                    disabled={disabled}
                     forceReRender={[amount, currency]}
                 />
             </div>

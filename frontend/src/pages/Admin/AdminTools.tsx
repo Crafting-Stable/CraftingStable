@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 interface Tool {
@@ -36,11 +36,24 @@ const AdminTools: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState<'ALL' | 'AVAILABLE' | 'RENTED' | 'UNDER_MAINTENANCE' | 'INACTIVE'>('ALL');
     const [editingTool, setEditingTool] = useState<Tool | null>(null);
+    const modalOverlayRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         fetchTools();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    useEffect(() => {
+        if (editingTool) {
+            modalOverlayRef.current?.focus();
+            const onKey = (e: KeyboardEvent) => {
+                if (e.key === 'Escape') {
+                    setEditingTool(null);
+                }
+            };
+            document.addEventListener('keydown', onKey);
+            return () => document.removeEventListener('keydown', onKey);
+        }
+    }, [editingTool]);
 
     const handleAuthError = (status?: number, statusText?: string) => {
         if (status === 401 || status === 403) {
@@ -179,6 +192,16 @@ const AdminTools: React.FC = () => {
         );
     }
 
+    const handleOverlayKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault();
+            setEditingTool(null);
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            setEditingTool(null);
+        }
+    };
+
     return (
         <div style={styles.container}>
             <header style={styles.header}>
@@ -264,7 +287,15 @@ const AdminTools: React.FC = () => {
 
             {/* Edit Modal */}
             {editingTool && (
-                <div style={styles.modalOverlay} onClick={() => setEditingTool(null)}>
+                <div
+                    ref={modalOverlayRef}
+                    style={styles.modalOverlay}
+                    onClick={() => setEditingTool(null)}
+                    onKeyDown={handleOverlayKeyDown}
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Fechar modal de edição"
+                >
                     <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
                         <h2 style={styles.modalTitle}>Edit Tool #{editingTool.id}</h2>
 
@@ -278,8 +309,10 @@ const AdminTools: React.FC = () => {
                             <select
                                 id={`type-${editingTool.id}`}
                                 value={editingTool.type ?? ''}
-                                onChange={(e) => setEditingTool(prev => prev ? { ...prev, type: e.target.value } : prev)}
-                                style={styles.input as React.CSSProperties}
+                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                    setEditingTool(prev => prev ? { ...prev, type: e.target.value } : prev)
+                                }
+                                style={styles.input}
                             >
                                 <option value="">Selecione uma categoria</option>
                                 <option value="Jardinagem">Jardinagem</option>

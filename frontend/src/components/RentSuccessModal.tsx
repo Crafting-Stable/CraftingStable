@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import type { RentCreatedData } from './PayPalCheckout';
 
 interface RentSuccessModalProps {
@@ -8,23 +8,60 @@ interface RentSuccessModalProps {
 }
 
 const RentSuccessModal: React.FC<RentSuccessModalProps> = ({ rentData, toolName, onClose }) => {
+    const overlayRef = useRef<HTMLDivElement | null>(null);
+    const titleId = 'rent-success-title';
+
+    useEffect(() => {
+        overlayRef.current?.focus();
+
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [onClose]);
+
     if (!rentData) return null;
 
     const startDate = new Date(rentData.startDate).toLocaleDateString('pt-PT');
     const endDate = new Date(rentData.endDate).toLocaleDateString('pt-PT');
 
+    const handleOverlayKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault();
+            onClose();
+        }
+    };
+
     return (
-        <div style={styles.overlay} onClick={onClose}>
-            <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <div
+            ref={overlayRef}
+            style={styles.overlay}
+            onClick={onClose}
+            onKeyDown={handleOverlayKeyDown}
+            role="button"
+            tabIndex={0}
+            aria-label="Fechar modal de reserva"
+        >
+            <div
+                style={styles.modal}
+                onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+            >
                 <div style={styles.header}>
-                    <div style={styles.checkmark}>✓</div>
-                    <h2 style={styles.title}>Reserva Criada com Sucesso!</h2>
+                    <div style={styles.checkmark} aria-hidden="true">✓</div>
+                    <h2 id={titleId} style={styles.title}>Reserva Criada com Sucesso!</h2>
                 </div>
 
+                {/* resto do conteúdo permanece igual */}
                 <div style={styles.content}>
                     <div style={styles.infoSection}>
                         <h3 style={styles.sectionTitle}>Detalhes da Reserva</h3>
-                        
+
                         <div style={styles.infoRow}>
                             <span style={styles.label}>ID da Reserva:</span>
                             <span style={styles.value}>#{rentData.rentId}</span>
@@ -59,7 +96,7 @@ const RentSuccessModal: React.FC<RentSuccessModalProps> = ({ rentData, toolName,
 
                     <div style={styles.paymentSection}>
                         <h3 style={styles.sectionTitle}>Informação do Pagamento</h3>
-                        
+
                         <div style={styles.infoRow}>
                             <span style={styles.label}>ID PayPal:</span>
                             <span style={{ ...styles.value, fontSize: 12, fontFamily: 'monospace' }}>
@@ -78,7 +115,7 @@ const RentSuccessModal: React.FC<RentSuccessModalProps> = ({ rentData, toolName,
                     <div style={styles.notice}>
                         <strong>⏳ Aguardando Aprovação</strong>
                         <p style={{ margin: '8px 0 0 0', fontSize: 14 }}>
-                            O proprietário da ferramenta precisa aprovar a sua reserva. 
+                            O proprietário da ferramenta precisa aprovar a sua reserva.
                             Você será notificado quando a decisão for tomada.
                         </p>
                     </div>
@@ -107,6 +144,8 @@ const styles: Record<string, React.CSSProperties> = {
         justifyContent: 'center',
         zIndex: 1000,
         padding: 20,
+        // permitir foco visível
+        outline: 'none',
     },
     modal: {
         backgroundColor: '#1f2937',

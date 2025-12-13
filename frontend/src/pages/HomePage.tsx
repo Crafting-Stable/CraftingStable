@@ -236,7 +236,7 @@ export default function HomePage(): React.ReactElement {
                                 </h2>
                                 {isSearching && (
                                     <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 14 }}>
-                                        {filteredTools.length} resultado{filteredTools.length !== 1 ? 's' : ''}
+                                        {filteredTools.length} resultado{filteredTools.length === 1 ? '' : 's'}
                                     </span>
                                 )}
                             </div>

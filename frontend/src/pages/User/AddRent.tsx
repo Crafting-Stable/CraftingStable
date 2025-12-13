@@ -54,15 +54,13 @@ export default function AddRent(): React.ReactElement {
             const userStr = localStorage.getItem('user');
             if (!userStr) return null;
             return JSON.parse(userStr);
-        } catch (e) {
-            console.error('Error parsing stored user', e);
+        } catch {
             return null;
         }
     };
 
     const getJwt = () => {
-        const jwt = localStorage.getItem('jwt');
-        return jwt || undefined;
+        return localStorage.getItem('jwt') || undefined;
     };
 
     const signOutAndRedirect = (msg = "Sessão expirada. Por favor faça login novamente.") => {
@@ -72,36 +70,42 @@ export default function AddRent(): React.ReactElement {
         setTimeout(() => navigate('/loginPage'), 1500);
     };
 
-    const sendRequest = async (method: string, url: string, body?: any) => {
+    async function sendRequest<T = any>(method: string, url: string, body?: any): Promise<T> {
         const jwt = getJwt();
         if (!jwt) {
             signOutAndRedirect("Token de autenticação não encontrado. Por favor faça login novamente.");
             throw new Error('auth');
         }
 
-        const headers: Record<string,string> = {
+        const headers: Record<string, string> = {
             'Accept': 'application/json',
             'Authorization': `Bearer ${jwt}`
         };
-        if (body !== undefined) headers['Content-Type'] = 'application/json';
+
+        const hasBody = body !== undefined;
+        if (hasBody) headers['Content-Type'] = 'application/json';
 
         const res = await fetch(url, {
             method,
             headers,
-            body: body !== undefined ? JSON.stringify(body) : undefined
+            body: hasBody ? JSON.stringify(body) : undefined
         });
+
+        if (res.status === 401 || res.status === 403) {
+            signOutAndRedirect();
+            throw new Error('auth');
+        }
 
         if (!res.ok) {
             const text = await res.text().catch(() => res.statusText);
-            if (res.status === 401 || res.status === 403) {
-                signOutAndRedirect();
-                throw new Error('auth');
-            }
             throw new Error(text || res.statusText);
         }
 
-        return await res.json().catch(() => ({} as any));
-    };
+        // No content
+        if (res.status === 204) return {} as T;
+
+        return await res.json().catch(() => ({} as T));
+    }
 
     useEffect(() => {
         const stored = readStoredUser();
@@ -120,37 +124,35 @@ export default function AddRent(): React.ReactElement {
             }
 
             try {
-                const res = await fetch(apiUrl('/api/auth/me'), {
+                const data = await fetch(apiUrl('/api/auth/me'), {
                     headers: {
                         'Accept': 'application/json',
                         'Authorization': `Bearer ${jwt}`
                     }
+                }).then(r => {
+                    if (r.ok) return r.json().catch(() => null);
+                    if (r.status === 401 || r.status === 403) {
+                        localStorage.removeItem('jwt');
+                        localStorage.removeItem('user');
+                        setError("Sessão expirada. Por favor faça login novamente.");
+                        setTimeout(() => navigate('/loginPage'), 1500);
+                        return null;
+                    }
+                    return r.text().then(t => { setError(t || "Erro ao obter utilizador"); return null; }).catch(() => null);
                 });
 
-                if (res.ok) {
-                    const data = await res.json().catch(() => null);
-                    if (data) {
-                        const fetchedId = data?.id ?? data?.user_id ?? data?.userId ?? null;
-                        if (fetchedId) setCurrentUserId(Number(fetchedId));
-                        const userToStore = {
-                            username: data.username ?? '',
-                            email: data.email ?? '',
-                            role: data.role ?? '',
-                            id: fetchedId
-                        };
-                        localStorage.setItem('user', JSON.stringify(userToStore));
-                    }
-                } else if (res.status === 401 || res.status === 403) {
-                    localStorage.removeItem('jwt');
-                    localStorage.removeItem('user');
-                    setError("Sessão expirada. Por favor faça login novamente.");
-                    setTimeout(() => navigate('/loginPage'), 1500);
-                } else {
-                    const text = await res.text().catch(() => res.statusText);
-                    setError(text || "Erro ao obter utilizador");
+                if (data) {
+                    const fetchedId = data?.id ?? data?.user_id ?? data?.userId ?? null;
+                    if (fetchedId) setCurrentUserId(Number(fetchedId));
+                    const userToStore = {
+                        username: data.username ?? '',
+                        email: data.email ?? '',
+                        role: data.role ?? '',
+                        id: fetchedId
+                    };
+                    localStorage.setItem('user', JSON.stringify(userToStore));
                 }
-            } catch (e: any) {
-                console.error('fetchMe exception', e);
+            } catch {
                 setError("Erro ao obter utilizador");
             }
         };
@@ -159,23 +161,16 @@ export default function AddRent(): React.ReactElement {
     }, [navigate]);
 
     async function loadTools() {
-        if (!currentUserId) {
-            console.warn('loadTools: no currentUserId');
-            return;
-        }
-
+        if (!currentUserId) return;
         setLoading(true);
         setError(null);
         try {
             const url = apiUrl(`/api/tools?owner_id=${currentUserId}`);
-            const data: Tool[] = await sendRequest('GET', url).catch((err) => { throw err; });
+            const data = await sendRequest<Tool[]>('GET', url);
             const filtered = Array.isArray(data) ? data.filter(t => Number(t.ownerId) === Number(currentUserId)) : [];
             setTools(filtered);
         } catch (e: any) {
-            if (e.message !== 'auth') {
-                console.error('loadTools error', e);
-                setError(e.message || "Erro ao carregar ferramentas");
-            }
+            if (e.message !== 'auth') setError(e.message || "Erro ao carregar ferramentas");
         } finally {
             setLoading(false);
         }
@@ -246,20 +241,16 @@ export default function AddRent(): React.ReactElement {
         try {
             if (editingId) {
                 const url = apiUrl(`/api/tools/${editingId}`);
-                const updated = await sendRequest('PUT', url, payload) as Tool;
+                const updated = await sendRequest<Tool>('PUT', url, payload);
                 await handleUpdated(updated, editingId);
             } else {
                 const url = apiUrl('/api/tools');
-                const created = await sendRequest('POST', url, payload) as Tool;
+                const created = await sendRequest<Tool>('POST', url, payload);
                 await handleCreated(created);
             }
-
             clearForm();
         } catch (e: any) {
-            if (e.message !== 'auth') {
-                console.error('submit error', e);
-                setError(e.message || "Erro ao submeter");
-            }
+            if (e.message !== 'auth') setError(e.message || "Erro ao submeter");
         } finally {
             setLoading(false);
         }
@@ -298,10 +289,7 @@ export default function AddRent(): React.ReactElement {
             setTools(prev => prev.filter(t => t.id !== id));
             alert("Ferramenta apagada com sucesso!");
         } catch (e: any) {
-            if (e.message !== 'auth') {
-                console.error('delete error', e);
-                setError(e.message || "Erro ao apagar");
-            }
+            if (e.message !== 'auth') setError(e.message || "Erro ao apagar");
         } finally {
             setLoading(false);
         }

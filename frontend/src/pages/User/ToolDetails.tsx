@@ -1,4 +1,3 @@
-// typescript
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import bgImg from "../../assets/rust.jpg";
@@ -22,10 +21,10 @@ type Tool = {
 };
 
 type BookingCalendarProps = {
-    toolId: string;
-    pricePerDay: number;
-    inclusive?: boolean;
-    currency?: string;
+    readonly toolId: string;
+    readonly pricePerDay: number;
+    readonly inclusive?: boolean;
+    readonly currency?: string;
 };
 
 const API_PORT = '8081';
@@ -61,8 +60,7 @@ function daysBetween(startStr: string, endStr: string, inclusive: boolean) {
     const utcStart = Date.UTC(s.getFullYear(), s.getMonth(), s.getDate());
     const utcEnd = Date.UTC(e.getFullYear(), e.getMonth(), e.getDate());
     let diff = Math.floor((utcEnd - utcStart) / (24 * 60 * 60 * 1000));
-    if (inclusive) diff = diff + 1;
-    return diff > 0 ? diff : 0;
+    return Math.max(diff + (inclusive ? 1 : 0), 0);
 }
 
 function BookingCalendar({
@@ -404,7 +402,7 @@ export default function ToolDetails(): React.ReactElement {
                     category: data.type || data.category || "Outros",
                     pricePerDay: Number(data.dailyPrice ?? data.pricePerDay ?? 0),
                     depositAmount: Number(data.depositAmount ?? 0),
-                    ownerId: data.ownerId ?? data.owner_id ?? null,
+                    ownerId: data.ownerId ?? data.owner_id ?? undefined,
                     image: data.imageUrl || data.image || undefined,
                     description: data.description ?? undefined,
                     location: data.location ?? undefined
@@ -415,7 +413,7 @@ export default function ToolDetails(): React.ReactElement {
                 if (mounted) {
                     setTool(mapped);
                 }
-                const ownerName = await fetchOwnerName(mapped.ownerId as number | undefined);
+                const ownerName = await fetchOwnerName(mapped.ownerId);
                 if (mounted && ownerName) {
                     setTool(prev => prev ? { ...prev, ownerName } : prev);
                 }
