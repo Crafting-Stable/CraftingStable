@@ -10,22 +10,12 @@ type LoginForm = {
     remember: boolean;
 };
 
-type RegisterForm = {
-    name: string;
-    email: string;
-    password: string;
-    passwordConfirm: string;
-};
-
 export default function LoginPage(): React.ReactElement {
     const navigate = useNavigate();
     const [showRegisterForm, setShowRegisterForm] = useState(false);
     const [login, setLogin] = useState<LoginForm>({ email: '', password: '', remember: false });
-    const [reg, setReg] = useState<RegisterForm>({ name: '', email: '', password: '', passwordConfirm: '' });
     const [loginErrors, setLoginErrors] = useState<Record<string, string>>({});
-    const [regErrors, setRegErrors] = useState<Record<string, string>>({});
     const [showLoginPw, setShowLoginPw] = useState(false);
-    const [showRegPw, setShowRegPw] = useState(false);
 
     const emailValid = (e: string) => /\S+@\S+\.\S+/.test(e);
 
@@ -105,55 +95,6 @@ export default function LoginPage(): React.ReactElement {
         } catch (e) {
             console.error('💥 Login exception:', e);
             setLoginErrors({ general: 'Erro de rede' });
-        }
-    };
-
-    const handleRegisterSubmit = async (ev?: React.FormEvent) => {
-        ev?.preventDefault();
-        const errs: Record<string, string> = {};
-        if (!reg.name) errs.name = 'Nome obrigatório';
-        if (!reg.email) errs.email = 'Email obrigatório';
-        else if (!emailValid(reg.email)) errs.email = 'Email inválido';
-        if (!reg.password) errs.password = 'Password obrigatória';
-        else if (reg.password.length < 6) errs.password = 'Mínimo 6 caracteres';
-        if (reg.password !== reg.passwordConfirm) errs.passwordConfirm = 'Passwords não coincidem';
-        setRegErrors(errs);
-        if (Object.keys(errs).length > 0) return;
-
-        console.log('📝 Attempting registration with email:', reg.email);
-
-        try {
-            const res = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: reg.name,
-                    email: reg.email,
-                    password: reg.password,
-                    passwordConfirm: reg.passwordConfirm,
-                    role: 'CUSTOMER'
-                })
-            });
-
-            console.log('📥 Register response status:', res.status);
-
-            const data: any = await res.json().catch(() => ({}));
-            console.log('📦 Register response data:', data);
-
-            if (!res.ok) {
-                if (data.errors) setRegErrors(data.errors);
-                else if (data.message) setRegErrors({ general: data.message });
-                else setRegErrors({ general: 'Erro no registo' });
-                return;
-            }
-
-            console.log('✅ Registration successful');
-            alert('Registo efetuado. Por favor inicie sessão.');
-            setReg({ name: '', email: '', password: '', passwordConfirm: '' });
-            navigate('/loginPage');
-        } catch (e) {
-            console.error('💥 Register exception:', e);
-            setRegErrors({ general: 'Erro de rede' });
         }
     };
 
