@@ -245,7 +245,12 @@ export default function LoginPage(): React.ReactElement {
             </div>
 
             {showRegisterForm && (
-                <div className="modal-backdrop" onClick={() => setShowRegisterForm(false)}>
+                <button
+                    className="modal-backdrop"
+                    aria-label="Fechar formulário de registo"
+                    onClick={() => setShowRegisterForm(false)}
+                    style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
+                >
                     <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
                         <section className="card" style={{ maxWidth: 540, width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -258,64 +263,7 @@ export default function LoginPage(): React.ReactElement {
                                         <div className="muted">Rápido e fácil.</div>
                                     </div>
                                 </div>
-                                <button className="btn secondary" onClick={() => setShowRegisterForm(false)}>Fechar</button>
                             </div>
-
-                            <form onSubmit={handleRegisterSubmit}>
-                                <div style={{ marginBottom: 12 }}>
-                                    <label className="muted">Nome</label>
-                                    <input
-                                        value={reg.name}
-                                        onChange={(e) => setReg({ ...reg, name: e.target.value })}
-                                    />
-                                    {regErrors.name && <div className="error">{regErrors.name}</div>}
-                                </div>
-
-                                <div style={{ marginBottom: 12 }}>
-                                    <label className="muted">Email</label>
-                                    <input
-                                        type="email"
-                                        value={reg.email}
-                                        onChange={(e) => setReg({ ...reg, email: e.target.value })}
-                                    />
-                                    {regErrors.email && <div className="error">{regErrors.email}</div>}
-                                </div>
-
-                                <div style={{ marginBottom: 12 }}>
-                                    <label className="muted">Password</label>
-                                    <div style={{ display: 'flex', gap: 8 }}>
-                                        <input
-                                            type={showRegPw ? 'text' : 'password'}
-                                            value={reg.password}
-                                            onChange={(e) => setReg({ ...reg, password: e.target.value })}
-                                        />
-                                        <button
-                                            type="button"
-                                            className="btn secondary"
-                                            onClick={() => setShowRegPw((s) => !s)}
-                                        >
-                                            {showRegPw ? 'Ocultar' : 'Mostrar'}
-                                        </button>
-                                    </div>
-                                    {regErrors.password && <div className="error">{regErrors.password}</div>}
-                                </div>
-
-                                <div style={{ marginBottom: 12 }}>
-                                    <label className="muted">Confirmar Password</label>
-                                    <input
-                                        type={showRegPw ? 'text' : 'password'}
-                                        value={reg.passwordConfirm}
-                                        onChange={(e) => setReg({ ...reg, passwordConfirm: e.target.value })}
-                                    />
-                                    {regErrors.passwordConfirm && <div className="error">{regErrors.passwordConfirm}</div>}
-                                    {regErrors.general && <div className="error">{regErrors.general}</div>}
-                                </div>
-
-                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                                    <button type="button" className="btn secondary" onClick={() => setShowRegisterForm(false)}>Cancelar</button>
-                                    <button type="submit" className="btn">Criar conta</button>
-                                </div>
-                            </form>
                         </section>
                     </div>
                 </div>

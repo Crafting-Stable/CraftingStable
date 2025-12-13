@@ -192,7 +192,6 @@ describe('RentSuccessModal', () => {
             renderComponent();
             const dialog = screen.getByRole('dialog');
             const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
-            const stopPropagation = vi.spyOn(event, 'stopPropagation');
             
             dialog.dispatchEvent(event);
             // The event is stopped inside the dialog

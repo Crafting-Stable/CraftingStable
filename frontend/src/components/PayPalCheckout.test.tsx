@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import PayPalCheckout from './PayPalCheckout';
-import type { CaptureData, RentCreatedData } from './PayPalCheckout';
+import type { RentCreatedData } from './PayPalCheckout';
 
 // Mock PayPal SDK
 vi.mock('@paypal/react-paypal-js', () => ({
@@ -30,9 +30,6 @@ describe('PayPalCheckout', () => {
 
     // Mock fetch
     const mockFetch = vi.fn();
-
-    // Mock import.meta.env
-    const originalEnv = import.meta.env;
 
     beforeEach(() => {
         vi.clearAllMocks();

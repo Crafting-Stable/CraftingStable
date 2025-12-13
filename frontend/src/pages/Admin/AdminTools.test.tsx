@@ -16,7 +16,7 @@ vi.mock('./adminUtils', () => ({
 
 // Mock fetch
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+globalThis.fetch = mockFetch;
 
 // Mock navigate
 const mockNavigate = vi.fn();
@@ -30,8 +30,8 @@ vi.mock('react-router-dom', async () => {
 });
 
 // Mock window functions
-global.alert = vi.fn();
-global.confirm = vi.fn();
+globalThis.alert = vi.fn();
+globalThis.confirm = vi.fn();
 
 describe('AdminTools', () => {
   const mockTools = [
@@ -79,7 +79,7 @@ describe('AdminTools', () => {
     mockGetJwt.mockReturnValue('mock-jwt-token');
     mockApiUrl.mockImplementation((path) => `http://localhost:8080${path}`);
     mockHandleAuthError.mockReturnValue(false);
-    (global.confirm as Mock).mockReturnValue(true);
+    (globalThis.confirm as Mock).mockReturnValue(true);
   });
 
   const renderComponent = () => {
