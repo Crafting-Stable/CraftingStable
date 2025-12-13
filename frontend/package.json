@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
+    "test:coverage": "vitest --run --coverage",
     "preview": "vite preview",
     "cy:open": "cypress open",
     "cy:run": "cypress run",

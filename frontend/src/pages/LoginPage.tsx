@@ -55,7 +55,6 @@ export default function LoginPage(): React.ReactElement {
             if (data.token) {
                 console.log('🎫 JWT Token received:', data.token.substring(0, 30) + '...');
 
-                // 🔥 IMPORTANTE: Guarda o ID do utilizador
                 const userId = data.id || data.user_id || data.userId;
                 console.log('🆔 User ID from response:', userId);
 
