@@ -16,9 +16,18 @@ module.exports = defineConfig({
       runMode: 2,
       openMode: 0,
     },
+    setupNodeEvents(on, config) {
+      // Code coverage task
+      require('@cypress/code-coverage/task')(on, config);
+      return config;
+    },
   },
   env: {
     // API base URL for backend calls (via nginx proxy)
     apiUrl: 'http://localhost:80',
+    // Code coverage settings
+    codeCoverage: {
+      exclude: ['cypress/**/*.*', '**/*.test.tsx', '**/*.test.ts'],
+    },
   },
 });

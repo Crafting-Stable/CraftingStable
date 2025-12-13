@@ -1,3 +1,5 @@
+// Import code coverage support
+import '@cypress/code-coverage/support';
 import './commands';
 
 // Hide fetch/XHR requests from command log (cleaner test output)

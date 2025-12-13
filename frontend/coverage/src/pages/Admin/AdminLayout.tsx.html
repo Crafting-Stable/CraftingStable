@@ -3,15 +3,15 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for src/App.tsx</title>
+    <title>Code coverage report for src/pages/Admin/AdminLayout.tsx</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="../prettify.css" />
-    <link rel="stylesheet" href="../base.css" />
-    <link rel="shortcut icon" type="image/x-icon" href="../favicon.png" />
+    <link rel="stylesheet" href="../../../prettify.css" />
+    <link rel="stylesheet" href="../../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../../favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type='text/css'>
         .coverage-summary .sorter {
-            background-image: url(../sort-arrow-sprite.png);
+            background-image: url(../../../sort-arrow-sprite.png);
         }
     </style>
 </head>
@@ -19,7 +19,7 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">src</a> App.tsx</h1>
+        <h1><a href="../../../index.html">All files</a> / <a href="index.html">src/pages/Admin</a> AdminLayout.tsx</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
@@ -142,43 +142,43 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import React from "react";</span></span></span>
-<span class="cstat-no" title="statement not covered" >import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";</span>
-<span class="cstat-no" title="statement not covered" >import HomePage from "./pages/HomePage";</span>
-<span class="cstat-no" title="statement not covered" >import About from "./pages/About";</span>
-<span class="cstat-no" title="statement not covered" >import Catalog from "./pages/Catalog";</span>
-<span class="cstat-no" title="statement not covered" >import  LoginPage from "./pages/LoginPage";</span>
-<span class="cstat-no" title="statement not covered" >import  User from "./pages/UserDetailsPage";</span>
-<span class="cstat-no" title="statement not covered" >import ToolDetails from "./pages/User/ToolDetails";</span>
-<span class="cstat-no" title="statement not covered" >import AddRent from "./pages/User/AddRent";</span>
-<span class="cstat-no" title="statement not covered" >import  AdminDashboard from "./pages/Admin/AdminDashboard";</span>
-<span class="cstat-no" title="statement not covered" >import  AdminUsers from "./pages/Admin/AdminUsers";</span>
-<span class="cstat-no" title="statement not covered" >import  AdminTools from "./pages/Admin/AdminTools";</span>
-<span class="cstat-no" title="statement not covered" >import  AdminAnalytics from "./pages/Admin/AdminAnalytics";</span>
-<span class="cstat-no" title="statement not covered" >import PaymentSuccess from "./pages/Payment/PaymentSuccess";</span>
-<span class="cstat-no" title="statement not covered" >import PaymentCancel from "./pages/Payment/PaymentCancel";</span>
+<span class="cstat-no" title="statement not covered" >import { Link } from "react-router-dom";</span>
+<span class="cstat-no" title="statement not covered" >import { adminStyles } from "./adminStyles";</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >export default function App(): React.ReactElement {</span>
+<span class="cstat-no" title="statement not covered" >type AdminLayoutProps = {</span>
+<span class="cstat-no" title="statement not covered" >    title?: string;</span>
+<span class="cstat-no" title="statement not covered" >    active?: "dashboard" | "users" | "tools" | "analytics" | "home";</span>
+<span class="cstat-no" title="statement not covered" >    children: React.ReactNode;</span>
+<span class="cstat-no" title="statement not covered" >};</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >export default function AdminLayout({ title = "Admin", active = "dashboard", children }: AdminLayoutProps) {</span>
+<span class="cstat-no" title="statement not covered" >    const makeLink = (to: string, key: AdminLayoutProps["active"], label: string) =&gt; (</span>
+<span class="cstat-no" title="statement not covered" >        &lt;Link</span>
+<span class="cstat-no" title="statement not covered" >            to={to}</span>
+<span class="cstat-no" title="statement not covered" >            style={{</span>
+<span class="cstat-no" title="statement not covered" >                ...adminStyles.navLink,</span>
+<span class="cstat-no" title="statement not covered" >                ...(active === key ? adminStyles.navLinkActive : {}),</span>
+<span class="cstat-no" title="statement not covered" >            }}</span>
+<span class="cstat-no" title="statement not covered" >        &gt;</span>
+<span class="cstat-no" title="statement not covered" >            {label}</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/Link&gt;</span>
+<span class="cstat-no" title="statement not covered" >    );</span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >    return (</span>
-<span class="cstat-no" title="statement not covered" >        &lt;BrowserRouter&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;Routes&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;Route path="/" element={&lt;HomePage /&gt;} /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;Route path="/home" element={&lt;Navigate to="/" replace /&gt;} /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;Route path="/catalog" element={&lt;Catalog /&gt;} /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;Route path="/loginPage" element={&lt;LoginPage /&gt;} /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;Route path="/about" element={&lt;About /&gt;} /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;Route path="/user" element={&lt;User /&gt;} /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;Route path="/tools/:id" element={&lt;ToolDetails /&gt;} /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;Route path="/user/add-rent" element={&lt;AddRent /&gt;} /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;Route path="/admin" element={&lt;AdminDashboard /&gt;} /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;Route path="/admin/users" element={&lt;AdminUsers /&gt;} /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;Route path="/admin/tools" element={&lt;AdminTools /&gt;} /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;Route path="/admin/analytics" element={&lt;AdminAnalytics /&gt;} /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;Route path="/payment/success" element={&lt;PaymentSuccess /&gt;} /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;Route path="/payment/cancel" element={&lt;PaymentCancel /&gt;} /&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;div style={adminStyles.container}&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;header style={adminStyles.header}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;h1 style={adminStyles.title}&gt;{title}&lt;/h1&gt;</span>
+<span class="cstat-no" title="statement not covered" >                &lt;nav style={adminStyles.nav}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    {makeLink("/admin", "dashboard", "Dashboard")}</span>
+<span class="cstat-no" title="statement not covered" >                    {makeLink("/admin/users", "users", "Users")}</span>
+<span class="cstat-no" title="statement not covered" >                    {makeLink("/admin/tools", "tools", "Tools")}</span>
+<span class="cstat-no" title="statement not covered" >                    {makeLink("/admin/analytics", "analytics", "Analytics")}</span>
+<span class="cstat-no" title="statement not covered" >                    {makeLink("/", "home", "Home")}</span>
+<span class="cstat-no" title="statement not covered" >                &lt;/nav&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;/header&gt;</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >                &lt;Route path="*" element={&lt;Navigate to="/" replace /&gt;} /&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;/Routes&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;/BrowserRouter&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;main style={adminStyles.content}&gt;{children}&lt;/main&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >    );</span>
 <span class="cstat-no" title="statement not covered" >}</span></pre></td></tr></table></pre>
 
@@ -189,14 +189,14 @@
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
                 at 2025-12-13T17:28:36.580Z
             </div>
-        <script src="../prettify.js"></script>
+        <script src="../../../prettify.js"></script>
         <script>
             window.onload = function () {
                 prettyPrint();
             };
         </script>
-        <script src="../sorter.js"></script>
-        <script src="../block-navigation.js"></script>
+        <script src="../../../sorter.js"></script>
+        <script src="../../../block-navigation.js"></script>
     </body>
 </html>
     

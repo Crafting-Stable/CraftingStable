@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/337</span>
+                <span class='fraction'>0/333</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/337</span>
+                <span class='fraction'>0/333</span>
             </div>
         
             
@@ -396,15 +396,7 @@
 <a name='L331'></a><a href='#L331'>331</a>
 <a name='L332'></a><a href='#L332'>332</a>
 <a name='L333'></a><a href='#L333'>333</a>
-<a name='L334'></a><a href='#L334'>334</a>
-<a name='L335'></a><a href='#L335'>335</a>
-<a name='L336'></a><a href='#L336'>336</a>
-<a name='L337'></a><a href='#L337'>337</a>
-<a name='L338'></a><a href='#L338'>338</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<a name='L334'></a><a href='#L334'>334</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -740,7 +732,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import React, { useEffect, useState } from "react";<span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" ></span></span></span>
 <span class="cstat-no" title="statement not covered" >import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >// Props for existing rent payment (when rentId is already created)</span>
 <span class="cstat-no" title="statement not covered" >interface PayPalCheckoutWithRentProps {</span>
 <span class="cstat-no" title="statement not covered" >    rentId: number;</span>
 <span class="cstat-no" title="statement not covered" >    amount: string;</span>
@@ -751,7 +742,6 @@
 <span class="cstat-no" title="statement not covered" >    onCancel?: () =&gt; void;</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >// Props for new rent flow (rent created after payment)</span>
 <span class="cstat-no" title="statement not covered" >interface PayPalCheckoutNewRentProps {</span>
 <span class="cstat-no" title="statement not covered" >    toolId: number;</span>
 <span class="cstat-no" title="statement not covered" >    amount: string;</span>
@@ -802,17 +792,16 @@
 <span class="cstat-no" title="statement not covered" >const API_PORT = '8081';</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >function apiUrl(path: string): string {</span>
-<span class="cstat-no" title="statement not covered" >    const protocol = window.location.protocol;</span>
-<span class="cstat-no" title="statement not covered" >    const hostname = window.location.hostname;</span>
+<span class="cstat-no" title="statement not covered" >    const protocol = globalThis.location?.protocol ?? 'http:';</span>
+<span class="cstat-no" title="statement not covered" >    const hostname = globalThis.location?.hostname ?? 'localhost';</span>
 <span class="cstat-no" title="statement not covered" >    const normalized = path.startsWith('/') ? path : `/${path}`;</span>
 <span class="cstat-no" title="statement not covered" >    return `${protocol}//${hostname}:${API_PORT}${normalized}`;</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >function getJwt(): string | null {</span>
-<span class="cstat-no" title="statement not covered" >    return localStorage.getItem('jwt');</span>
+<span class="cstat-no" title="statement not covered" >    return globalThis.localStorage?.getItem('jwt') ?? null;</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >// Type guard to determine which props we have</span>
 <span class="cstat-no" title="statement not covered" >function isNewRentFlow(props: PayPalCheckoutProps): props is PayPalCheckoutNewRentProps {</span>
 <span class="cstat-no" title="statement not covered" >    return 'toolId' in props &amp;&amp; 'startDate' in props &amp;&amp; 'endDate' in props;</span>
 <span class="cstat-no" title="statement not covered" >}</span>
@@ -829,8 +818,6 @@
 <span class="cstat-no" title="statement not covered" >    const [clientId, setClientId] = useState&lt;string&gt;("");</span>
 <span class="cstat-no" title="statement not covered" >    const [loading, setLoading] = useState(true);</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    const isNewRent = isNewRentFlow(props);</span>
-<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >    useEffect(() =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >        const paypalClientId = import.meta.env.VITE_PAYPAL_CLIENT_ID || "YOUR_SANDBOX_CLIENT_ID";</span>
 <span class="cstat-no" title="statement not covered" >        setClientId(paypalClientId);</span>
@@ -845,8 +832,13 @@
 <span class="cstat-no" title="statement not covered" >        }</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >        try {</span>
-<span class="cstat-no" title="statement not covered" >            const rentIdValue = isNewRent ? 0 : (props as PayPalCheckoutWithRentProps).rentId;</span>
-<span class="cstat-no" title="statement not covered" >            </span>
+<span class="cstat-no" title="statement not covered" >            let rentIdValue: number;</span>
+<span class="cstat-no" title="statement not covered" >            if (isNewRentFlow(props)) {</span>
+<span class="cstat-no" title="statement not covered" >                rentIdValue = 0;</span>
+<span class="cstat-no" title="statement not covered" >            } else {</span>
+<span class="cstat-no" title="statement not covered" >                rentIdValue = props.rentId;</span>
+<span class="cstat-no" title="statement not covered" >            }</span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >            const params = new URLSearchParams({</span>
 <span class="cstat-no" title="statement not covered" >                rentId: rentIdValue.toString(),</span>
 <span class="cstat-no" title="statement not covered" >                amount: amount,</span>
@@ -887,11 +879,9 @@
 <span class="cstat-no" title="statement not covered" >        }</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >        try {</span>
-<span class="cstat-no" title="statement not covered" >            if (isNewRent) {</span>
-<span class="cstat-no" title="statement not covered" >                // NEW RENT FLOW: First capture payment, then create rent</span>
-<span class="cstat-no" title="statement not covered" >                const newRentProps = props as PayPalCheckoutNewRentProps;</span>
-<span class="cstat-no" title="statement not covered" >                </span>
-<span class="cstat-no" title="statement not covered" >                // Step 1: Capture the PayPal payment</span>
+<span class="cstat-no" title="statement not covered" >            if (isNewRentFlow(props)) {</span>
+<span class="cstat-no" title="statement not covered" >                const newRentProps = props;</span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >                const captureResponse = await fetch(</span>
 <span class="cstat-no" title="statement not covered" >                    apiUrl(`/api/paypal/orders/${data.orderID}/capture?rentId=0`),</span>
 <span class="cstat-no" title="statement not covered" >                    {</span>
@@ -909,15 +899,14 @@
 <span class="cstat-no" title="statement not covered" >                }</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >                const captureData: CaptureData = await captureResponse.json();</span>
-<span class="cstat-no" title="statement not covered" >                </span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >                if (captureData.status !== "COMPLETED") {</span>
-<span class="cstat-no" title="statement not covered" >                    onError(`Pagamento não concluído. Estado: ${captureData.status}`);</span>
+<span class="cstat-no" title="statement not covered" >                    newRentProps.onError(`Pagamento não concluído. Estado: ${captureData.status}`);</span>
 <span class="cstat-no" title="statement not covered" >                    return;</span>
 <span class="cstat-no" title="statement not covered" >                }</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >                console.log("✅ PayPal payment captured:", captureData);</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >                // Step 2: Create the rent in the backend with PENDING status</span>
 <span class="cstat-no" title="statement not covered" >                const startDateTime = `${newRentProps.startDate}T10:00:00`;</span>
 <span class="cstat-no" title="statement not covered" >                const endDateTime = `${newRentProps.endDate}T18:00:00`;</span>
 <span class="cstat-no" title="statement not covered" ></span>
@@ -944,8 +933,7 @@
 <span class="cstat-no" title="statement not covered" >                if (!rentResponse.ok) {</span>
 <span class="cstat-no" title="statement not covered" >                    const errorText = await rentResponse.text();</span>
 <span class="cstat-no" title="statement not covered" >                    console.error("❌ Rent creation failed after payment:", errorText);</span>
-<span class="cstat-no" title="statement not covered" >                    // Payment was successful but rent creation failed - inform user</span>
-<span class="cstat-no" title="statement not covered" >                    onError(`Pagamento processado mas erro ao criar reserva: ${errorText}. Contacte o suporte com o ID: ${captureData.orderId}`);</span>
+<span class="cstat-no" title="statement not covered" >                    newRentProps.onError(`Pagamento processado mas erro ao criar reserva: ${errorText}. Contacte o suporte com o ID: ${captureData.orderId}`);</span>
 <span class="cstat-no" title="statement not covered" >                    return;</span>
 <span class="cstat-no" title="statement not covered" >                }</span>
 <span class="cstat-no" title="statement not covered" ></span>
@@ -963,11 +951,10 @@
 <span class="cstat-no" title="statement not covered" >                    paypalCaptureId: captureData.captureId</span>
 <span class="cstat-no" title="statement not covered" >                };</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >                (newRentProps.onSuccess as (data: RentCreatedData) =&gt; void)(successData);</span>
+<span class="cstat-no" title="statement not covered" >                newRentProps.onSuccess(successData);</span>
 <span class="cstat-no" title="statement not covered" >            } else {</span>
-<span class="cstat-no" title="statement not covered" >                // EXISTING RENT FLOW: Just capture payment for existing rent</span>
-<span class="cstat-no" title="statement not covered" >                const existingRentProps = props as PayPalCheckoutWithRentProps;</span>
-<span class="cstat-no" title="statement not covered" >                </span>
+<span class="cstat-no" title="statement not covered" >                const existingRentProps = props;</span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >                const response = await fetch(</span>
 <span class="cstat-no" title="statement not covered" >                    apiUrl(`/api/paypal/orders/${data.orderID}/capture?rentId=${existingRentProps.rentId}`),</span>
 <span class="cstat-no" title="statement not covered" >                    {</span>
@@ -985,11 +972,11 @@
 <span class="cstat-no" title="statement not covered" >                }</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >                const captureData: CaptureData = await response.json();</span>
-<span class="cstat-no" title="statement not covered" >                </span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >                if (captureData.status === "COMPLETED") {</span>
-<span class="cstat-no" title="statement not covered" >                    (existingRentProps.onSuccess as (data: CaptureData) =&gt; void)(captureData);</span>
+<span class="cstat-no" title="statement not covered" >                    existingRentProps.onSuccess(captureData);</span>
 <span class="cstat-no" title="statement not covered" >                } else {</span>
-<span class="cstat-no" title="statement not covered" >                    onError(`Pagamento não concluído. Estado: ${captureData.status}`);</span>
+<span class="cstat-no" title="statement not covered" >                    existingRentProps.onError(`Pagamento não concluído. Estado: ${captureData.status}`);</span>
 <span class="cstat-no" title="statement not covered" >                }</span>
 <span class="cstat-no" title="statement not covered" >            }</span>
 <span class="cstat-no" title="statement not covered" >        } catch (error: any) {</span>
@@ -1042,14 +1029,15 @@
 <span class="cstat-no" title="statement not covered" >        );</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    const disabled = isNewRentFlow(props) ? (props.disabled ?? false) : false;</span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >    return (</span>
 <span class="cstat-no" title="statement not covered" >        &lt;PayPalScriptProvider</span>
 <span class="cstat-no" title="statement not covered" >            options={{</span>
 <span class="cstat-no" title="statement not covered" >                clientId: clientId,</span>
 <span class="cstat-no" title="statement not covered" >                currency: currency,</span>
 <span class="cstat-no" title="statement not covered" >                intent: "capture",</span>
-<span class="cstat-no" title="statement not covered" >                // Disable shipping to simplify checkout - no address needed for digital/service rentals</span>
-<span class="cstat-no" title="statement not covered" >                disableFunding: "credit,card",  // Optional: only show PayPal button (not card form)</span>
+<span class="cstat-no" title="statement not covered" >                disableFunding: "credit,card",</span>
 <span class="cstat-no" title="statement not covered" >            }}</span>
 <span class="cstat-no" title="statement not covered" >        &gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;div style={{ minHeight: 150 }}&gt;</span>
@@ -1065,7 +1053,7 @@
 <span class="cstat-no" title="statement not covered" >                    onApprove={onApprove}</span>
 <span class="cstat-no" title="statement not covered" >                    onCancel={handleCancel}</span>
 <span class="cstat-no" title="statement not covered" >                    onError={handleError}</span>
-<span class="cstat-no" title="statement not covered" >                    disabled={isNewRent ? (props.disabled ?? false) : false}</span>
+<span class="cstat-no" title="statement not covered" >                    disabled={disabled}</span>
 <span class="cstat-no" title="statement not covered" >                    forceReRender={[amount, currency]}</span>
 <span class="cstat-no" title="statement not covered" >                /&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;/div&gt;</span>
@@ -1081,7 +1069,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-12-12T12:36:39.911Z
+                at 2025-12-13T17:28:36.603Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

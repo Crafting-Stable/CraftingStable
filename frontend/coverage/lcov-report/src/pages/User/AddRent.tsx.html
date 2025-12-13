@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/562</span>
+                <span class='fraction'>0/561</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/562</span>
+                <span class='fraction'>0/561</span>
             </div>
         
             
@@ -624,9 +624,7 @@
 <a name='L559'></a><a href='#L559'>559</a>
 <a name='L560'></a><a href='#L560'>560</a>
 <a name='L561'></a><a href='#L561'>561</a>
-<a name='L562'></a><a href='#L562'>562</a>
-<a name='L563'></a><a href='#L563'>563</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<a name='L562'></a><a href='#L562'>562</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1216,10 +1214,78 @@
 <span class="cstat-no" title="statement not covered" >const API_PORT = '8081';</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >function apiUrl(path: string) {</span>
-<span class="cstat-no" title="statement not covered" >    const protocol = window.location.protocol;</span>
-<span class="cstat-no" title="statement not covered" >    const hostname = window.location.hostname;</span>
+<span class="cstat-no" title="statement not covered" >    const protocol = globalThis.location.protocol;</span>
+<span class="cstat-no" title="statement not covered" >    const hostname = globalThis.location.hostname;</span>
 <span class="cstat-no" title="statement not covered" >    const normalized = path.startsWith('/') ? path : `/${path}`;</span>
 <span class="cstat-no" title="statement not covered" >    return `${protocol}//${hostname}:${API_PORT}${normalized}`;</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >/* Helpers moved to module scope to avoid deep nesting inside the component */</span>
+<span class="cstat-no" title="statement not covered" >function readStoredUser() {</span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+<span class="cstat-no" title="statement not covered" >        const userStr = localStorage.getItem('user');</span>
+<span class="cstat-no" title="statement not covered" >        if (!userStr) return null;</span>
+<span class="cstat-no" title="statement not covered" >        return JSON.parse(userStr);</span>
+<span class="cstat-no" title="statement not covered" >    } catch {</span>
+<span class="cstat-no" title="statement not covered" >        return null;</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >function getJwt() {</span>
+<span class="cstat-no" title="statement not covered" >    return localStorage.getItem('jwt') || undefined;</span>
+<span class="cstat-no" title="statement not covered" >}</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >async function fetchAndStoreMe(</span>
+<span class="cstat-no" title="statement not covered" >    navigate: (path: string) =&gt; void,</span>
+<span class="cstat-no" title="statement not covered" >    setError: (s: string | null) =&gt; void,</span>
+<span class="cstat-no" title="statement not covered" >    setCurrentUserId: (id: number | null) =&gt; void</span>
+<span class="cstat-no" title="statement not covered" >) {</span>
+<span class="cstat-no" title="statement not covered" >    const jwt = getJwt();</span>
+<span class="cstat-no" title="statement not covered" >    if (!jwt) {</span>
+<span class="cstat-no" title="statement not covered" >        setError("Utilizador não identificado. Por favor faça login novamente.");</span>
+<span class="cstat-no" title="statement not covered" >        setTimeout(() =&gt; navigate('/loginPage'), 1500);</span>
+<span class="cstat-no" title="statement not covered" >        return null;</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+<span class="cstat-no" title="statement not covered" >        const res = await fetch(apiUrl('/api/auth/me'), {</span>
+<span class="cstat-no" title="statement not covered" >            headers: {</span>
+<span class="cstat-no" title="statement not covered" >                'Accept': 'application/json',</span>
+<span class="cstat-no" title="statement not covered" >                'Authorization': `Bearer ${jwt}`</span>
+<span class="cstat-no" title="statement not covered" >            }</span>
+<span class="cstat-no" title="statement not covered" >        });</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        if (res.status === 401 || res.status === 403) {</span>
+<span class="cstat-no" title="statement not covered" >            localStorage.removeItem('jwt');</span>
+<span class="cstat-no" title="statement not covered" >            localStorage.removeItem('user');</span>
+<span class="cstat-no" title="statement not covered" >            setError("Sessão expirada. Por favor faça login novamente.");</span>
+<span class="cstat-no" title="statement not covered" >            setTimeout(() =&gt; navigate('/loginPage'), 1500);</span>
+<span class="cstat-no" title="statement not covered" >            return null;</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        if (!res.ok) {</span>
+<span class="cstat-no" title="statement not covered" >            const text = await res.text().catch(() =&gt; res.statusText);</span>
+<span class="cstat-no" title="statement not covered" >            setError(text || "Erro ao obter utilizador");</span>
+<span class="cstat-no" title="statement not covered" >            return null;</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        const data = await res.json().catch(() =&gt; null);</span>
+<span class="cstat-no" title="statement not covered" >        if (data) {</span>
+<span class="cstat-no" title="statement not covered" >            const fetchedId = data?.id ?? data?.user_id ?? data?.userId ?? null;</span>
+<span class="cstat-no" title="statement not covered" >            if (fetchedId) setCurrentUserId(Number(fetchedId));</span>
+<span class="cstat-no" title="statement not covered" >            const userToStore = {</span>
+<span class="cstat-no" title="statement not covered" >                username: data.username ?? '',</span>
+<span class="cstat-no" title="statement not covered" >                email: data.email ?? '',</span>
+<span class="cstat-no" title="statement not covered" >                role: data.role ?? '',</span>
+<span class="cstat-no" title="statement not covered" >                id: fetchedId</span>
+<span class="cstat-no" title="statement not covered" >            };</span>
+<span class="cstat-no" title="statement not covered" >            localStorage.setItem('user', JSON.stringify(userToStore));</span>
+<span class="cstat-no" title="statement not covered" >            return data;</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" >    } catch {</span>
+<span class="cstat-no" title="statement not covered" >        setError("Erro ao obter utilizador");</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >    return null;</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >export default function AddRent(): React.ReactElement {</span>
@@ -1238,21 +1304,48 @@
 <span class="cstat-no" title="statement not covered" >    const [location, setLocation] = useState("");</span>
 <span class="cstat-no" title="statement not covered" >    const [imageUrl, setImageUrl] = useState("");</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    const readStoredUser = () =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >        try {</span>
-<span class="cstat-no" title="statement not covered" >            const userStr = localStorage.getItem('user');</span>
-<span class="cstat-no" title="statement not covered" >            if (!userStr) return null;</span>
-<span class="cstat-no" title="statement not covered" >            return JSON.parse(userStr);</span>
-<span class="cstat-no" title="statement not covered" >        } catch (e) {</span>
-<span class="cstat-no" title="statement not covered" >            console.error('Error parsing stored user', e);</span>
-<span class="cstat-no" title="statement not covered" >            return null;</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" >    };</span>
+<span class="cstat-no" title="statement not covered" >    function signOutAndRedirect(msg = "Sessão expirada. Por favor faça login novamente.") {</span>
+<span class="cstat-no" title="statement not covered" >        localStorage.removeItem('jwt');</span>
+<span class="cstat-no" title="statement not covered" >        localStorage.removeItem('user');</span>
+<span class="cstat-no" title="statement not covered" >        setError(msg);</span>
+<span class="cstat-no" title="statement not covered" >        setTimeout(() =&gt; navigate('/loginPage'), 1500);</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    const getJwt = () =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >        const jwt = localStorage.getItem('jwt');</span>
-<span class="cstat-no" title="statement not covered" >        return jwt || undefined;</span>
-<span class="cstat-no" title="statement not covered" >    };</span>
+<span class="cstat-no" title="statement not covered" >    async function sendRequest&lt;T = any&gt;(method: string, url: string, body?: any): Promise&lt;T&gt; {</span>
+<span class="cstat-no" title="statement not covered" >        const jwt = getJwt();</span>
+<span class="cstat-no" title="statement not covered" >        if (!jwt) {</span>
+<span class="cstat-no" title="statement not covered" >            signOutAndRedirect("Token de autenticação não encontrado. Por favor faça login novamente.");</span>
+<span class="cstat-no" title="statement not covered" >            throw new Error('auth');</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        const headers: Record&lt;string, string&gt; = {</span>
+<span class="cstat-no" title="statement not covered" >            'Accept': 'application/json',</span>
+<span class="cstat-no" title="statement not covered" >            'Authorization': `Bearer ${jwt}`</span>
+<span class="cstat-no" title="statement not covered" >        };</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        const hasBody = body !== undefined;</span>
+<span class="cstat-no" title="statement not covered" >        if (hasBody) headers['Content-Type'] = 'application/json';</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        const res = await fetch(url, {</span>
+<span class="cstat-no" title="statement not covered" >            method,</span>
+<span class="cstat-no" title="statement not covered" >            headers,</span>
+<span class="cstat-no" title="statement not covered" >            body: hasBody ? JSON.stringify(body) : undefined</span>
+<span class="cstat-no" title="statement not covered" >        });</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        if (res.status === 401 || res.status === 403) {</span>
+<span class="cstat-no" title="statement not covered" >            signOutAndRedirect();</span>
+<span class="cstat-no" title="statement not covered" >            throw new Error('auth');</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        if (!res.ok) {</span>
+<span class="cstat-no" title="statement not covered" >            const text = await res.text().catch(() =&gt; res.statusText);</span>
+<span class="cstat-no" title="statement not covered" >            throw new Error(text || res.statusText);</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        if (res.status === 204) return {} as T;</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        return await res.json().catch(() =&gt; ({} as T));</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >    useEffect(() =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >        const stored = readStoredUser();</span>
@@ -1261,87 +1354,21 @@
 <span class="cstat-no" title="statement not covered" >            setCurrentUserId(Number(id));</span>
 <span class="cstat-no" title="statement not covered" >            return;</span>
 <span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        const fetchMe = async () =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >            const jwt = getJwt();</span>
-<span class="cstat-no" title="statement not covered" >            if (!jwt) {</span>
-<span class="cstat-no" title="statement not covered" >                setError("Utilizador não identificado. Por favor faça login novamente.");</span>
-<span class="cstat-no" title="statement not covered" >                setTimeout(() =&gt; navigate('/loginPage'), 1500);</span>
-<span class="cstat-no" title="statement not covered" >                return;</span>
-<span class="cstat-no" title="statement not covered" >            }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >            try {</span>
-<span class="cstat-no" title="statement not covered" >                const res = await fetch(apiUrl('/api/auth/me'), {</span>
-<span class="cstat-no" title="statement not covered" >                    headers: {</span>
-<span class="cstat-no" title="statement not covered" >                        'Accept': 'application/json',</span>
-<span class="cstat-no" title="statement not covered" >                        'Authorization': `Bearer ${jwt}`</span>
-<span class="cstat-no" title="statement not covered" >                    }</span>
-<span class="cstat-no" title="statement not covered" >                });</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >                if (res.ok) {</span>
-<span class="cstat-no" title="statement not covered" >                    const data = await res.json().catch(() =&gt; null);</span>
-<span class="cstat-no" title="statement not covered" >                    if (data) {</span>
-<span class="cstat-no" title="statement not covered" >                        const fetchedId = data?.id ?? data?.user_id ?? data?.userId ?? null;</span>
-<span class="cstat-no" title="statement not covered" >                        if (fetchedId) {</span>
-<span class="cstat-no" title="statement not covered" >                            setCurrentUserId(Number(fetchedId));</span>
-<span class="cstat-no" title="statement not covered" >                        }</span>
-<span class="cstat-no" title="statement not covered" >                        const userToStore = {</span>
-<span class="cstat-no" title="statement not covered" >                            username: data.username ?? '',</span>
-<span class="cstat-no" title="statement not covered" >                            email: data.email ?? '',</span>
-<span class="cstat-no" title="statement not covered" >                            role: data.role ?? '',</span>
-<span class="cstat-no" title="statement not covered" >                            id: fetchedId</span>
-<span class="cstat-no" title="statement not covered" >                        };</span>
-<span class="cstat-no" title="statement not covered" >                        localStorage.setItem('user', JSON.stringify(userToStore));</span>
-<span class="cstat-no" title="statement not covered" >                    }</span>
-<span class="cstat-no" title="statement not covered" >                } else if (res.status === 401 || res.status === 403) {</span>
-<span class="cstat-no" title="statement not covered" >                    localStorage.removeItem('jwt');</span>
-<span class="cstat-no" title="statement not covered" >                    localStorage.removeItem('user');</span>
-<span class="cstat-no" title="statement not covered" >                    setError("Sessão expirada. Por favor faça login novamente.");</span>
-<span class="cstat-no" title="statement not covered" >                    setTimeout(() =&gt; navigate('/loginPage'), 1500);</span>
-<span class="cstat-no" title="statement not covered" >                } else {</span>
-<span class="cstat-no" title="statement not covered" >                    const text = await res.text().catch(() =&gt; res.statusText);</span>
-<span class="cstat-no" title="statement not covered" >                    setError(text || "Erro ao obter utilizador");</span>
-<span class="cstat-no" title="statement not covered" >                }</span>
-<span class="cstat-no" title="statement not covered" >            } catch (e: any) {</span>
-<span class="cstat-no" title="statement not covered" >                console.error('fetchMe exception', e);</span>
-<span class="cstat-no" title="statement not covered" >                setError("Erro ao obter utilizador");</span>
-<span class="cstat-no" title="statement not covered" >            }</span>
-<span class="cstat-no" title="statement not covered" >        };</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        fetchMe();</span>
+<span class="cstat-no" title="statement not covered" >        // chama a função movida para o escopo do módulo</span>
+<span class="cstat-no" title="statement not covered" >        fetchAndStoreMe(navigate, setError, setCurrentUserId);</span>
 <span class="cstat-no" title="statement not covered" >    }, [navigate]);</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >    async function loadTools() {</span>
-<span class="cstat-no" title="statement not covered" >        if (!currentUserId) {</span>
-<span class="cstat-no" title="statement not covered" >            console.warn('loadTools: no currentUserId');</span>
-<span class="cstat-no" title="statement not covered" >            return;</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        if (!currentUserId) return;</span>
 <span class="cstat-no" title="statement not covered" >        setLoading(true);</span>
 <span class="cstat-no" title="statement not covered" >        setError(null);</span>
-<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >        try {</span>
-<span class="cstat-no" title="statement not covered" >            const jwt = getJwt();</span>
 <span class="cstat-no" title="statement not covered" >            const url = apiUrl(`/api/tools?owner_id=${currentUserId}`);</span>
-<span class="cstat-no" title="statement not covered" >            const res = await fetch(url, {</span>
-<span class="cstat-no" title="statement not covered" >                headers: {</span>
-<span class="cstat-no" title="statement not covered" >                    'Accept': 'application/json',</span>
-<span class="cstat-no" title="statement not covered" >                    ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})</span>
-<span class="cstat-no" title="statement not covered" >                }</span>
-<span class="cstat-no" title="statement not covered" >            });</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >            if (!res.ok) {</span>
-<span class="cstat-no" title="statement not covered" >                const text = await res.text().catch(() =&gt; res.statusText);</span>
-<span class="cstat-no" title="statement not covered" >                throw new Error(text || res.statusText);</span>
-<span class="cstat-no" title="statement not covered" >            }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >            const data: Tool[] = await res.json().catch(() =&gt; []);</span>
-<span class="cstat-no" title="statement not covered" >            // Filtrar adicionalmente no frontend por segurança</span>
-<span class="cstat-no" title="statement not covered" >            const filtered = data.filter(t =&gt; Number(t.ownerId) === Number(currentUserId));</span>
+<span class="cstat-no" title="statement not covered" >            const data = await sendRequest&lt;Tool[]&gt;('GET', url);</span>
+<span class="cstat-no" title="statement not covered" >            const filtered = Array.isArray(data) ? data.filter(t =&gt; Number(t.ownerId) === Number(currentUserId)) : [];</span>
 <span class="cstat-no" title="statement not covered" >            setTools(filtered);</span>
 <span class="cstat-no" title="statement not covered" >        } catch (e: any) {</span>
-<span class="cstat-no" title="statement not covered" >            console.error('loadTools error', e);</span>
-<span class="cstat-no" title="statement not covered" >            setError(e.message || "Erro ao carregar ferramentas");</span>
+<span class="cstat-no" title="statement not covered" >            if (e.message !== 'auth') setError(e.message || "Erro ao carregar ferramentas");</span>
 <span class="cstat-no" title="statement not covered" >        } finally {</span>
 <span class="cstat-no" title="statement not covered" >            setLoading(false);</span>
 <span class="cstat-no" title="statement not covered" >        }</span>
@@ -1361,6 +1388,24 @@
 <span class="cstat-no" title="statement not covered" >        setLocation("");</span>
 <span class="cstat-no" title="statement not covered" >        setImageUrl("");</span>
 <span class="cstat-no" title="statement not covered" >        setError(null);</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    async function handleCreated(created: Tool) {</span>
+<span class="cstat-no" title="statement not covered" >        if (Number(created.ownerId) === Number(currentUserId)) {</span>
+<span class="cstat-no" title="statement not covered" >            setTools(prev =&gt; [...prev, created]);</span>
+<span class="cstat-no" title="statement not covered" >        } else {</span>
+<span class="cstat-no" title="statement not covered" >            await loadTools();</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" >        alert("Ferramenta criada com sucesso!");</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    async function handleUpdated(updated: Tool, id: number | null) {</span>
+<span class="cstat-no" title="statement not covered" >        if (Number(updated.ownerId) === Number(currentUserId)) {</span>
+<span class="cstat-no" title="statement not covered" >            setTools(prev =&gt; prev.map(t =&gt; (t.id === id ? updated : t)));</span>
+<span class="cstat-no" title="statement not covered" >        } else {</span>
+<span class="cstat-no" title="statement not covered" >            await loadTools();</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" >        alert("Ferramenta atualizada com sucesso!");</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >    async function handleSubmit(e?: React.FormEvent) {</span>
@@ -1392,78 +1437,18 @@
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >        setLoading(true);</span>
 <span class="cstat-no" title="statement not covered" >        try {</span>
-<span class="cstat-no" title="statement not covered" >            const jwt = getJwt();</span>
-<span class="cstat-no" title="statement not covered" >            if (!jwt) throw new Error('Token de autenticação não encontrado');</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >            const headers: Record&lt;string,string&gt; = {</span>
-<span class="cstat-no" title="statement not covered" >                'Content-Type': 'application/json',</span>
-<span class="cstat-no" title="statement not covered" >                'Accept': 'application/json',</span>
-<span class="cstat-no" title="statement not covered" >                'Authorization': `Bearer ${jwt}`</span>
-<span class="cstat-no" title="statement not covered" >            };</span>
-<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >            if (editingId) {</span>
 <span class="cstat-no" title="statement not covered" >                const url = apiUrl(`/api/tools/${editingId}`);</span>
-<span class="cstat-no" title="statement not covered" >                const res = await fetch(url, {</span>
-<span class="cstat-no" title="statement not covered" >                    method: 'PUT',</span>
-<span class="cstat-no" title="statement not covered" >                    headers,</span>
-<span class="cstat-no" title="statement not covered" >                    body: JSON.stringify(payload)</span>
-<span class="cstat-no" title="statement not covered" >                });</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >                if (!res.ok) {</span>
-<span class="cstat-no" title="statement not covered" >                    const text = await res.text().catch(() =&gt; res.statusText);</span>
-<span class="cstat-no" title="statement not covered" >                    if (res.status === 401 || res.status === 403) {</span>
-<span class="cstat-no" title="statement not covered" >                        localStorage.removeItem('jwt');</span>
-<span class="cstat-no" title="statement not covered" >                        localStorage.removeItem('user');</span>
-<span class="cstat-no" title="statement not covered" >                        setError("Sessão expirada. Por favor faça login novamente.");</span>
-<span class="cstat-no" title="statement not covered" >                        setTimeout(() =&gt; navigate('/loginPage'), 1500);</span>
-<span class="cstat-no" title="statement not covered" >                        return;</span>
-<span class="cstat-no" title="statement not covered" >                    }</span>
-<span class="cstat-no" title="statement not covered" >                    throw new Error(text || res.statusText);</span>
-<span class="cstat-no" title="statement not covered" >                }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >                const updated: Tool = await res.json().catch(() =&gt; ({} as Tool));</span>
-<span class="cstat-no" title="statement not covered" >                // Garantir UI consistente (só atualizamos se o owner corresponder)</span>
-<span class="cstat-no" title="statement not covered" >                if (Number(updated.ownerId) === Number(currentUserId)) {</span>
-<span class="cstat-no" title="statement not covered" >                    setTools(prev =&gt; prev.map(t =&gt; (t.id === editingId ? updated : t)));</span>
-<span class="cstat-no" title="statement not covered" >                } else {</span>
-<span class="cstat-no" title="statement not covered" >                    // Caso backend altere owner (não deveria) forcamos reload</span>
-<span class="cstat-no" title="statement not covered" >                    await loadTools();</span>
-<span class="cstat-no" title="statement not covered" >                }</span>
-<span class="cstat-no" title="statement not covered" >                alert("Ferramenta atualizada com sucesso!");</span>
+<span class="cstat-no" title="statement not covered" >                const updated = await sendRequest&lt;Tool&gt;('PUT', url, payload);</span>
+<span class="cstat-no" title="statement not covered" >                await handleUpdated(updated, editingId);</span>
 <span class="cstat-no" title="statement not covered" >            } else {</span>
 <span class="cstat-no" title="statement not covered" >                const url = apiUrl('/api/tools');</span>
-<span class="cstat-no" title="statement not covered" >                const res = await fetch(url, {</span>
-<span class="cstat-no" title="statement not covered" >                    method: 'POST',</span>
-<span class="cstat-no" title="statement not covered" >                    headers,</span>
-<span class="cstat-no" title="statement not covered" >                    body: JSON.stringify(payload)</span>
-<span class="cstat-no" title="statement not covered" >                });</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >                if (!res.ok) {</span>
-<span class="cstat-no" title="statement not covered" >                    const text = await res.text().catch(() =&gt; res.statusText);</span>
-<span class="cstat-no" title="statement not covered" >                    if (res.status === 401 || res.status === 403) {</span>
-<span class="cstat-no" title="statement not covered" >                        localStorage.removeItem('jwt');</span>
-<span class="cstat-no" title="statement not covered" >                        localStorage.removeItem('user');</span>
-<span class="cstat-no" title="statement not covered" >                        setError("Sessão expirada. Por favor faça login novamente.");</span>
-<span class="cstat-no" title="statement not covered" >                        setTimeout(() =&gt; navigate('/loginPage'), 1500);</span>
-<span class="cstat-no" title="statement not covered" >                        return;</span>
-<span class="cstat-no" title="statement not covered" >                    }</span>
-<span class="cstat-no" title="statement not covered" >                    throw new Error(text || res.statusText);</span>
-<span class="cstat-no" title="statement not covered" >                }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >                const created: Tool = await res.json().catch(() =&gt; ({} as Tool));</span>
-<span class="cstat-no" title="statement not covered" >                // Só adicionar se pertencer ao user atual</span>
-<span class="cstat-no" title="statement not covered" >                if (Number(created.ownerId) === Number(currentUserId)) {</span>
-<span class="cstat-no" title="statement not covered" >                    setTools(prev =&gt; [...prev, created]);</span>
-<span class="cstat-no" title="statement not covered" >                } else {</span>
-<span class="cstat-no" title="statement not covered" >                    await loadTools();</span>
-<span class="cstat-no" title="statement not covered" >                }</span>
-<span class="cstat-no" title="statement not covered" >                alert("Ferramenta criada com sucesso!");</span>
+<span class="cstat-no" title="statement not covered" >                const created = await sendRequest&lt;Tool&gt;('POST', url, payload);</span>
+<span class="cstat-no" title="statement not covered" >                await handleCreated(created);</span>
 <span class="cstat-no" title="statement not covered" >            }</span>
-<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >            clearForm();</span>
 <span class="cstat-no" title="statement not covered" >        } catch (e: any) {</span>
-<span class="cstat-no" title="statement not covered" >            console.error('submit error', e);</span>
-<span class="cstat-no" title="statement not covered" >            setError(e.message || "Erro ao submeter");</span>
+<span class="cstat-no" title="statement not covered" >            if (e.message !== 'auth') setError(e.message || "Erro ao submeter");</span>
 <span class="cstat-no" title="statement not covered" >        } finally {</span>
 <span class="cstat-no" title="statement not covered" >            setLoading(false);</span>
 <span class="cstat-no" title="statement not covered" >        }</span>
@@ -1482,7 +1467,7 @@
 <span class="cstat-no" title="statement not covered" >        setDescription(tool.description);</span>
 <span class="cstat-no" title="statement not covered" >        setLocation(tool.location);</span>
 <span class="cstat-no" title="statement not covered" >        setImageUrl(tool.imageUrl || "");</span>
-<span class="cstat-no" title="statement not covered" >        window.scrollTo({ top: 0, behavior: "smooth" });</span>
+<span class="cstat-no" title="statement not covered" >        globalThis.scrollTo({ top: 0, behavior: "smooth" });</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >    async function onDelete(id?: number) {</span>
@@ -1497,36 +1482,86 @@
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >        setLoading(true);</span>
 <span class="cstat-no" title="statement not covered" >        try {</span>
-<span class="cstat-no" title="statement not covered" >            const jwt = getJwt();</span>
 <span class="cstat-no" title="statement not covered" >            const url = apiUrl(`/api/tools/${id}`);</span>
-<span class="cstat-no" title="statement not covered" >            const res = await fetch(url, {</span>
-<span class="cstat-no" title="statement not covered" >                method: 'DELETE',</span>
-<span class="cstat-no" title="statement not covered" >                headers: {</span>
-<span class="cstat-no" title="statement not covered" >                    'Accept': 'application/json',</span>
-<span class="cstat-no" title="statement not covered" >                    ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})</span>
-<span class="cstat-no" title="statement not covered" >                }</span>
-<span class="cstat-no" title="statement not covered" >            });</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >            if (!res.ok) {</span>
-<span class="cstat-no" title="statement not covered" >                const text = await res.text().catch(() =&gt; res.statusText);</span>
-<span class="cstat-no" title="statement not covered" >                if (res.status === 401 || res.status === 403) {</span>
-<span class="cstat-no" title="statement not covered" >                    localStorage.removeItem('jwt');</span>
-<span class="cstat-no" title="statement not covered" >                    localStorage.removeItem('user');</span>
-<span class="cstat-no" title="statement not covered" >                    setError("Sessão expirada. Por favor faça login novamente.");</span>
-<span class="cstat-no" title="statement not covered" >                    setTimeout(() =&gt; navigate('/loginPage'), 1500);</span>
-<span class="cstat-no" title="statement not covered" >                    return;</span>
-<span class="cstat-no" title="statement not covered" >                }</span>
-<span class="cstat-no" title="statement not covered" >                throw new Error(text || res.statusText);</span>
-<span class="cstat-no" title="statement not covered" >            }</span>
-<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >            await sendRequest('DELETE', url);</span>
 <span class="cstat-no" title="statement not covered" >            setTools(prev =&gt; prev.filter(t =&gt; t.id !== id));</span>
 <span class="cstat-no" title="statement not covered" >            alert("Ferramenta apagada com sucesso!");</span>
 <span class="cstat-no" title="statement not covered" >        } catch (e: any) {</span>
-<span class="cstat-no" title="statement not covered" >            console.error('delete error', e);</span>
-<span class="cstat-no" title="statement not covered" >            setError(e.message || "Erro ao apagar");</span>
+<span class="cstat-no" title="statement not covered" >            if (e.message !== 'auth') setError(e.message || "Erro ao apagar");</span>
 <span class="cstat-no" title="statement not covered" >        } finally {</span>
 <span class="cstat-no" title="statement not covered" >            setLoading(false);</span>
 <span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    /* pequenas funções auxiliares para reduzir arrow functions inline */</span>
+<span class="cstat-no" title="statement not covered" >    function handleImageError(e: React.SyntheticEvent&lt;HTMLImageElement&gt;) {</span>
+<span class="cstat-no" title="statement not covered" >        e.currentTarget.style.display = 'none';</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    function renderTool(tool: Tool) {</span>
+<span class="cstat-no" title="statement not covered" >        return (</span>
+<span class="cstat-no" title="statement not covered" >            &lt;div</span>
+<span class="cstat-no" title="statement not covered" >                key={tool.id}</span>
+<span class="cstat-no" title="statement not covered" >                style={{</span>
+<span class="cstat-no" title="statement not covered" >                    padding: 16,</span>
+<span class="cstat-no" title="statement not covered" >                    background: "rgba(255,255,255,0.03)",</span>
+<span class="cstat-no" title="statement not covered" >                    borderRadius: 8,</span>
+<span class="cstat-no" title="statement not covered" >                    border: "1px solid rgba(255,255,255,0.1)",</span>
+<span class="cstat-no" title="statement not covered" >                    display: "flex",</span>
+<span class="cstat-no" title="statement not covered" >                    gap: 16,</span>
+<span class="cstat-no" title="statement not covered" >                    alignItems: "flex-start"</span>
+<span class="cstat-no" title="statement not covered" >                }}</span>
+<span class="cstat-no" title="statement not covered" >            &gt;</span>
+<span class="cstat-no" title="statement not covered" >                {tool.imageUrl &amp;&amp; (</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;img</span>
+<span class="cstat-no" title="statement not covered" >                        src={tool.imageUrl}</span>
+<span class="cstat-no" title="statement not covered" >                        alt={tool.name}</span>
+<span class="cstat-no" title="statement not covered" >                        style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}</span>
+<span class="cstat-no" title="statement not covered" >                        onError={handleImageError}</span>
+<span class="cstat-no" title="statement not covered" >                    /&gt;</span>
+<span class="cstat-no" title="statement not covered" >                )}</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >                &lt;div style={{ flex: 1 }}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                        &lt;div&gt;</span>
+<span class="cstat-no" title="statement not covered" >                            &lt;h4 style={{ margin: 0, fontSize: 18 }}&gt;{tool.name}&lt;/h4&gt;</span>
+<span class="cstat-no" title="statement not covered" >                            &lt;div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 4 }}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                                {tool.type} • {tool.location}</span>
+<span class="cstat-no" title="statement not covered" >                            &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >                        &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >                        &lt;div style={{ textAlign: "right" }}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                            &lt;div style={{ fontSize: 20, fontWeight: 700, color: "#f8b749" }}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                                €{(tool.dailyPrice ?? 0).toFixed(2)}/dia</span>
+<span class="cstat-no" title="statement not covered" >                            &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >                            &lt;div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                                Caução: €{(tool.depositAmount ?? 0).toFixed(2)}</span>
+<span class="cstat-no" title="statement not covered" >                            &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >                        &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >                    &lt;p style={{ margin: "8px 0", fontSize: 14, color: "rgba(255,255,255,0.8)", lineHeight: 1.5 }}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                        {tool.description}</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >                    {Number(tool.ownerId) === Number(currentUserId) ? (</span>
+<span class="cstat-no" title="statement not covered" >                        &lt;div style={{ display: "flex", gap: 8, marginTop: 12 }}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                            &lt;button</span>
+<span class="cstat-no" title="statement not covered" >                                onClick={() =&gt; onEdit(tool)}</span>
+<span class="cstat-no" title="statement not covered" >                                style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}</span>
+<span class="cstat-no" title="statement not covered" >                            &gt;</span>
+<span class="cstat-no" title="statement not covered" >                                Editar</span>
+<span class="cstat-no" title="statement not covered" >                            &lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                            &lt;button</span>
+<span class="cstat-no" title="statement not covered" >                                onClick={() =&gt; onDelete(tool.id)}</span>
+<span class="cstat-no" title="statement not covered" >                                style={{ background: "#ff5c5c", border: "none", color: "#fff", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}</span>
+<span class="cstat-no" title="statement not covered" >                            &gt;</span>
+<span class="cstat-no" title="statement not covered" >                                Apagar</span>
+<span class="cstat-no" title="statement not covered" >                            &lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >                        &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    ) : null}</span>
+<span class="cstat-no" title="statement not covered" >                &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >        );</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >    const inputStyle: React.CSSProperties = {</span>
@@ -1538,6 +1573,35 @@
 <span class="cstat-no" title="statement not covered" >        width: "100%",</span>
 <span class="cstat-no" title="statement not covered" >        fontSize: 14</span>
 <span class="cstat-no" title="statement not covered" >    };</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    let submitLabel = "Criar Anúncio";</span>
+<span class="cstat-no" title="statement not covered" >    if (loading) {</span>
+<span class="cstat-no" title="statement not covered" >        submitLabel = "A processar...";</span>
+<span class="cstat-no" title="statement not covered" >    } else if (editingId) {</span>
+<span class="cstat-no" title="statement not covered" >        submitLabel = "Atualizar";</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    const toolsContent: React.ReactNode = (() =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >        if (loading) {</span>
+<span class="cstat-no" title="statement not covered" >            return (</span>
+<span class="cstat-no" title="statement not covered" >                &lt;div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.5)" }}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    A carregar...</span>
+<span class="cstat-no" title="statement not covered" >                &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >            );</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" >        if (tools.length === 0) {</span>
+<span class="cstat-no" title="statement not covered" >            return (</span>
+<span class="cstat-no" title="statement not covered" >                &lt;div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.5)" }}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    Ainda não criou nenhum anúncio. Crie o seu primeiro anúncio acima!</span>
+<span class="cstat-no" title="statement not covered" >                &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >            );</span>
+<span class="cstat-no" title="statement not covered" >        }</span>
+<span class="cstat-no" title="statement not covered" >        return (</span>
+<span class="cstat-no" title="statement not covered" >            &lt;div style={{ display: "grid", gap: 16 }}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                {tools.map(renderTool)}</span>
+<span class="cstat-no" title="statement not covered" >            &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >        );</span>
+<span class="cstat-no" title="statement not covered" >    })();</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >    return (</span>
 <span class="cstat-no" title="statement not covered" >        &lt;div style={pageStyle}&gt;</span>
@@ -1564,8 +1628,9 @@
 <span class="cstat-no" title="statement not covered" >                    &lt;div&gt;</span>
 <span class="cstat-no" title="statement not covered" >                        &lt;div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 16 }}&gt;</span>
 <span class="cstat-no" title="statement not covered" >                            &lt;div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                &lt;label style={{ display: "block", marginBottom: 6, fontSize: 14 }}&gt;Nome da Ferramenta *&lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >                                &lt;label htmlFor="name-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}&gt;Nome da Ferramenta *&lt;/label&gt;</span>
 <span class="cstat-no" title="statement not covered" >                                &lt;input</span>
+<span class="cstat-no" title="statement not covered" >                                    id="name-input"</span>
 <span class="cstat-no" title="statement not covered" >                                    placeholder="Ex: Berbequim Bosch"</span>
 <span class="cstat-no" title="statement not covered" >                                    value={name}</span>
 <span class="cstat-no" title="statement not covered" >                                    onChange={(e) =&gt; setName(e.target.value)}</span>
@@ -1574,8 +1639,9 @@
 <span class="cstat-no" title="statement not covered" >                            &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >                            &lt;div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                &lt;label style={{ display: "block", marginBottom: 6, fontSize: 14 }}&gt;Categoria *&lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >                                &lt;label htmlFor="type-select" style={{ display: "block", marginBottom: 6, fontSize: 14 }}&gt;Categoria *&lt;/label&gt;</span>
 <span class="cstat-no" title="statement not covered" >                                &lt;select</span>
+<span class="cstat-no" title="statement not covered" >                                    id="type-select"</span>
 <span class="cstat-no" title="statement not covered" >                                    value={type}</span>
 <span class="cstat-no" title="statement not covered" >                                    onChange={(e) =&gt; setType(e.target.value)}</span>
 <span class="cstat-no" title="statement not covered" >                                    style={{ ...inputStyle, cursor: "pointer" }}</span>
@@ -1589,8 +1655,9 @@
 <span class="cstat-no" title="statement not covered" >                            &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >                            &lt;div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                &lt;label style={{ display: "block", marginBottom: 6, fontSize: 14 }}&gt;Preço por Dia (€) *&lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >                                &lt;label htmlFor="dailyPrice-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}&gt;Preço por Dia (€) *&lt;/label&gt;</span>
 <span class="cstat-no" title="statement not covered" >                                &lt;input</span>
+<span class="cstat-no" title="statement not covered" >                                    id="dailyPrice-input"</span>
 <span class="cstat-no" title="statement not covered" >                                    type="number"</span>
 <span class="cstat-no" title="statement not covered" >                                    step="0.01"</span>
 <span class="cstat-no" title="statement not covered" >                                    placeholder="10.00"</span>
@@ -1601,8 +1668,9 @@
 <span class="cstat-no" title="statement not covered" >                            &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >                            &lt;div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                &lt;label style={{ display: "block", marginBottom: 6, fontSize: 14 }}&gt;Caução (€) *&lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >                                &lt;label htmlFor="depositAmount-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}&gt;Caução (€) *&lt;/label&gt;</span>
 <span class="cstat-no" title="statement not covered" >                                &lt;input</span>
+<span class="cstat-no" title="statement not covered" >                                    id="depositAmount-input"</span>
 <span class="cstat-no" title="statement not covered" >                                    type="number"</span>
 <span class="cstat-no" title="statement not covered" >                                    step="0.01"</span>
 <span class="cstat-no" title="statement not covered" >                                    placeholder="50.00"</span>
@@ -1613,8 +1681,9 @@
 <span class="cstat-no" title="statement not covered" >                            &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >                            &lt;div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                &lt;label style={{ display: "block", marginBottom: 6, fontSize: 14 }}&gt;Localização *&lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >                                &lt;label htmlFor="location-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}&gt;Localização *&lt;/label&gt;</span>
 <span class="cstat-no" title="statement not covered" >                                &lt;input</span>
+<span class="cstat-no" title="statement not covered" >                                    id="location-input"</span>
 <span class="cstat-no" title="statement not covered" >                                    placeholder="Ex: Lisboa, Coimbra"</span>
 <span class="cstat-no" title="statement not covered" >                                    value={location}</span>
 <span class="cstat-no" title="statement not covered" >                                    onChange={(e) =&gt; setLocation(e.target.value)}</span>
@@ -1623,8 +1692,9 @@
 <span class="cstat-no" title="statement not covered" >                            &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >                            &lt;div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                &lt;label style={{ display: "block", marginBottom: 6, fontSize: 14 }}&gt;URL da Imagem&lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >                                &lt;label htmlFor="imageUrl-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}&gt;URL da Imagem&lt;/label&gt;</span>
 <span class="cstat-no" title="statement not covered" >                                &lt;input</span>
+<span class="cstat-no" title="statement not covered" >                                    id="imageUrl-input"</span>
 <span class="cstat-no" title="statement not covered" >                                    placeholder="https://exemplo.com/imagem.jpg"</span>
 <span class="cstat-no" title="statement not covered" >                                    value={imageUrl}</span>
 <span class="cstat-no" title="statement not covered" >                                    onChange={(e) =&gt; setImageUrl(e.target.value)}</span>
@@ -1634,8 +1704,9 @@
 <span class="cstat-no" title="statement not covered" >                        &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >                        &lt;div style={{ marginBottom: 16 }}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                            &lt;label style={{ display: "block", marginBottom: 6, fontSize: 14 }}&gt;Descrição *&lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >                            &lt;label htmlFor="description-textarea" style={{ display: "block", marginBottom: 6, fontSize: 14 }}&gt;Descrição *&lt;/label&gt;</span>
 <span class="cstat-no" title="statement not covered" >                            &lt;textarea</span>
+<span class="cstat-no" title="statement not covered" >                                id="description-textarea"</span>
 <span class="cstat-no" title="statement not covered" >                                placeholder="Descreva a ferramenta, estado, características..."</span>
 <span class="cstat-no" title="statement not covered" >                                value={description}</span>
 <span class="cstat-no" title="statement not covered" >                                onChange={(e) =&gt; setDescription(e.target.value)}</span>
@@ -1658,7 +1729,7 @@
 <span class="cstat-no" title="statement not covered" >                                disabled={loading}</span>
 <span class="cstat-no" title="statement not covered" >                                style={{ background: "#f8b749", color: "#111", padding: "10px 24px", borderRadius: 6, fontWeight: 700, border: "none", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1 }}</span>
 <span class="cstat-no" title="statement not covered" >                            &gt;</span>
-<span class="cstat-no" title="statement not covered" >                                {loading ? "A processar..." : editingId ? "Atualizar" : "Criar Anúncio"}</span>
+<span class="cstat-no" title="statement not covered" >                                {submitLabel}</span>
 <span class="cstat-no" title="statement not covered" >                            &lt;/button&gt;</span>
 <span class="cstat-no" title="statement not covered" >                        &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >                    &lt;/div&gt;</span>
@@ -1669,81 +1740,7 @@
 <span class="cstat-no" title="statement not covered" >                &lt;section style={{ background: "rgba(0,0,0,0.6)", padding: 24, borderRadius: 10 }}&gt;</span>
 <span class="cstat-no" title="statement not covered" >                    &lt;h3 style={{ margin: "0 0 16px 0" }}&gt;Meus Anúncios ({tools.length})&lt;/h3&gt;</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >                    {loading ? (</span>
-<span class="cstat-no" title="statement not covered" >                        &lt;div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.5)" }}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                            A carregar...</span>
-<span class="cstat-no" title="statement not covered" >                        &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                    ) : tools.length === 0 ? (</span>
-<span class="cstat-no" title="statement not covered" >                        &lt;div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.5)" }}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                            Ainda não criou nenhum anúncio. Crie o seu primeiro anúncio acima!</span>
-<span class="cstat-no" title="statement not covered" >                        &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                    ) : (</span>
-<span class="cstat-no" title="statement not covered" >                        &lt;div style={{ display: "grid", gap: 16 }}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                            {tools.map(tool =&gt; (</span>
-<span class="cstat-no" title="statement not covered" >                                &lt;div</span>
-<span class="cstat-no" title="statement not covered" >                                    key={tool.id}</span>
-<span class="cstat-no" title="statement not covered" >                                    style={{</span>
-<span class="cstat-no" title="statement not covered" >                                        padding: 16,</span>
-<span class="cstat-no" title="statement not covered" >                                        background: "rgba(255,255,255,0.03)",</span>
-<span class="cstat-no" title="statement not covered" >                                        borderRadius: 8,</span>
-<span class="cstat-no" title="statement not covered" >                                        border: "1px solid rgba(255,255,255,0.1)",</span>
-<span class="cstat-no" title="statement not covered" >                                        display: "flex",</span>
-<span class="cstat-no" title="statement not covered" >                                        gap: 16,</span>
-<span class="cstat-no" title="statement not covered" >                                        alignItems: "flex-start"</span>
-<span class="cstat-no" title="statement not covered" >                                    }}</span>
-<span class="cstat-no" title="statement not covered" >                                &gt;</span>
-<span class="cstat-no" title="statement not covered" >                                    {tool.imageUrl &amp;&amp; (</span>
-<span class="cstat-no" title="statement not covered" >                                        &lt;img</span>
-<span class="cstat-no" title="statement not covered" >                                            src={tool.imageUrl}</span>
-<span class="cstat-no" title="statement not covered" >                                            alt={tool.name}</span>
-<span class="cstat-no" title="statement not covered" >                                            style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}</span>
-<span class="cstat-no" title="statement not covered" >                                            onError={(e) =&gt; { e.currentTarget.style.display = 'none'; }}</span>
-<span class="cstat-no" title="statement not covered" >                                        /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                    )}</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >                                    &lt;div style={{ flex: 1 }}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                        &lt;div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                            &lt;div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                                &lt;h4 style={{ margin: 0, fontSize: 18 }}&gt;{tool.name}&lt;/h4&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                                &lt;div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 4 }}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                                    {tool.type} • {tool.location}</span>
-<span class="cstat-no" title="statement not covered" >                                                &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                            &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                            &lt;div style={{ textAlign: "right" }}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                                &lt;div style={{ fontSize: 20, fontWeight: 700, color: "#f8b749" }}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                                    €{(tool.dailyPrice ?? 0).toFixed(2)}/dia</span>
-<span class="cstat-no" title="statement not covered" >                                                &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                                &lt;div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                                    Caução: €{(tool.depositAmount ?? 0).toFixed(2)}</span>
-<span class="cstat-no" title="statement not covered" >                                                &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                            &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                        &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >                                        &lt;p style={{ margin: "8px 0", fontSize: 14, color: "rgba(255,255,255,0.8)", lineHeight: 1.5 }}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                            {tool.description}</span>
-<span class="cstat-no" title="statement not covered" >                                        &lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >                                        {Number(tool.ownerId) === Number(currentUserId) ? (</span>
-<span class="cstat-no" title="statement not covered" >                                            &lt;div style={{ display: "flex", gap: 8, marginTop: 12 }}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                                &lt;button</span>
-<span class="cstat-no" title="statement not covered" >                                                    onClick={() =&gt; onEdit(tool)}</span>
-<span class="cstat-no" title="statement not covered" >                                                    style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}</span>
-<span class="cstat-no" title="statement not covered" >                                                &gt;</span>
-<span class="cstat-no" title="statement not covered" >                                                    Editar</span>
-<span class="cstat-no" title="statement not covered" >                                                &lt;/button&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                                &lt;button</span>
-<span class="cstat-no" title="statement not covered" >                                                    onClick={() =&gt; onDelete(tool.id)}</span>
-<span class="cstat-no" title="statement not covered" >                                                    style={{ background: "#ff5c5c", border: "none", color: "#fff", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}</span>
-<span class="cstat-no" title="statement not covered" >                                                &gt;</span>
-<span class="cstat-no" title="statement not covered" >                                                    Apagar</span>
-<span class="cstat-no" title="statement not covered" >                                                &lt;/button&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                            &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                        ) : null}</span>
-<span class="cstat-no" title="statement not covered" >                                    &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                                &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                            ))}</span>
-<span class="cstat-no" title="statement not covered" >                        &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                    )}</span>
+<span class="cstat-no" title="statement not covered" >                    {toolsContent}</span>
 <span class="cstat-no" title="statement not covered" >                &lt;/section&gt;</span>
 <span class="cstat-no" title="statement not covered" >            &lt;/main&gt;</span>
 <span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
@@ -1756,7 +1753,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-12-12T12:36:39.911Z
+                at 2025-12-13T17:28:36.603Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>
