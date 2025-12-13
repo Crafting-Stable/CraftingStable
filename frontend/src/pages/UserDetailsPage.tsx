@@ -18,6 +18,7 @@ interface Tool {
     id: number;
     name: string;
     ownerId: number;
+    status: string;
 }
 
 const API_PORT = '8081';
@@ -34,8 +35,15 @@ const STATUS_STYLES: Record<string, { background: string; color: string }> = {
     APPROVED: { background: '#d1fae5', color: '#065f46' },
     REJECTED: { background: '#fee2e2', color: '#991b1b' },
     ACTIVE: { background: '#dbeafe', color: '#1e40af' },
-    COMPLETED: { background: '#f3f4f6', color: '#374151' },
-    CANCELLED: { background: '#f3f4f6', color: '#374151' }
+    FINISHED: { background: '#f3f4f6', color: '#374151' },
+    CANCELED: { background: '#f3f4f6', color: '#374151' }
+};
+
+const TOOL_STATUS_STYLES: Record<string, { background: string; color: string; label: string }> = {
+    AVAILABLE: { background: '#d1fae5', color: '#065f46', label: '✅ Disponível' },
+    RENTED: { background: '#dbeafe', color: '#1e40af', label: '📦 Alugado' },
+    UNDER_MAINTENANCE: { background: '#fef3c7', color: '#92400e', label: '🔧 Manutenção' },
+    INACTIVE: { background: '#fee2e2', color: '#991b1b', label: '⛔ Inativo' }
 };
 
 function getStatusStyles(status: string) {
@@ -44,14 +52,18 @@ function getStatusStyles(status: string) {
 
 function getStatusLabel(status: string) {
     const labels: Record<string, string> = {
-        PENDING: '⏳ Pendente',
+        PENDING: '⏳ Pendente Aprovação',
         APPROVED: '✅ Aprovado',
         REJECTED: '❌ Rejeitado',
         ACTIVE: '🚀 Ativo',
-        COMPLETED: '✔️ Concluído',
-        CANCELLED: '🚫 Cancelado'
+        FINISHED: '✔️ Concluído',
+        CANCELED: '🚫 Cancelado'
     };
     return labels[status] ?? status;
+}
+
+function getToolStatusInfo(status: string) {
+    return TOOL_STATUS_STYLES[status] ?? { background: '#f3f4f6', color: '#374151', label: status };
 }
 
 interface HeaderProps {
@@ -75,15 +87,19 @@ const Header: React.FC<HeaderProps> = ({ onBack, onLogout }) => (
 interface RentItemProps {
     rent: Rent;
     tools: Map<number, Tool>;
+    userId?: number;
+    onCancel?: (rentId: number) => void;
 }
 
-const RentItem: React.FC<RentItemProps> = ({ rent, tools }) => {
+const RentItem: React.FC<RentItemProps> = ({ rent, tools, userId, onCancel }) => {
     const { background, color } = getStatusStyles(rent.status);
     const statusLabel = getStatusLabel(rent.status);
+    const canCancel = userId && rent.userId === userId && (rent.status === 'PENDING' || rent.status === 'APPROVED');
+
     return (
         <div key={rent.id} style={{ border: '1px solid #e5e5e5', borderRadius: 8, padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                <div>
+                <div style={{ flex: 1 }}>
                     <h3 style={{ margin: '0 0 8px 0' }}>
                         {tools.get(rent.toolId)?.name || `Ferramenta #${rent.toolId}`}
                     </h3>
@@ -96,39 +112,66 @@ const RentItem: React.FC<RentItemProps> = ({ rent, tools }) => {
                         </p>
                     )}
                 </div>
-                <span style={{
-                    padding: '6px 14px',
-                    borderRadius: 16,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    background,
-                    color
-                }}>
-                    {statusLabel}
-                </span>
+
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+                    <span style={{
+                        padding: '6px 14px',
+                        borderRadius: 16,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background,
+                        color
+                    }}>
+                        {statusLabel}
+                    </span>
+
+                    {canCancel && onCancel && (
+                        <button
+                            onClick={() => onCancel(rent.id)}
+                            style={{
+                                padding: '6px 12px',
+                                border: 'none',
+                                borderRadius: 6,
+                                background: '#ef4444',
+                                color: '#fff',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                transition: 'background 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = '#dc2626'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = '#ef4444'}
+                        >
+                            🚫 Cancelar
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );
 };
 
-type TabKey = 'profile' | 'myRents' | 'pending';
+type TabKey = 'profile' | 'myRents' | 'pending' | 'myTools';
 
 interface TabsProps {
     activeTab: TabKey;
     onTabChange: (tab: TabKey) => void;
     myRentsCount: number;
     pendingRentsCount: number;
+    myToolsCount: number;
 }
 
-const Tabs: React.FC<TabsProps> = ({ activeTab, onTabChange, myRentsCount, pendingRentsCount }) => (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#fff', padding: 8, borderRadius: 8 }}>
+const Tabs: React.FC<TabsProps> = ({ activeTab, onTabChange, myRentsCount, pendingRentsCount, myToolsCount }) => (
+    <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#fff', padding: 8, borderRadius: 8, flexWrap: 'wrap' }}>
         {[
             { key: 'profile' as const, label: '👤 Perfil' },
             { key: 'myRents' as const, label: `📦 Minhas Reservas (${myRentsCount})` },
-            { key: 'pending' as const, label: `⏳ Pendentes (${pendingRentsCount})` }
+            { key: 'pending' as const, label: `⏳ Pendentes (${pendingRentsCount})` },
+            { key: 'myTools' as const, label: `🛠️ Minhas Ferramentas (${myToolsCount})` }
         ].map((t) => {
             const active = activeTab === t.key;
             return (
@@ -137,6 +180,7 @@ const Tabs: React.FC<TabsProps> = ({ activeTab, onTabChange, myRentsCount, pendi
                     onClick={() => onTabChange(t.key)}
                     style={{
                         flex: 1,
+                        minWidth: 150,
                         padding: '12px 20px',
                         border: 'none',
                         borderRadius: 6,
@@ -185,19 +229,43 @@ interface MyRentsViewProps {
     myRents: Rent[];
     tools: Map<number, Tool>;
     loadingRents: boolean;
+    userId?: number;
+    onCancel?: (rentId: number) => void;
 }
 
-const MyRentsView: React.FC<MyRentsViewProps> = ({ myRents, tools, loadingRents }) => {
+const MyRentsView: React.FC<MyRentsViewProps> = ({ myRents, tools, loadingRents, userId, onCancel }) => {
     let content;
 
     if (loadingRents) {
         content = <p>A carregar reservas...</p>;
     } else if (myRents.length === 0) {
-        content = <p style={{ color: '#666' }}>Ainda não tem reservas.</p>;
+        content = (
+            <div style={{
+                background: '#f3f4f6',
+                padding: 20,
+                borderRadius: 8,
+                marginTop: 20,
+                textAlign: 'center',
+                color: '#6b7280'
+            }}>
+                <p style={{ fontSize: 16, margin: 0 }}>📭 Ainda não tem reservas</p>
+                <p style={{ fontSize: 13, marginTop: 8, color: '#9ca3af' }}>
+                    Quando reservar uma ferramenta, ela aparecerá aqui.
+                </p>
+            </div>
+        );
     } else {
         content = (
             <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
-                {myRents.map(r => <RentItem key={r.id} rent={r} tools={tools} />)}
+                {myRents.map(r => (
+                    <RentItem
+                        key={r.id}
+                        rent={r}
+                        tools={tools}
+                        userId={userId}
+                        onCancel={onCancel}
+                    />
+                ))}
             </div>
         );
     }
@@ -205,6 +273,10 @@ const MyRentsView: React.FC<MyRentsViewProps> = ({ myRents, tools, loadingRents 
     return (
         <div style={{ background: '#fff', padding: 28, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
             <h2>Minhas Reservas</h2>
+            <p style={{ color: '#6b7280', fontSize: 14, marginTop: 8 }}>
+                🔔 <strong>Importante:</strong> Reservas ficam <span style={{ color: '#92400e', fontWeight: 600 }}>PENDENTES</span> até
+                o proprietário da ferramenta aprovar. Você será notificado quando houver uma atualização.
+            </p>
             {content}
         </div>
     );
@@ -313,7 +385,135 @@ const PendingView: React.FC<PendingViewProps> = ({ pendingRents, tools, loadingR
         <div style={{ background: '#fff', padding: 28, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
             <h2 style={{ color: '#1f2937' }}>Reservas Pendentes nas Suas Ferramentas</h2>
             <p style={{ color: '#6b7280', fontSize: 14, marginTop: 8 }}>
-                Aqui aparecem reservas que outros utilizadores fizeram nas suas ferramentas e aguardam aprovação.
+                ⚠️ Ao aprovar, a ferramenta será marcada como <strong>ALUGADA</strong> e não poderá aceitar novas reservas até o fim do período.
+            </p>
+            {content}
+        </div>
+    );
+};
+
+interface ToolItemProps {
+    tool: Tool;
+    onUpdateStatus: (toolId: number, newStatus: string) => void;
+}
+
+const ToolItem: React.FC<ToolItemProps> = ({ tool, onUpdateStatus }) => {
+    const statusInfo = getToolStatusInfo(tool.status);
+    const [isChanging, setIsChanging] = useState(false);
+
+    const availableStatuses = ['AVAILABLE', 'UNDER_MAINTENANCE', 'INACTIVE'];
+    const canChange = tool.status !== 'RENTED';
+
+    const handleStatusChange = async (newStatus: string) => {
+        if (!canChange) {
+            alert('⚠️ Não pode alterar o status enquanto a ferramenta está alugada');
+            return;
+        }
+
+        const confirmChange = window.confirm(
+            `Tem certeza que deseja alterar o status para ${getToolStatusInfo(newStatus).label}?`
+        );
+
+        if (!confirmChange) return;
+
+        setIsChanging(true);
+        await onUpdateStatus(tool.id, newStatus);
+        setIsChanging(false);
+    };
+
+    return (
+        <div style={{ border: '1px solid #e5e5e5', borderRadius: 8, padding: 16, background: '#fff' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 16 }}>
+                <div style={{ flex: 1 }}>
+                    <h3 style={{ margin: '0 0 8px 0' }}>{tool.name}</h3>
+                    <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>ID: #{tool.id}</p>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 200 }}>
+                    <span style={{
+                        padding: '6px 14px',
+                        borderRadius: 16,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        textAlign: 'center',
+                        background: statusInfo.background,
+                        color: statusInfo.color
+                    }}>
+                        {statusInfo.label}
+                    </span>
+
+                    {canChange && (
+                        <select
+                            value={tool.status}
+                            onChange={(e) => handleStatusChange(e.target.value)}
+                            disabled={isChanging}
+                            style={{
+                                padding: '6px 12px',
+                                border: '1px solid #e5e5e5',
+                                borderRadius: 6,
+                                fontSize: 13,
+                                cursor: 'pointer',
+                                background: '#fff'
+                            }}
+                        >
+                            {availableStatuses.map(status => (
+                                <option key={status} value={status}>
+                                    {getToolStatusInfo(status).label}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+
+                    {!canChange && (
+                        <p style={{ fontSize: 11, color: '#999', margin: 0, textAlign: 'center' }}>
+                            🔒 Alugada - não pode alterar
+                        </p>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+interface MyToolsViewProps {
+    myTools: Tool[];
+    loading: boolean;
+    onUpdateStatus: (toolId: number, newStatus: string) => void;
+}
+
+const MyToolsView: React.FC<MyToolsViewProps> = ({ myTools, loading, onUpdateStatus }) => {
+    let content;
+
+    if (loading) {
+        content = <p>A carregar ferramentas...</p>;
+    } else if (myTools.length === 0) {
+        content = (
+            <div style={{
+                background: '#f3f4f6',
+                padding: 20,
+                borderRadius: 8,
+                marginTop: 20,
+                textAlign: 'center',
+                color: '#6b7280'
+            }}>
+                <p style={{ fontSize: 16, margin: 0 }}>🔧 Ainda não tem ferramentas cadastradas</p>
+            </div>
+        );
+    } else {
+        content = (
+            <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
+                {myTools.map(t => (
+                    <ToolItem key={t.id} tool={t} onUpdateStatus={onUpdateStatus} />
+                ))}
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ background: '#fff', padding: 28, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+            <h2>Minhas Ferramentas</h2>
+            <p style={{ color: '#6b7280', fontSize: 14, marginTop: 8 }}>
+                Gerencie o status das suas ferramentas. Ferramentas <strong>ALUGADAS</strong> não podem ter o status alterado até o fim da reserva.
             </p>
             {content}
         </div>
@@ -326,9 +526,10 @@ export default function UserDetailsPage(): React.ReactElement {
     const [loading, setLoading] = useState(true);
     const [myRents, setMyRents] = useState<Rent[]>([]);
     const [pendingRents, setPendingRents] = useState<Rent[]>([]);
+    const [myTools, setMyTools] = useState<Tool[]>([]);
     const [tools, setTools] = useState<Map<number, Tool>>(new Map());
     const [loadingRents, setLoadingRents] = useState(false);
-    const [activeTab, setActiveTab] = useState<'profile' | 'myRents' | 'pending'>('profile');
+    const [activeTab, setActiveTab] = useState<TabKey>('profile');
 
     const loadUserAndRents = useCallback(async () => {
         setLoading(true);
@@ -403,6 +604,8 @@ export default function UserDetailsPage(): React.ReactElement {
 
             const myToolIds = new Set(allTools.filter(t => t.ownerId === userId).map(t => t.id));
             setPendingRents(allRents.filter(r => myToolIds.has(r.toolId) && r.status === 'PENDING'));
+
+            setMyTools(allTools.filter(t => t.ownerId === userId));
         } catch (error) {
             console.error('Failed to load rents:', error);
         } finally {
@@ -431,19 +634,57 @@ export default function UserDetailsPage(): React.ReactElement {
 
     const handleApprove = useCallback((rentId: number) => {
         if (!user?.id) return;
-        const baseUrl = apiUrl(`/api/rents/${rentId}/approve`);
-        const url = `${baseUrl}?ownerId=${user.id}`;
-        performPutAction(url, 'Reserva aprovada com sucesso!', user.id);
+        const url = apiUrl(`/api/rents/${rentId}/approve?ownerId=${user.id}`);
+        performPutAction(url, '✅ Reserva aprovada! A ferramenta foi marcada como ALUGADA.', user.id);
     }, [user, performPutAction]);
 
     const handleReject = useCallback((rentId: number) => {
         if (!user?.id) return;
         const reason = prompt('Motivo da rejeição (opcional):') ?? '';
-        const baseUrl = apiUrl(`/api/rents/${rentId}/reject`);
         const messageParam = reason ? `&message=${encodeURIComponent(reason)}` : '';
-        const url = `${baseUrl}?ownerId=${user.id}${messageParam}`;
+        const url = apiUrl(`/api/rents/${rentId}/reject?ownerId=${user.id}${messageParam}`);
         performPutAction(url, 'Reserva rejeitada', user.id);
     }, [user, performPutAction]);
+
+    const handleCancel = useCallback((rentId: number) => {
+        if (!user?.id) return;
+
+        const confirmCancel = window.confirm(
+            'Tem certeza que deseja cancelar esta reserva?\n\nEsta ação não pode ser desfeita.'
+        );
+
+        if (!confirmCancel) return;
+
+        const url = apiUrl(`/api/rents/${rentId}/cancel?userId=${user.id}`);
+        performPutAction(url, 'Reserva cancelada com sucesso!', user.id);
+    }, [user, performPutAction]);
+
+    const handleUpdateToolStatus = useCallback(async (toolId: number, newStatus: string) => {
+        const token = localStorage.getItem('jwt');
+        if (!token || !user?.id) return;
+
+        try {
+            const response = await fetch(apiUrl(`/api/tools/${toolId}/status`), {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: newStatus })
+            });
+
+            if (response.ok) {
+                alert('✅ Status da ferramenta atualizado com sucesso!');
+                await loadRents(user.id);
+            } else {
+                const error = await response.text();
+                alert(`Erro: ${error}`);
+            }
+        } catch (error) {
+            console.error('Failed to update tool status:', error);
+            alert('Erro ao atualizar status da ferramenta');
+        }
+    }, [user, loadRents]);
 
     const handleLogout = useCallback(() => {
         localStorage.removeItem('jwt');
@@ -472,9 +713,18 @@ export default function UserDetailsPage(): React.ReactElement {
                     onTabChange={setActiveTab}
                     myRentsCount={myRents.length}
                     pendingRentsCount={pendingRents.length}
+                    myToolsCount={myTools.length}
                 />
                 {activeTab === 'profile' && <ProfileView user={user} />}
-                {activeTab === 'myRents' && <MyRentsView myRents={myRents} tools={tools} loadingRents={loadingRents} />}
+                {activeTab === 'myRents' && (
+                    <MyRentsView
+                        myRents={myRents}
+                        tools={tools}
+                        loadingRents={loadingRents}
+                        userId={user?.id}
+                        onCancel={handleCancel}
+                    />
+                )}
                 {activeTab === 'pending' && (
                     <PendingView
                         pendingRents={pendingRents}
@@ -482,6 +732,13 @@ export default function UserDetailsPage(): React.ReactElement {
                         loadingRents={loadingRents}
                         onApprove={handleApprove}
                         onReject={handleReject}
+                    />
+                )}
+                {activeTab === 'myTools' && (
+                    <MyToolsView
+                        myTools={myTools}
+                        loading={loadingRents}
+                        onUpdateStatus={handleUpdateToolStatus}
                     />
                 )}
             </main>

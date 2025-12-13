@@ -139,24 +139,39 @@ public class ToolController {
                 return ResponseEntity.ok(response);
             }
 
-            Rent testRent = new Rent();
-            testRent.setToolId(id);
-            testRent.setUserId(userId);
-            testRent.setStartDate(LocalDateTime.parse(startDate));
-            testRent.setEndDate(LocalDateTime.parse(endDate));
+            if (tool.getStatus() == ToolStatus.RENTED) {
+                response.put(AVAILABLE_KEY, false);
+                response.put(REASON_KEY, "A ferramenta está atualmente alugada");
+                return ResponseEntity.ok(response);
+            }
 
-            boolean hasOverlap = rentService.hasOverlap(testRent);
+            if (tool.getStatus() == ToolStatus.UNDER_MAINTENANCE) {
+                response.put(AVAILABLE_KEY, false);
+                response.put(REASON_KEY, "A ferramenta está em manutenção");
+                return ResponseEntity.ok(response);
+            }
 
-            response.put(AVAILABLE_KEY, !hasOverlap);
-            if (hasOverlap) {
-                response.put(REASON_KEY, "Tool is already booked for the selected dates");
+            if (tool.getStatus() == ToolStatus.INACTIVE) {
+                response.put(AVAILABLE_KEY, false);
+                response.put(REASON_KEY, "A ferramenta está inativa");
+                return ResponseEntity.ok(response);
+            }
+
+            LocalDateTime start = LocalDateTime.parse(startDate);
+            LocalDateTime end = LocalDateTime.parse(endDate);
+
+            boolean available = rentService.checkAvailability(id, start, end);
+
+            response.put(AVAILABLE_KEY, available);
+            if (!available) {
+                response.put(REASON_KEY, "A ferramenta já está reservada para o período selecionado");
             }
 
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             response.put(AVAILABLE_KEY, false);
-            response.put(REASON_KEY, e.getMessage());
+            response.put(REASON_KEY, "Erro ao verificar disponibilidade: " + e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
     }

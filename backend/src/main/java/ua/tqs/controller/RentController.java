@@ -138,6 +138,15 @@ public class RentController {
         Rent rejected = rentService.rejectRent(id, ownerId, message);
         return ResponseEntity.ok(toDto(rejected));
     }
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<RentResponseDTO> cancelRent(
+            @PathVariable Long id,
+            @RequestParam Long userId) {
+
+        Rent cancelled = rentService.cancelRent(id, userId);
+        return ResponseEntity.ok(toDto(cancelled));
+    }
+
 
     @GetMapping("/interval")
     public ResponseEntity<List<RentResponseDTO>> findByInterval(
