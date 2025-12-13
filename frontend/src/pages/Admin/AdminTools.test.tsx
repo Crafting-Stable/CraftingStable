@@ -364,7 +364,7 @@ describe('AdminTools', () => {
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(global.alert).toHaveBeenCalledWith('Ferramenta atualizada com sucesso!');
+      expect(globalThis.alert).toHaveBeenCalledWith('Ferramenta atualizada com sucesso!');
     });
   });
 
@@ -373,7 +373,7 @@ describe('AdminTools', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => mockTools })
       .mockResolvedValueOnce({ ok: true });
 
-    (global.confirm as Mock).mockReturnValue(true);
+    (globalThis.confirm as Mock).mockReturnValue(true);
 
     renderComponent();
 
@@ -385,16 +385,15 @@ describe('AdminTools', () => {
     fireEvent.click(deleteButtons[0]);
 
     await waitFor(() => {
-      expect(global.confirm).toHaveBeenCalled();
-      expect(global.alert).toHaveBeenCalledWith('Ferramenta apagada com sucesso!');
+      expect(globalThis.confirm).toHaveBeenCalled();
+      expect(globalThis.alert).toHaveBeenCalledWith('Ferramenta apagada com sucesso!');
     });
   });
 
   it('should not delete tool when confirmation is cancelled', async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => mockTools });
 
-    (global.confirm as Mock).mockReturnValue(false);
-
+    (globalThis.confirm as Mock).mockReturnValue(false);
     renderComponent();
 
     await waitFor(() => {
@@ -516,7 +515,7 @@ describe('AdminTools', () => {
     fireEvent.change(statusSelects[0], { target: { value: 'UNDER_MAINTENANCE' } });
 
     await waitFor(() => {
-      expect(global.alert).toHaveBeenCalledWith(expect.stringMatching(/Failed to update tool status|Error/));
+      expect(globalThis.alert).toHaveBeenCalledWith(expect.stringMatching(/Failed to update tool status|Error/));
     });
   });
 
@@ -525,7 +524,7 @@ describe('AdminTools', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => mockTools })
       .mockResolvedValueOnce({ ok: false, status: 500, text: async () => 'Error', statusText: 'Error' });
 
-    (global.confirm as Mock).mockReturnValue(true);
+    (globalThis.confirm as Mock).mockReturnValue(true);
 
     renderComponent();
 
@@ -537,7 +536,7 @@ describe('AdminTools', () => {
     fireEvent.click(deleteButtons[0]);
 
     await waitFor(() => {
-      expect(global.alert).toHaveBeenCalledWith(expect.stringMatching(/Failed to delete tool|Error/));
+      expect(globalThis.alert).toHaveBeenCalledWith(expect.stringMatching(/Failed to delete tool|Error/));
     });
   });
 
@@ -611,7 +610,7 @@ describe('AdminTools', () => {
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(global.alert).toHaveBeenCalledWith(expect.stringMatching(/Failed to update tool|Error/));
+      expect(globalThis.alert).toHaveBeenCalledWith(expect.stringMatching(/Failed to update tool|Error/));
     });
   });
 

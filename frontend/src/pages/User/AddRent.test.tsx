@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 import AddRent from './AddRent';
-import { BrowserRouter, MemoryRouter } from 'react-router-dom';
+import { BrowserRouter} from 'react-router-dom';
 
 // Mock Header component
 vi.mock('../../components/Header', () => ({
@@ -10,7 +10,7 @@ vi.mock('../../components/Header', () => ({
 
 // Mock fetch globally
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+globalThis.fetch = mockFetch;
 
 // Mock localStorage
 const localStorageMock = {
@@ -19,7 +19,7 @@ const localStorageMock = {
   removeItem: vi.fn(),
   clear: vi.fn(),
 };
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
 
 // Mock navigate
 const mockNavigate = vi.fn();
@@ -33,9 +33,9 @@ vi.mock('react-router-dom', async () => {
 });
 
 // Mock window.alert and confirm
-global.alert = vi.fn();
-global.confirm = vi.fn();
-global.scrollTo = vi.fn();
+globalThis.alert = vi.fn();
+globalThis.confirm = vi.fn();
+globalThis.scrollTo = vi.fn() as (options?: ScrollToOptions | number, y?: number) => void;
 
 describe('AddRent', () => {
   const mockUser = { id: 1, username: 'TestUser', email: 'test@test.com', role: 'CUSTOMER' };
@@ -74,7 +74,7 @@ describe('AddRent', () => {
       if (key === 'user') return JSON.stringify(mockUser);
       return null;
     });
-    (global.confirm as Mock).mockReturnValue(true);
+    (globalThis.confirm as Mock).mockReturnValue(true);
   });
 
   const renderComponent = () => {
@@ -187,7 +187,7 @@ describe('AddRent', () => {
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(global.alert).toHaveBeenCalledWith('Ferramenta criada com sucesso!');
+      expect(globalThis.alert).toHaveBeenCalledWith('Ferramenta criada com sucesso!');
     });
   });
 
@@ -309,7 +309,7 @@ describe('AddRent', () => {
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(global.alert).toHaveBeenCalledWith('Ferramenta atualizada com sucesso!');
+      expect(globalThis.alert).toHaveBeenCalledWith('Ferramenta atualizada com sucesso!');
     });
   });
 
@@ -318,7 +318,7 @@ describe('AddRent', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => mockTools })
       .mockResolvedValueOnce({ ok: true, status: 204 });
 
-    (global.confirm as Mock).mockReturnValue(true);
+    (globalThis.confirm as Mock).mockReturnValue(true);
 
     renderComponent();
 
@@ -330,15 +330,15 @@ describe('AddRent', () => {
     fireEvent.click(deleteButtons[0]);
 
     await waitFor(() => {
-      expect(global.confirm).toHaveBeenCalledWith('Tem a certeza que pretende apagar esta ferramenta?');
-      expect(global.alert).toHaveBeenCalledWith('Ferramenta apagada com sucesso!');
+      expect(globalThis.confirm).toHaveBeenCalledWith('Tem a certeza que pretende apagar esta ferramenta?');
+      expect(globalThis.alert).toHaveBeenCalledWith('Ferramenta apagada com sucesso!');
     });
   });
 
   it('should not delete tool when confirmation is cancelled', async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => mockTools });
 
-    (global.confirm as Mock).mockReturnValue(false);
+    (globalThis.confirm as Mock).mockReturnValue(false);
 
     renderComponent();
 
@@ -424,7 +424,7 @@ describe('AddRent', () => {
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(global.alert).toHaveBeenCalledWith('Ferramenta criada com sucesso!');
+      expect(globalThis.alert).toHaveBeenCalledWith('Ferramenta criada com sucesso!');
     });
   });
 
