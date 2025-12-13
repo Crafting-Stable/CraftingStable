@@ -387,6 +387,13 @@ export default function AddRent(): React.ReactElement {
         fontSize: 14
     };
 
+    let submitLabel = "Criar Anúncio";
+    if (loading) {
+        submitLabel = "A processar...";
+    } else if (editingId) {
+        submitLabel = "Atualizar";
+    }
+
     return (
         <div style={pageStyle}>
             <Header />
@@ -513,7 +520,7 @@ export default function AddRent(): React.ReactElement {
                                 disabled={loading}
                                 style={{ background: "#f8b749", color: "#111", padding: "10px 24px", borderRadius: 6, fontWeight: 700, border: "none", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1 }}
                             >
-                                {loading ? "A processar..." : editingId ? "Atualizar" : "Criar Anúncio"}
+                                {submitLabel}
                             </button>
                         </div>
                     </div>

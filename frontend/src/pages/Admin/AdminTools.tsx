@@ -63,7 +63,8 @@ const AdminTools: React.FC = () => {
             setTimeout(() => navigate('/loginPage'), 1200);
             return true;
         }
-        if (status && !statusText) {
+        // FIX: Changed condition from "if (status && !statusText)" to check both properly
+        if (status && statusText) {
             setError(statusText || 'Erro de autenticação');
         }
         return false;
@@ -192,19 +193,8 @@ const AdminTools: React.FC = () => {
         );
     }
 
-    const handleOverlayKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
-            e.preventDefault();
-            setEditingTool(null);
-        } else if (e.key === 'Escape') {
-            e.preventDefault();
-            setEditingTool(null);
-        }
-    };
-
-    const stopKeyboardPropagation = (e: React.KeyboardEvent) => {
-        e.stopPropagation();
-    };
+    // FIX: Extracted common logic to avoid duplication
+    const closeModal = () => setEditingTool(null);
 
     return (
         <div style={styles.container}>
@@ -289,24 +279,18 @@ const AdminTools: React.FC = () => {
                 </div>
             </div>
 
-            {/* Edit Modal */}
+            {/* Edit Modal - FIX: Changed from div to dialog element */}
             {editingTool && (
-                <div
-                    ref={modalOverlayRef}
+                <dialog
+                    ref={modalOverlayRef as any}
+                    open
                     style={styles.modalOverlay}
-                    onClick={() => setEditingTool(null)}
-                    onKeyDown={handleOverlayKeyDown}
-                    role="button"
-                    tabIndex={0}
-                    aria-label="Fechar modal de edição"
+                    onClick={closeModal}
+                    aria-labelledby={`edit-modal-title-${editingTool.id}`}
                 >
                     <div
                         style={styles.modal}
                         onClick={(e) => e.stopPropagation()}
-                        onKeyDown={stopKeyboardPropagation}
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby={`edit-modal-title-${editingTool.id}`}
                     >
                         <h2 id={`edit-modal-title-${editingTool.id}`} style={styles.modalTitle}>Edit Tool #{editingTool.id}</h2>
 
@@ -364,11 +348,11 @@ const AdminTools: React.FC = () => {
                         </div>
 
                         <div style={styles.modalActions}>
-                            <button style={styles.cancelBtn} onClick={() => setEditingTool(null)}>Cancel</button>
+                            <button style={styles.cancelBtn} onClick={closeModal}>Cancel</button>
                             <button style={styles.saveBtn} onClick={handleSaveEdit}>Save</button>
                         </div>
                     </div>
-                </div>
+                </dialog>
             )}
         </div>
     );
@@ -508,6 +492,9 @@ const styles: { [key: string]: React.CSSProperties } = {
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1000,
+        border: 'none',
+        maxWidth: '100vw',
+        maxHeight: '100vh',
     },
     modal: {
         backgroundColor: 'white',

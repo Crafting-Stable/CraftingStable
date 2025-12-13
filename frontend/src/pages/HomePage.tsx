@@ -166,16 +166,14 @@ export default function HomePage(): React.ReactElement {
             setLoading(true);
             try {
                 const res = await fetch("/api/tools");
-                if (res.ok) {
-                    const data = await res.json();
-                    if (Array.isArray(data)) {
-                        const mapped = data.map(mapApiToUi);
-                        if (mounted) setTools(mapped);
-                    } else {
-                        if (mounted) setTools([]);
-                    }
-                } else {
-                    throw new Error("Erro ao obter ferramentas");
+                if (!res.ok) throw new Error("Erro ao obter ferramentas");
+
+                const data = await res.json();
+                if (Array.isArray(data)) {
+                    const mapped = data.map(mapApiToUi);
+                    if (mounted) setTools(mapped);
+                } else if (mounted) {
+                    setTools([]);
                 }
             } catch (e) {
                 console.error(e);

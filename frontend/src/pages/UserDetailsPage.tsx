@@ -114,9 +114,11 @@ const RentItem: React.FC<RentItemProps> = ({ rent, tools }) => {
     );
 };
 
+type TabKey = 'profile' | 'myRents' | 'pending';
+
 interface TabsProps {
-    activeTab: 'profile' | 'myRents' | 'pending';
-    onTabChange: (tab: 'profile' | 'myRents' | 'pending') => void;
+    activeTab: TabKey;
+    onTabChange: (tab: TabKey) => void;
     myRentsCount: number;
     pendingRentsCount: number;
 }

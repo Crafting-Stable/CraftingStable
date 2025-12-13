@@ -115,7 +115,7 @@ public class PayPalSteps {
     }
 
     @Given("a PayPal order has been created for the rental")
-    public void payPalOrderHasBeenCreated() throws Exception {
+    public void payPalOrderHasBeenCreated() {
         // This step simulates that an order was created - in integration tests with mock
         // we would store the order ID. For now, we'll create a mock order ID.
         lastPayPalOrderId = "MOCK-ORDER-" + System.currentTimeMillis();
@@ -123,8 +123,8 @@ public class PayPalSteps {
 
     @When("the user creates a PayPal order for the rental")
     public void userCreatesPayPalOrderForRental() {
-        String url = "/api/paypal/orders?rentId=" + lastCreatedRent.getId() 
-                + "&amount=" + lastAmount 
+        String url = "/api/paypal/orders?rentId=" + lastCreatedRent.getId()
+                + "&amount=" + lastAmount
                 + "&currency=" + lastCurrency;
 
         sharedState.latestResponse = restTemplate.exchange(
@@ -142,7 +142,7 @@ public class PayPalSteps {
 
     @When("the user attempts to create a PayPal order for rental ID {long}")
     public void userAttemptsToCreatePayPalOrderForRentalId(Long rentId) {
-        String url = "/api/paypal/orders?rentId=" + rentId 
+        String url = "/api/paypal/orders?rentId=" + rentId
                 + "&amount=50.00&currency=EUR";
 
         sharedState.latestResponse = restTemplate.exchange(
@@ -155,8 +155,8 @@ public class PayPalSteps {
 
     @When("the user creates a PayPal order with rentId {int} and amount {string} EUR")
     public void userCreatesPayPalOrderWithRentIdAndAmount(int rentId, String amount) {
-        String url = "/api/paypal/orders?rentId=" + rentId 
-                + "&amount=" + amount 
+        String url = "/api/paypal/orders?rentId=" + rentId
+                + "&amount=" + amount
                 + "&currency=EUR";
 
         sharedState.latestResponse = restTemplate.exchange(
@@ -169,8 +169,8 @@ public class PayPalSteps {
 
     @When("the user creates a PayPal order with description {string}")
     public void userCreatesPayPalOrderWithDescription(String description) {
-        String url = "/api/paypal/orders?rentId=" + lastCreatedRent.getId() 
-                + "&amount=" + lastAmount 
+        String url = "/api/paypal/orders?rentId=" + lastCreatedRent.getId()
+                + "&amount=" + lastAmount
                 + "&currency=" + lastCurrency
                 + "&description=" + description;
 
@@ -275,7 +275,7 @@ public class PayPalSteps {
     @And("the error message contains {string}")
     public void errorMessageContains(String expectedMessage) {
         String body = (String) sharedState.latestResponse.getBody();
-        assertTrue(body.contains(expectedMessage), 
+        assertTrue(body.contains(expectedMessage),
                 "Expected error message to contain: " + expectedMessage + ", but got: " + body);
     }
 

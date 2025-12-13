@@ -1,9 +1,12 @@
 package ua.tqs.functional;
 
 import java.time.LocalDateTime;
+import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.awaitility.Awaitility.await;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -39,9 +42,9 @@ public class AnalyticsSteps {
     @When("an event is tracked with type {string} user {string} tool {string}")
     public void eventIsTrackedWithTypeUserTool(String type, String user, String tool) {
         sharedState.latestResponse = restTemplate.postForEntity(
-            "/api/analytics/track?eventType=" + type + "&userId=1&toolId=1",
-            new HttpEntity<>(sharedState.headers),
-            String.class
+                "/api/analytics/track?eventType=" + type + "&userId=1&toolId=1",
+                new HttpEntity<>(sharedState.headers),
+                String.class
         );
     }
 
@@ -52,18 +55,8 @@ public class AnalyticsSteps {
 
     @And("the event is stored in the system")
     public void eventIsStoredInSystem() {
-        // Wait for async save to complete
-        int maxWait = 50; // 5 seconds total
-        int waited = 0;
-        while (analyticsRepository.count() == 0 && waited < maxWait) {
-            try {
-                Thread.sleep(100);
-                waited++;
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
-        }
+        await().atMost(Duration.ofSeconds(5))
+                .until(() -> analyticsRepository.count() > 0);
         assertTrue(analyticsRepository.count() > 0);
     }
 
@@ -81,10 +74,10 @@ public class AnalyticsSteps {
     @When("a user requests the analytics summary")
     public void userRequestsAnalyticsSummary() {
         sharedState.latestResponse = restTemplate.exchange(
-            "/api/analytics/summary",
-            HttpMethod.GET,
-            new HttpEntity<>(sharedState.headers),
-            String.class
+                "/api/analytics/summary",
+                HttpMethod.GET,
+                new HttpEntity<>(sharedState.headers),
+                String.class
         );
     }
 
@@ -114,10 +107,10 @@ public class AnalyticsSteps {
         String start = "2025-01-01T00:00:00";
         String end = "2025-12-31T23:59:59";
         sharedState.latestResponse = restTemplate.exchange(
-            "/api/analytics/events/" + type + "?start=" + start + "&end=" + end,
-            HttpMethod.GET,
-            new HttpEntity<>(sharedState.headers),
-            String.class
+                "/api/analytics/events/" + type + "?start=" + start + "&end=" + end,
+                HttpMethod.GET,
+                new HttpEntity<>(sharedState.headers),
+                String.class
         );
     }
 
@@ -141,10 +134,10 @@ public class AnalyticsSteps {
     public void userSearchesForEventsInDateRange(io.cucumber.datatable.DataTable dataTable) {
         var dates = dataTable.asMaps(String.class, String.class).get(0);
         sharedState.latestResponse = restTemplate.exchange(
-            "/api/analytics/events/ALL?start=" + dates.get("startDate") + "&end=" + dates.get("endDate"),
-            HttpMethod.GET,
-            new HttpEntity<>(sharedState.headers),
-            String.class
+                "/api/analytics/events/ALL?start=" + dates.get("startDate") + "&end=" + dates.get("endDate"),
+                HttpMethod.GET,
+                new HttpEntity<>(sharedState.headers),
+                String.class
         );
     }
 
@@ -169,10 +162,10 @@ public class AnalyticsSteps {
     @When("a user requests activity for user {string}")
     public void userRequestsActivityForUser(String email) {
         sharedState.latestResponse = restTemplate.exchange(
-            "/api/analytics/user/1",
-            HttpMethod.GET,
-            new HttpEntity<>(sharedState.headers),
-            String.class
+                "/api/analytics/user/1",
+                HttpMethod.GET,
+                new HttpEntity<>(sharedState.headers),
+                String.class
         );
     }
 
@@ -197,10 +190,10 @@ public class AnalyticsSteps {
     @When("a user requests analytics for the tool")
     public void userRequestsAnalyticsForTool() {
         sharedState.latestResponse = restTemplate.exchange(
-            "/api/analytics/tool/1",
-            HttpMethod.GET,
-            new HttpEntity<>(sharedState.headers),
-            String.class
+                "/api/analytics/tool/1",
+                HttpMethod.GET,
+                new HttpEntity<>(sharedState.headers),
+                String.class
         );
     }
 
@@ -218,16 +211,16 @@ public class AnalyticsSteps {
     public void userRequestsAnalyticsForTool(String toolName) {
         // Get tool by name to find its ID - use first tool with matching name or ID 1 as fallback
         Tool tool = toolRepository.findAll().stream()
-            .filter(t -> t.getName().equals(toolName))
-            .findFirst()
-            .orElse(null);
-        
+                .filter(t -> t.getName().equals(toolName))
+                .findFirst()
+                .orElse(null);
+
         Long toolId = (tool != null && tool.getId() != null) ? tool.getId() : 1L;
         sharedState.latestResponse = restTemplate.exchange(
-            "/api/analytics/tool/" + toolId,
-            HttpMethod.GET,
-            new HttpEntity<>(sharedState.headers),
-            String.class
+                "/api/analytics/tool/" + toolId,
+                HttpMethod.GET,
+                new HttpEntity<>(sharedState.headers),
+                String.class
         );
     }
 }

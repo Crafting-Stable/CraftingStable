@@ -8,11 +8,12 @@ interface RentSuccessModalProps {
 }
 
 const RentSuccessModal: React.FC<RentSuccessModalProps> = ({ rentData, toolName, onClose }) => {
-    const overlayRef = useRef<HTMLDivElement | null>(null);
+    const overlayButtonRef = useRef<HTMLButtonElement | null>(null);
+    const dialogRef = useRef<HTMLDialogElement | null>(null);
     const titleId = 'rent-success-title';
 
     useEffect(() => {
-        overlayRef.current?.focus();
+        overlayButtonRef.current?.focus();
 
         const onKey = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
@@ -28,32 +29,34 @@ const RentSuccessModal: React.FC<RentSuccessModalProps> = ({ rentData, toolName,
     const startDate = new Date(rentData.startDate).toLocaleDateString('pt-PT');
     const endDate = new Date(rentData.endDate).toLocaleDateString('pt-PT');
 
-    const handleOverlayKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
-            e.preventDefault();
-            onClose();
-        }
-    };
-
     const stopKeyboardPropagation = (e: React.KeyboardEvent) => {
         e.stopPropagation();
     };
 
+    const handleBackdropClick = () => {
+        onClose();
+    };
+
     return (
-        <div
-            ref={overlayRef}
-            style={styles.overlay}
-            onClick={onClose}
-            onKeyDown={handleOverlayKeyDown}
-            role="button"
-            tabIndex={0}
-            aria-label="Fechar modal de reserva"
-        >
-            <div
-                style={styles.modal}
-                onClick={(e) => e.stopPropagation()}
+        <div style={styles.overlay}>
+            {/* botão real para fechar ao clicar fora do diálogo; é sibling do diálogo para evitar elementos interativos aninhados */}
+            <button
+                ref={overlayButtonRef}
+                type="button"
+                aria-label="Fechar modal de reserva"
+                onClick={handleBackdropClick}
+                style={styles.overlayButton}
+            />
+
+            <dialog
+                ref={dialogRef}
+                open
+                style={styles.dialog}
+                onClick={(e) => {
+                    // fechar se clicar diretamente no elemento <dialog> (área de fundo do próprio diálogo)
+                    if (e.target === dialogRef.current) onClose();
+                }}
                 onKeyDown={stopKeyboardPropagation}
-                role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
             >
@@ -126,11 +129,11 @@ const RentSuccessModal: React.FC<RentSuccessModalProps> = ({ rentData, toolName,
                 </div>
 
                 <div style={styles.footer}>
-                    <button onClick={onClose} style={styles.closeButton}>
+                    <button onClick={onClose} style={styles.closeButton} type="button">
                         Ver Minhas Reservas
                     </button>
                 </div>
-            </div>
+            </dialog>
         </div>
     );
 };
@@ -150,7 +153,19 @@ const styles: Record<string, React.CSSProperties> = {
         padding: 20,
         outline: 'none',
     },
-    modal: {
+    overlayButton: {
+        position: 'absolute',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        background: 'transparent',
+        border: 'none',
+        padding: 0,
+        margin: 0,
+        cursor: 'default',
+        zIndex: 1000,
+    },
+    dialog: {
         backgroundColor: '#1f2937',
         borderRadius: 12,
         maxWidth: 600,
@@ -158,6 +173,9 @@ const styles: Record<string, React.CSSProperties> = {
         maxHeight: '90vh',
         overflow: 'auto',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+        zIndex: 1001,
+        border: 'none',
+        padding: 0,
     },
     header: {
         backgroundColor: '#22c55e',
