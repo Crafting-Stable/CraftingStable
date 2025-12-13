@@ -1,3 +1,4 @@
+// typescript
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import bgImg from "../../assets/rust.jpg";
@@ -21,29 +22,23 @@ type Tool = {
 };
 
 type BookingCalendarProps = {
-    readonly toolId: string;
-    readonly pricePerDay: number;
-    readonly inclusive?: boolean;
-    readonly currency?: string;
+    toolId: string;
+    pricePerDay: number;
+    inclusive?: boolean;
+    currency?: string;
 };
 
 const API_PORT = '8081';
 
 function apiUrl(path: string): string {
-    const loc = (globalThis as any).location;
-    const protocol = loc?.protocol ?? "http:";
-    const hostname = loc?.hostname ?? "localhost";
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
     const normalized = path.startsWith('/') ? path : `/${path}`;
     return `${protocol}//${hostname}:${API_PORT}${normalized}`;
 }
 
 function getJwt(): string | null {
-    try {
-        const ls = (globalThis as any).localStorage;
-        return ls?.getItem?.('jwt') ?? null;
-    } catch {
-        return null;
-    }
+    return localStorage.getItem('jwt');
 }
 
 function toIsoDateString(d: Date) {
@@ -60,15 +55,22 @@ function daysBetween(startStr: string, endStr: string, inclusive: boolean) {
     const utcStart = Date.UTC(s.getFullYear(), s.getMonth(), s.getDate());
     const utcEnd = Date.UTC(e.getFullYear(), e.getMonth(), e.getDate());
     let diff = Math.floor((utcEnd - utcStart) / (24 * 60 * 60 * 1000));
-    return Math.max(diff + (inclusive ? 1 : 0), 0);
+    if (inclusive) diff = diff + 1;
+    return diff > 0 ? diff : 0;
+}
+
+interface BlockedDateRange {
+    startDate: string;
+    endDate: string;
+    status: string;
 }
 
 function BookingCalendar({
-    toolId,
-    pricePerDay,
-    inclusive = true,
-    currency = "EUR"
-}: BookingCalendarProps): React.ReactElement {
+                             toolId,
+                             pricePerDay,
+                             inclusive = true,
+                             currency = "EUR"
+                         }: BookingCalendarProps): React.ReactElement {
     const navigate = useNavigate();
     const today = useMemo(() => new Date(), []);
     const [start, setStart] = useState<string>(toIsoDateString(today));
@@ -80,12 +82,30 @@ function BookingCalendar({
     const [isAvailable, setIsAvailable] = useState<boolean>(true);
     const [availabilityMessage, setAvailabilityMessage] = useState<string | null>(null);
     const [checkingAvailability, setCheckingAvailability] = useState(false);
+    const [blockedDates, setBlockedDates] = useState<BlockedDateRange[]>([]);
 
     const days = useMemo(() => daysBetween(start, end, inclusive), [start, end, inclusive]);
     const total = useMemo(() => Number((days * pricePerDay).toFixed(2)), [days, pricePerDay]);
 
     const fmt = new Intl.NumberFormat("pt-PT", { style: "currency", currency });
 
+    // Fetch blocked dates on mount
+    useEffect(() => {
+        const fetchBlockedDates = async () => {
+            try {
+                const response = await fetch(apiUrl(`/api/tools/${toolId}/blocked-dates`));
+                if (response.ok) {
+                    const data = await response.json();
+                    setBlockedDates(data);
+                }
+            } catch (err) {
+                console.error('Error fetching blocked dates:', err);
+            }
+        };
+        fetchBlockedDates();
+    }, [toolId]);
+
+    // Check availability when dates change
     useEffect(() => {
         const checkAvailability = async () => {
             if (!start || !end || days <= 0) {
@@ -115,7 +135,11 @@ function BookingCalendar({
 
                 const data = await response.json().catch(() => ({ available: false }));
                 setIsAvailable(Boolean(data.available));
-                setAvailabilityMessage(!data.available && data.reason ? data.reason : null);
+                if (!data.available && data.reason) {
+                    setAvailabilityMessage(data.reason);
+                } else if (data.available) {
+                    setAvailabilityMessage(null);
+                }
             } catch (err) {
                 console.error('Error checking availability:', err);
                 setIsAvailable(false);
@@ -128,6 +152,7 @@ function BookingCalendar({
         checkAvailability();
     }, [toolId, start, end, days]);
 
+    // Handler for successful PayPal payment and rent creation
     const handlePaymentSuccess = (data: RentCreatedData) => {
         console.log("✅ Payment and rent creation successful:", data);
         setRentData(data);
@@ -140,108 +165,110 @@ function BookingCalendar({
         navigate('/user');
     };
 
+    // Handler for PayPal errors
     const handlePaymentError = (errorMsg: string) => {
         console.error("❌ Payment error:", errorMsg);
         setError(errorMsg);
     };
 
+    // Handler for PayPal cancellation
     const handlePaymentCancel = () => {
         console.log("⚠️ Payment cancelled by user");
         setError("Pagamento cancelado. Pode tentar novamente quando estiver pronto.");
     };
 
+    // Check if user is logged in
     const jwt = getJwt();
     const isLoggedIn = !!jwt;
 
-    type SectionKind = 'notLogged' | 'invalidDates' | 'checking' | 'notAvailable' | 'success' | 'ready';
-
-    const sectionKind = useMemo<SectionKind>(() => {
-        if (!isLoggedIn) return 'notLogged';
-        if (days <= 0) return 'invalidDates';
-        if (checkingAvailability) return 'checking';
-        if (!isAvailable) return 'notAvailable';
-        if (success) return 'success';
-        return 'ready';
-    }, [isLoggedIn, days, checkingAvailability, isAvailable, success]);
-
-    const messageBox = (bg: string, border: string, color: string, children: React.ReactNode) => (
-        <div style={{
-            background: bg,
-            border,
-            color,
-            padding: "10px 14px",
-            borderRadius: 6,
-            textAlign: "center"
-        }}>
-            {children}
-        </div>
-    );
-
-    const renderPaymentSection = () => {
-        switch (sectionKind) {
-            case 'notLogged':
-                return messageBox(
-                    "rgba(239, 68, 68, 0.2)",
-                    "1px solid #ef4444",
-                    "#fca5a5",
-                    <p>Por favor <Link to="/loginPage" style={{ color: "#f8b749", textDecoration: "underline" }}>faça login</Link> para reservar esta ferramenta.</p>
-                );
-
-            case 'invalidDates':
-                return messageBox(
-                    "rgba(251, 191, 36, 0.2)",
-                    "1px solid #fbbf24",
-                    "#fcd34d",
-                    <p>Por favor selecione datas válidas (data de fim após data de início).</p>
-                );
-
-            case 'checking':
-                return messageBox(
-                    "rgba(59, 130, 246, 0.2)",
-                    "1px solid #3b82f6",
-                    "#93c5fd",
-                    <p>🔍 A verificar disponibilidade...</p>
-                );
-
-            case 'notAvailable':
-                return messageBox(
-                    "rgba(239, 68, 68, 0.2)",
-                    "1px solid #ef4444",
-                    "#fca5a5",
-                    <p>❌ {availabilityMessage || "Esta ferramenta não está disponível para as datas selecionadas"}</p>
-                );
-
-            case 'success':
-                return messageBox(
-                    "rgba(34, 197, 94, 0.2)",
-                    "1px solid #22c55e",
-                    "#86efac",
-                    <p>A redirecionar para a sua página de reservas...</p>
-                );
-
-            case 'ready':
-            default:
-                return (
-                    <div style={{ maxWidth: 400 }}>
-                        <p style={{ color: "#ccc", fontSize: 13, marginBottom: 10, textAlign: "center" }}>
-                            Pague com segurança via PayPal para confirmar a sua reserva
-                        </p>
-                        <PayPalCheckout
-                            toolId={Number(toolId)}
-                            amount={total.toFixed(2)}
-                            startDate={start}
-                            endDate={end}
-                            currency={currency}
-                            description={`Reserva de ferramenta #${toolId} - ${days} dia(s)`}
-                            onSuccess={handlePaymentSuccess}
-                            onError={handlePaymentError}
-                            onCancel={handlePaymentCancel}
-                            disabled={days <= 0}
-                        />
-                    </div>
-                );
-        }
-    };
+    // Extracted paymentSection to avoid nested ternary in JSX
+    let paymentSection: React.ReactNode;
+    if (!isLoggedIn) {
+        paymentSection = (
+            <div style={{
+                background: "rgba(239, 68, 68, 0.2)",
+                border: "1px solid #ef4444",
+                color: "#fca5a5",
+                padding: "10px 14px",
+                borderRadius: 6,
+                textAlign: "center"
+            }}>
+                <p>Por favor <Link to="/loginPage" style={{ color: "#f8b749", textDecoration: "underline" }}>faça login</Link> para reservar esta ferramenta.</p>
+            </div>
+        );
+    } else if (days <= 0) {
+        paymentSection = (
+            <div style={{
+                background: "rgba(251, 191, 36, 0.2)",
+                border: "1px solid #fbbf24",
+                color: "#fcd34d",
+                padding: "10px 14px",
+                borderRadius: 6,
+                textAlign: "center"
+            }}>
+                <p>Por favor selecione datas válidas (data de fim após data de início).</p>
+            </div>
+        );
+    } else if (checkingAvailability) {
+        paymentSection = (
+            <div style={{
+                background: "rgba(59, 130, 246, 0.2)",
+                border: "1px solid #3b82f6",
+                color: "#93c5fd",
+                padding: "10px 14px",
+                borderRadius: 6,
+                textAlign: "center"
+            }}>
+                <p>🔍 A verificar disponibilidade...</p>
+            </div>
+        );
+    } else if (!isAvailable) {
+        paymentSection = (
+            <div style={{
+                background: "rgba(239, 68, 68, 0.2)",
+                border: "1px solid #ef4444",
+                color: "#fca5a5",
+                padding: "10px 14px",
+                borderRadius: 6,
+                textAlign: "center"
+            }}>
+                <p>❌ {availabilityMessage || "Esta ferramenta não está disponível para as datas selecionadas"}</p>
+            </div>
+        );
+    } else if (success) {
+        paymentSection = (
+            <div style={{
+                background: "rgba(34, 197, 94, 0.2)",
+                border: "1px solid #22c55e",
+                color: "#86efac",
+                padding: "10px 14px",
+                borderRadius: 6,
+                textAlign: "center"
+            }}>
+                <p>A redirecionar para a sua página de reservas...</p>
+            </div>
+        );
+    } else {
+        paymentSection = (
+            <div style={{ maxWidth: 400 }}>
+                <p style={{ color: "#ccc", fontSize: 13, marginBottom: 10, textAlign: "center" }}>
+                    Pague com segurança via PayPal para confirmar a sua reserva
+                </p>
+                <PayPalCheckout
+                    toolId={Number(toolId)}
+                    amount={total.toFixed(2)}
+                    startDate={start}
+                    endDate={end}
+                    currency={currency}
+                    description={`Reserva de ferramenta #${toolId} - ${days} dia(s)`}
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                    onCancel={handlePaymentCancel}
+                    disabled={days <= 0}
+                />
+            </div>
+        );
+    }
 
     return (
         <div style={{ marginTop: 16, background: "rgba(0,0,0,0.45)", padding: 12, borderRadius: 8 }}>
@@ -275,7 +302,7 @@ function BookingCalendar({
 
             <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                 <label style={{ color: "#fff" }}>
-                    Início:{' '}
+                    Início:
                     <input
                         type="date"
                         value={start}
@@ -286,7 +313,7 @@ function BookingCalendar({
                 </label>
 
                 <label style={{ color: "#fff" }}>
-                    Fim:{' '}
+                    Fim:
                     <input
                         type="date"
                         value={end}
@@ -303,14 +330,51 @@ function BookingCalendar({
                 </div>
             </div>
 
+            {/* Blocked Dates Display */}
+            {blockedDates.length > 0 && (
+                <div style={{
+                    marginTop: 12,
+                    padding: 10,
+                    background: "rgba(251, 191, 36, 0.15)",
+                    border: "1px solid #fbbf24",
+                    borderRadius: 6
+                }}>
+                    <div style={{ color: "#fcd34d", fontWeight: 600, marginBottom: 8, fontSize: 13 }}>
+                        📅 Datas Indisponíveis:
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {blockedDates.map((range, idx) => (
+                            <span key={idx} style={{
+                                background: range.status === 'PENDING' ? '#fef3c7' : 
+                                           range.status === 'APPROVED' ? '#d1fae5' : '#dbeafe',
+                                color: range.status === 'PENDING' ? '#92400e' : 
+                                       range.status === 'APPROVED' ? '#065f46' : '#1e40af',
+                                padding: "4px 8px",
+                                borderRadius: 4,
+                                fontSize: 12,
+                                fontWeight: 500
+                            }}>
+                                {new Date(range.startDate).toLocaleDateString('pt-PT')} - {new Date(range.endDate).toLocaleDateString('pt-PT')}
+                                <span style={{ marginLeft: 4, opacity: 0.7 }}>
+                                    ({range.status === 'PENDING' ? '⏳' : range.status === 'APPROVED' ? '✅' : '🚀'})
+                                </span>
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* PayPal Buttons Section */}
             <div style={{ marginTop: 16 }}>
-                {renderPaymentSection()}
+                {paymentSection}
             </div>
 
+            {/* Success Modal */}
             {showModal && <RentSuccessModal rentData={rentData} onClose={handleCloseModal} />}
         </div>
     );
 }
+/* --- fim BookingCalendar --- */
 
 const containerStyle: React.CSSProperties = {
     minHeight: "100vh",
@@ -327,7 +391,7 @@ export default function ToolDetails(): React.ReactElement {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const jwt = getJwt();
+        const jwt = localStorage.getItem("jwt");
         if (!jwt) {
             navigate("/loginPage");
         }
@@ -351,11 +415,13 @@ export default function ToolDetails(): React.ReactElement {
             };
 
             try {
+                // Tenta endpoint com id
                 const res = await fetch(apiUrl(`/api/users/${ownerId}`), { headers });
                 if (res.ok) {
                     const u = await res.json().catch(() => null);
                     return u?.username ?? u?.name ?? undefined;
                 }
+                // Fallback: buscar lista e procurar
                 const listRes = await fetch(apiUrl("/api/users"), { headers });
                 if (!listRes.ok) return undefined;
                 const list = await listRes.json().catch(() => []);
@@ -399,7 +465,7 @@ export default function ToolDetails(): React.ReactElement {
                     category: data.type || data.category || "Outros",
                     pricePerDay: Number(data.dailyPrice ?? data.pricePerDay ?? 0),
                     depositAmount: Number(data.depositAmount ?? 0),
-                    ownerId: data.ownerId ?? data.owner_id ?? undefined,
+                    ownerId: data.ownerId ?? data.owner_id ?? null,
                     image: data.imageUrl || data.image || undefined,
                     description: data.description ?? undefined,
                     location: data.location ?? undefined
@@ -407,10 +473,11 @@ export default function ToolDetails(): React.ReactElement {
 
                 mapped.image = mapped.image ?? placeholderFor(mapped.category, mapped.name);
 
+                // buscar nome do proprietário se houver ownerId
                 if (mounted) {
                     setTool(mapped);
                 }
-                const ownerName = await fetchOwnerName(mapped.ownerId);
+                const ownerName = await fetchOwnerName(mapped.ownerId as number | undefined);
                 if (mounted && ownerName) {
                     setTool(prev => prev ? { ...prev, ownerName } : prev);
                 }

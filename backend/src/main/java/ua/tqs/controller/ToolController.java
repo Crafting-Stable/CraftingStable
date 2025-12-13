@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -159,5 +160,19 @@ public class ToolController {
             response.put(REASON_KEY, e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
+    }
+    @GetMapping("/{id}/blocked-dates")
+    public ResponseEntity<List<Map<String, String>>> getBlockedDates(@PathVariable Long id) {
+        List<Rent> blockedRents = rentService.getBlockingRentsForTool(id);
+        List<Map<String, String>> blockedRanges = blockedRents.stream()
+            .map(rent -> {
+                Map<String, String> range = new HashMap<>();
+                range.put("startDate", rent.getStartDate().toLocalDate().toString());
+                range.put("endDate", rent.getEndDate().toLocalDate().toString());
+                range.put("status", rent.getStatus().name());
+                return range;
+            })
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(blockedRanges);
     }
 }

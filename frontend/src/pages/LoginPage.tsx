@@ -19,6 +19,7 @@ type RegisterForm = {
 
 export default function LoginPage(): React.ReactElement {
     const navigate = useNavigate();
+    const [showRegisterForm, setShowRegisterForm] = useState(false);
     const [login, setLogin] = useState<LoginForm>({ email: '', password: '', remember: false });
     const [reg, setReg] = useState<RegisterForm>({ name: '', email: '', password: '', passwordConfirm: '' });
     const [loginErrors, setLoginErrors] = useState<Record<string, string>>({});
@@ -28,53 +29,19 @@ export default function LoginPage(): React.ReactElement {
 
     const emailValid = (e: string) => /\S+@\S+\.\S+/.test(e);
 
-    const safeJson = async (res: Response) => {
-        return await res.json().catch((err) => {
-            console.warn('safeJson: falha ao parsear JSON da resposta', err);
-            return {};
-        });
-    };
-
-    const extractServerErrors = (data: any, defaultMsg: string) => {
-        if (data && typeof data === 'object') {
-            if (data.errors) return data.errors;
-            if (data.message) return { general: data.message };
-        }
-        return { general: defaultMsg };
-    };
-
-    const saveAuthData = (data: any, fallbackEmail: string) => {
-        const userId = data.id || data.user_id || data.userId;
-        try {
-            globalThis.localStorage?.setItem('jwt', data.token);
-        } catch (e) {
-            console.warn('saveAuthData: localStorage indisponível ao gravar jwt', e);
-        }
-
-        const userToStore = {
-            username: data.username || data.name,
-            email: data.email || fallbackEmail,
-            role: data.role,
-            id: userId
-        };
-
-        try {
-            globalThis.localStorage?.setItem('user', JSON.stringify(userToStore));
-        } catch (e) {
-            console.warn('saveAuthData: falha ao gravar user em localStorage', e);
-        }
-    };
-
     const handleLoginSubmit = async (ev?: React.FormEvent) => {
         ev?.preventDefault();
         const errs: Record<string, string> = {};
 
         if (!login.email) errs.email = 'Email obrigatório';
         else if (!emailValid(login.email)) errs.email = 'Email inválido';
+
         if (!login.password) errs.password = 'Password obrigatória';
 
         setLoginErrors(errs);
         if (Object.keys(errs).length > 0) return;
+
+        console.log('🔐 Attempting login with email:', login.email);
 
         try {
             const res = await fetch('/api/auth/login', {
@@ -83,32 +50,60 @@ export default function LoginPage(): React.ReactElement {
                 body: JSON.stringify({ email: login.email, password: login.password })
             });
 
-            const data: any = await safeJson(res);
+            console.log('📥 Login response status:', res.status);
+
+            const data: any = await res.json().catch(() => ({}));
+            console.log('📦 Login response data:', data);
 
             if (!res.ok) {
-                setLoginErrors(extractServerErrors(data, 'Erro no login'));
+                if (data.errors) setLoginErrors(data.errors);
+                else if (data.message) setLoginErrors({ general: data.message });
+                else setLoginErrors({ general: 'Erro no login' });
                 return;
             }
 
-            if (!data.token) {
+            if (data.token) {
+                console.log('🎫 JWT Token received:', data.token.substring(0, 30) + '...');
+
+                // 🔥 IMPORTANTE: Guarda o ID do utilizador
+                const userId = data.id || data.user_id || data.userId;
+                console.log('🆔 User ID from response:', userId);
+
+                localStorage.setItem('jwt', data.token);
+
+                const userToStore = {
+                    username: data.username || data.name,
+                    email: data.email || login.email,
+                    role: data.role,
+                    id: userId  // ✅ GUARDA O ID
+                };
+
+                console.log('💾 Saving user to localStorage:', userToStore);
+                localStorage.setItem('user', JSON.stringify(userToStore));
+
+                // Verifica se guardou corretamente
+                const savedJwt = localStorage.getItem('jwt');
+                const savedUser = localStorage.getItem('user');
+                console.log('✅ JWT saved:', savedJwt ? 'YES' : 'NO');
+                console.log('✅ User saved:', savedUser);
+
+                window.dispatchEvent(new Event('authChanged'));
+
+                setLogin({ ...login, password: '' });
+
+                if (data.role === 'ADMIN') {
+                    console.log('🚀 Redirecting ADMIN to /admin');
+                    navigate('/admin');
+                } else {
+                    console.log('🚀 Redirecting CUSTOMER to /catalog');
+                    navigate('/catalog');
+                }
+            } else {
+                console.error('❌ No token in response');
                 setLoginErrors({ general: 'Resposta inválida do servidor' });
-                return;
             }
-
-            saveAuthData(data, login.email);
-
-            try {
-                globalThis.dispatchEvent(new Event('authChanged'));
-            } catch (e) {
-                console.warn('handleLoginSubmit: dispatchEvent não disponível', e);
-            }
-
-            setLogin({ ...login, password: '' });
-
-            const route = data.role === 'ADMIN' ? '/admin' : '/catalog';
-            navigate(route);
         } catch (e) {
-            console.error('handleLoginSubmit: erro de rede ou exceção inesperada', e);
+            console.error('💥 Login exception:', e);
             setLoginErrors({ general: 'Erro de rede' });
         }
     };
@@ -125,6 +120,8 @@ export default function LoginPage(): React.ReactElement {
         setRegErrors(errs);
         if (Object.keys(errs).length > 0) return;
 
+        console.log('📝 Attempting registration with email:', reg.email);
+
         try {
             const res = await fetch('/api/auth/register', {
                 method: 'POST',
@@ -138,18 +135,24 @@ export default function LoginPage(): React.ReactElement {
                 })
             });
 
-            const data: any = await safeJson(res);
+            console.log('📥 Register response status:', res.status);
+
+            const data: any = await res.json().catch(() => ({}));
+            console.log('📦 Register response data:', data);
 
             if (!res.ok) {
-                setRegErrors(extractServerErrors(data, 'Erro no registo'));
+                if (data.errors) setRegErrors(data.errors);
+                else if (data.message) setRegErrors({ general: data.message });
+                else setRegErrors({ general: 'Erro no registo' });
                 return;
             }
 
-            globalThis.alert?.('Registo efetuado. Por favor inicie sessão.');
+            console.log('✅ Registration successful');
+            alert('Registo efetuado. Por favor inicie sessão.');
             setReg({ name: '', email: '', password: '', passwordConfirm: '' });
             navigate('/loginPage');
         } catch (e) {
-            console.error('handleRegisterSubmit: exceção ao registar', e);
+            console.error('💥 Register exception:', e);
             setRegErrors({ general: 'Erro de rede' });
         }
     };
@@ -161,10 +164,10 @@ export default function LoginPage(): React.ReactElement {
                 <Header />
 
                 <div style={styles.container}>
-                    <h1 style={styles.title}>Entrar ou Registar</h1>
+                    <h1 style={styles.title}>Entrar</h1>
 
-                    <div className="side-by-side" aria-live="polite">
-                        <section className="card" style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'center' }} aria-live="polite">
+                        <section className="card" style={{ maxWidth: 420, width: '100%' }}>
                             <div className="brand">
                                 <span className="brand-logo" aria-hidden />
                                 <div>
@@ -215,21 +218,47 @@ export default function LoginPage(): React.ReactElement {
                                         />
                                         <span className="muted">Lembrar-me</span>
                                     </label>
+
+                                    <button type="button" className="btn secondary" onClick={() => alert('Recuperação de password (simulado)')}>
+                                        Esqueceu a password?
+                                    </button>
                                 </div>
 
                                 <button type="submit" className="btn">Entrar</button>
                             </form>
                         </section>
+                    </div>
 
-                        <section className="card" style={{ flex: 1 }}>
-                            <div className="brand">
-                                <div style={{ width: 44 }}>
-                                    <div style={{ width: 44, height: 44, borderRadius: 8, background: '#fde68a' }} />
+                    <div style={{ marginTop: 18, textAlign: 'center' }}>
+                        <span className="muted">Primeira vez?</span>
+                        <button className="btn secondary" style={{ marginLeft: 10 }} onClick={() => setShowRegisterForm(true)}>Criar conta</button>
+                    </div>
+
+                    <div style={{ marginTop: 18, textAlign: 'center', color: '#6b7280' }}>
+                        <small>Ao prosseguir aceita os termos e a política de privacidade.</small>
+                    </div>
+                </div>
+
+                <footer style={styles.footer}>
+                    © {new Date().getFullYear()} Crafting Stable — Aluguer de ferramentas.
+                </footer>
+            </div>
+
+            {showRegisterForm && (
+                <div className="modal-backdrop" onClick={() => setShowRegisterForm(false)}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+                        <section className="card" style={{ maxWidth: 540, width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <div className="brand">
+                                    <div style={{ width: 44 }}>
+                                        <div style={{ width: 44, height: 44, borderRadius: 8, background: '#fde68a' }} />
+                                    </div>
+                                    <div>
+                                        <strong>Crie a sua conta</strong>
+                                        <div className="muted">Rápido e fácil.</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <strong>Primeira vez?</strong>
-                                    <div className="muted">Crie a sua conta.</div>
-                                </div>
+                                <button className="btn secondary" onClick={() => setShowRegisterForm(false)}>Fechar</button>
                             </div>
 
                             <form onSubmit={handleRegisterSubmit}>
@@ -282,20 +311,15 @@ export default function LoginPage(): React.ReactElement {
                                     {regErrors.general && <div className="error">{regErrors.general}</div>}
                                 </div>
 
-                                <button type="submit" className="btn">Criar conta</button>
+                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                    <button type="button" className="btn secondary" onClick={() => setShowRegisterForm(false)}>Cancelar</button>
+                                    <button type="submit" className="btn">Criar conta</button>
+                                </div>
                             </form>
                         </section>
                     </div>
-
-                    <div style={{ marginTop: 18, textAlign: 'center', color: '#6b7280' }}>
-                        <small>Ao prosseguir aceita os termos e a política de privacidade.</small>
-                    </div>
                 </div>
-
-                <footer style={styles.footer}>
-                    © {new Date().getFullYear()} Crafting Stable — Aluguer de ferramentas.
-                </footer>
-            </div>
+            )}
 
             <style>{`
               @media (max-width: 780px) {
@@ -311,6 +335,11 @@ export default function LoginPage(): React.ReactElement {
               input { width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:6px; }
               .error { color:#d32f2f; font-size:13px; margin-top:6px; }
               .muted { color:#6b7280; font-size:14px; }
+              .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index: 9999; }
+              .modal { padding: 18px; max-width: 96vw; box-sizing: border-box; }
+              .modal .card { box-shadow: 0 10px 30px rgba(0,0,0,0.18); }
+              .modal .card::-webkit-scrollbar { height: 8px; }
+              .modal .card { max-height: 80vh; overflow: auto; }
             `}</style>
         </div>
     );
@@ -345,10 +374,15 @@ const styles: Record<string, React.CSSProperties> = {
     },
     container: {
         width: '100%',
-        maxWidth: 1150,
+        maxWidth: 1980,
         marginTop: 28,
         padding: 32,
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '60vh'
     },
     title: {
         margin: '0 0 18px 0',

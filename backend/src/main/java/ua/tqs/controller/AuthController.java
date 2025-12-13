@@ -96,7 +96,7 @@ public class AuthController {
 
         String role = request.getRole();
         if (role == null || role.isBlank()) {
-            role = "CUSTOMER";  // ✅ Mudado de "USER" para "CUSTOMER"
+            role = "CUSTOMER";
             logger.info("🎭 No role provided, using default: CUSTOMER");
         }
         logger.info("👥 Registering user with role: {}", role);

@@ -225,4 +225,12 @@ public class UserService {
         user.setType(newRole);
         return userRepository.save(user);
     }
+
+    @Transactional
+    public User updatePayPalEmail(Long id, String paypalEmail) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        user.setPaypalEmail(paypalEmail);
+        return userRepository.save(user);
+    }
 }

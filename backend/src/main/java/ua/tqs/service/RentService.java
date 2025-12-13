@@ -115,7 +115,7 @@ public class RentService {
      */
     public boolean hasOverlap(Rent rent) {
         // Only check against PENDING and APPROVED rents (CANCELED and REJECTED don't block)
-        List<RentStatus> blockingStatuses = Arrays.asList(RentStatus.PENDING, RentStatus.APPROVED);
+        List<RentStatus> blockingStatuses = Arrays.asList(RentStatus.PENDING, RentStatus.APPROVED, RentStatus.ACTIVE);
         
         List<Rent> overlapping = rentRepository.findOverlappingRents(
             rent.getToolId(),
@@ -130,6 +130,14 @@ public class RentService {
         }
         
         return !overlapping.isEmpty();
+    }
+
+    /**
+     * Get all rents that block availability for a tool (PENDING, APPROVED, ACTIVE)
+     */
+    public List<Rent> getBlockingRentsForTool(Long toolId) {
+        List<RentStatus> blockingStatuses = Arrays.asList(RentStatus.PENDING, RentStatus.APPROVED, RentStatus.ACTIVE);
+        return rentRepository.findByToolIdAndStatusIn(toolId, blockingStatuses);
     }
 
     /**

@@ -110,4 +110,13 @@ public class UserController {
         User user = userService.changeUserRole(id, newRole);
         return ResponseEntity.ok(user);
     }
+    @PutMapping("/{id}/paypal-email")
+    public ResponseEntity<User> updatePayPalEmail(@PathVariable("id") Long id, @RequestBody Map<String, String> body) {
+        String paypalEmail = body.get("paypalEmail");
+        if (paypalEmail == null || paypalEmail.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        User user = userService.updatePayPalEmail(id, paypalEmail);
+        return ResponseEntity.ok(user);
+    }
 }
