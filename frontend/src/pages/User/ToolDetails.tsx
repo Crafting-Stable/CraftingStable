@@ -64,11 +64,11 @@ function daysBetween(startStr: string, endStr: string, inclusive: boolean) {
 }
 
 function BookingCalendar({
-                             toolId,
-                             pricePerDay,
-                             inclusive = true,
-                             currency = "EUR"
-                         }: BookingCalendarProps): React.ReactElement {
+    toolId,
+    pricePerDay,
+    inclusive = true,
+    currency = "EUR"
+}: BookingCalendarProps): React.ReactElement {
     const navigate = useNavigate();
     const today = useMemo(() => new Date(), []);
     const [start, setStart] = useState<string>(toIsoDateString(today));
@@ -115,11 +115,7 @@ function BookingCalendar({
 
                 const data = await response.json().catch(() => ({ available: false }));
                 setIsAvailable(Boolean(data.available));
-                if (!data.available && data.reason) {
-                    setAvailabilityMessage(data.reason);
-                } else if (data.available) {
-                    setAvailabilityMessage(null);
-                }
+                setAvailabilityMessage(!data.available && data.reason ? data.reason : null);
             } catch (err) {
                 console.error('Error checking availability:', err);
                 setIsAvailable(false);
@@ -157,93 +153,95 @@ function BookingCalendar({
     const jwt = getJwt();
     const isLoggedIn = !!jwt;
 
-    let paymentSection: React.ReactNode;
-    if (!isLoggedIn) {
-        paymentSection = (
-            <div style={{
-                background: "rgba(239, 68, 68, 0.2)",
-                border: "1px solid #ef4444",
-                color: "#fca5a5",
-                padding: "10px 14px",
-                borderRadius: 6,
-                textAlign: "center"
-            }}>
-                <p>Por favor <Link to="/loginPage" style={{ color: "#f8b749", textDecoration: "underline" }}>faça login</Link> para reservar esta ferramenta.</p>
-            </div>
-        );
-    } else if (days <= 0) {
-        paymentSection = (
-            <div style={{
-                background: "rgba(251, 191, 36, 0.2)",
-                border: "1px solid #fbbf24",
-                color: "#fcd34d",
-                padding: "10px 14px",
-                borderRadius: 6,
-                textAlign: "center"
-            }}>
-                <p>Por favor selecione datas válidas (data de fim após data de início).</p>
-            </div>
-        );
-    } else if (checkingAvailability) {
-        paymentSection = (
-            <div style={{
-                background: "rgba(59, 130, 246, 0.2)",
-                border: "1px solid #3b82f6",
-                color: "#93c5fd",
-                padding: "10px 14px",
-                borderRadius: 6,
-                textAlign: "center"
-            }}>
-                <p>🔍 A verificar disponibilidade...</p>
-            </div>
-        );
-    } else if (!isAvailable) {
-        paymentSection = (
-            <div style={{
-                background: "rgba(239, 68, 68, 0.2)",
-                border: "1px solid #ef4444",
-                color: "#fca5a5",
-                padding: "10px 14px",
-                borderRadius: 6,
-                textAlign: "center"
-            }}>
-                <p>❌ {availabilityMessage || "Esta ferramenta não está disponível para as datas selecionadas"}</p>
-            </div>
-        );
-    } else if (success) {
-        paymentSection = (
-            <div style={{
-                background: "rgba(34, 197, 94, 0.2)",
-                border: "1px solid #22c55e",
-                color: "#86efac",
-                padding: "10px 14px",
-                borderRadius: 6,
-                textAlign: "center"
-            }}>
-                <p>A redirecionar para a sua página de reservas...</p>
-            </div>
-        );
-    } else {
-        paymentSection = (
-            <div style={{ maxWidth: 400 }}>
-                <p style={{ color: "#ccc", fontSize: 13, marginBottom: 10, textAlign: "center" }}>
-                    Pague com segurança via PayPal para confirmar a sua reserva
-                </p>
-                <PayPalCheckout
-                    toolId={Number(toolId)}
-                    amount={total.toFixed(2)}
-                    startDate={start}
-                    endDate={end}
-                    currency={currency}
-                    description={`Reserva de ferramenta #${toolId} - ${days} dia(s)`}
-                    onSuccess={handlePaymentSuccess}
-                    onError={handlePaymentError}
-                    onCancel={handlePaymentCancel}
-                    disabled={days <= 0}
-                />
-            </div>
-        );
-    }
+    type SectionKind = 'notLogged' | 'invalidDates' | 'checking' | 'notAvailable' | 'success' | 'ready';
+
+    const sectionKind = useMemo<SectionKind>(() => {
+        if (!isLoggedIn) return 'notLogged';
+        if (days <= 0) return 'invalidDates';
+        if (checkingAvailability) return 'checking';
+        if (!isAvailable) return 'notAvailable';
+        if (success) return 'success';
+        return 'ready';
+    }, [isLoggedIn, days, checkingAvailability, isAvailable, success]);
+
+    const messageBox = (bg: string, border: string, color: string, children: React.ReactNode) => (
+        <div style={{
+            background: bg,
+            border,
+            color,
+            padding: "10px 14px",
+            borderRadius: 6,
+            textAlign: "center"
+        }}>
+            {children}
+        </div>
+    );
+
+    const renderPaymentSection = () => {
+        switch (sectionKind) {
+            case 'notLogged':
+                return messageBox(
+                    "rgba(239, 68, 68, 0.2)",
+                    "1px solid #ef4444",
+                    "#fca5a5",
+                    <p>Por favor <Link to="/loginPage" style={{ color: "#f8b749", textDecoration: "underline" }}>faça login</Link> para reservar esta ferramenta.</p>
+                );
+
+            case 'invalidDates':
+                return messageBox(
+                    "rgba(251, 191, 36, 0.2)",
+                    "1px solid #fbbf24",
+                    "#fcd34d",
+                    <p>Por favor selecione datas válidas (data de fim após data de início).</p>
+                );
+
+            case 'checking':
+                return messageBox(
+                    "rgba(59, 130, 246, 0.2)",
+                    "1px solid #3b82f6",
+                    "#93c5fd",
+                    <p>🔍 A verificar disponibilidade...</p>
+                );
+
+            case 'notAvailable':
+                return messageBox(
+                    "rgba(239, 68, 68, 0.2)",
+                    "1px solid #ef4444",
+                    "#fca5a5",
+                    <p>❌ {availabilityMessage || "Esta ferramenta não está disponível para as datas selecionadas"}</p>
+                );
+
+            case 'success':
+                return messageBox(
+                    "rgba(34, 197, 94, 0.2)",
+                    "1px solid #22c55e",
+                    "#86efac",
+                    <p>A redirecionar para a sua página de reservas...</p>
+                );
+
+            case 'ready':
+            default:
+                return (
+                    <div style={{ maxWidth: 400 }}>
+                        <p style={{ color: "#ccc", fontSize: 13, marginBottom: 10, textAlign: "center" }}>
+                            Pague com segurança via PayPal para confirmar a sua reserva
+                        </p>
+                        <PayPalCheckout
+                            toolId={Number(toolId)}
+                            amount={total.toFixed(2)}
+                            startDate={start}
+                            endDate={end}
+                            currency={currency}
+                            description={`Reserva de ferramenta #${toolId} - ${days} dia(s)`}
+                            onSuccess={handlePaymentSuccess}
+                            onError={handlePaymentError}
+                            onCancel={handlePaymentCancel}
+                            disabled={days <= 0}
+                        />
+                    </div>
+                );
+        }
+    };
 
     return (
         <div style={{ marginTop: 16, background: "rgba(0,0,0,0.45)", padding: 12, borderRadius: 8 }}>
@@ -298,7 +296,6 @@ function BookingCalendar({
                     />
                 </label>
 
-
                 <div style={{ color: "#fff", marginLeft: "auto", textAlign: "right" }}>
                     <div>Dias: <strong>{days}</strong></div>
                     <div>Preço/dia: <strong>{fmt.format(pricePerDay)}</strong></div>
@@ -307,14 +304,13 @@ function BookingCalendar({
             </div>
 
             <div style={{ marginTop: 16 }}>
-                {paymentSection}
+                {renderPaymentSection()}
             </div>
 
             {showModal && <RentSuccessModal rentData={rentData} onClose={handleCloseModal} />}
         </div>
     );
 }
-/* --- fim BookingCalendar --- */
 
 const containerStyle: React.CSSProperties = {
     minHeight: "100vh",

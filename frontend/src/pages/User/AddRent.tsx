@@ -394,6 +394,28 @@ export default function AddRent(): React.ReactElement {
         submitLabel = "Atualizar";
     }
 
+    const toolsContent: React.ReactNode = (() => {
+        if (loading) {
+            return (
+                <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.5)" }}>
+                    A carregar...
+                </div>
+            );
+        }
+        if (tools.length === 0) {
+            return (
+                <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.5)" }}>
+                    Ainda não criou nenhum anúncio. Crie o seu primeiro anúncio acima!
+                </div>
+            );
+        }
+        return (
+            <div style={{ display: "grid", gap: 16 }}>
+                {tools.map(renderTool)}
+            </div>
+        );
+    })();
+
     return (
         <div style={pageStyle}>
             <Header />
@@ -531,19 +553,7 @@ export default function AddRent(): React.ReactElement {
                 <section style={{ background: "rgba(0,0,0,0.6)", padding: 24, borderRadius: 10 }}>
                     <h3 style={{ margin: "0 0 16px 0" }}>Meus Anúncios ({tools.length})</h3>
 
-                    {loading ? (
-                        <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.5)" }}>
-                            A carregar...
-                        </div>
-                    ) : tools.length === 0 ? (
-                        <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.5)" }}>
-                            Ainda não criou nenhum anúncio. Crie o seu primeiro anúncio acima!
-                        </div>
-                    ) : (
-                        <div style={{ display: "grid", gap: 16 }}>
-                            {tools.map(renderTool)}
-                        </div>
-                    )}
+                    {toolsContent}
                 </section>
             </main>
         </div>

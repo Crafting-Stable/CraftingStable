@@ -63,9 +63,9 @@ const AdminTools: React.FC = () => {
             setTimeout(() => navigate('/loginPage'), 1200);
             return true;
         }
-        // FIX: Changed condition from "if (status && !statusText)" to check both properly
-        if (status && statusText) {
-            setError(statusText || 'Erro de autenticação');
+        // FIX: Removed redundant condition - statusText is already checked implicitly
+        if (statusText) {
+            setError(statusText);
         }
         return false;
     };
@@ -279,18 +279,23 @@ const AdminTools: React.FC = () => {
                 </div>
             </div>
 
-            {/* Edit Modal - FIX: Changed from div to dialog element */}
+            {/* Edit Modal - FIX: Using proper button for overlay with keyboard support */}
             {editingTool && (
-                <dialog
-                    ref={modalOverlayRef as any}
-                    open
-                    style={styles.modalOverlay}
-                    onClick={closeModal}
-                    aria-labelledby={`edit-modal-title-${editingTool.id}`}
-                >
+                <div style={styles.modalOverlay}>
+                    <button
+                        ref={modalOverlayRef as any}
+                        style={styles.modalOverlayButton}
+                        onClick={closeModal}
+                        aria-label="Fechar modal de edição"
+                        type="button"
+                    >
+                        Fechar
+                    </button>
                     <div
                         style={styles.modal}
-                        onClick={(e) => e.stopPropagation()}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby={`edit-modal-title-${editingTool.id}`}
                     >
                         <h2 id={`edit-modal-title-${editingTool.id}`} style={styles.modalTitle}>Edit Tool #{editingTool.id}</h2>
 
@@ -352,7 +357,7 @@ const AdminTools: React.FC = () => {
                             <button style={styles.saveBtn} onClick={handleSaveEdit}>Save</button>
                         </div>
                     </div>
-                </dialog>
+                </div>
             )}
         </div>
     );
@@ -492,11 +497,25 @@ const styles: { [key: string]: React.CSSProperties } = {
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1000,
+    },
+    modalOverlayButton: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
         border: 'none',
-        maxWidth: '100vw',
-        maxHeight: '100vh',
+        backgroundColor: 'transparent',
+        cursor: 'pointer',
+        fontSize: 0,
+        color: 'transparent',
+        padding: 0,
+        zIndex: 1,
     },
     modal: {
+        position: 'relative',
         backgroundColor: 'white',
         borderRadius: '8px',
         padding: '32px',
@@ -504,6 +523,7 @@ const styles: { [key: string]: React.CSSProperties } = {
         maxWidth: '600px',
         maxHeight: '90vh',
         overflow: 'auto',
+        zIndex: 2,
     },
     modalTitle: {
         margin: '0 0 24px 0',
