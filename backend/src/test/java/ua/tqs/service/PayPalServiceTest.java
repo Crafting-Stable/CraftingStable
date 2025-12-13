@@ -26,8 +26,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import ua.tqs.dto.PayPalCaptureDTO;
 import ua.tqs.dto.PayPalOrderDTO;
 import ua.tqs.enums.RentStatus;
@@ -45,7 +43,6 @@ class PayPalServiceTest {
     private RestTemplate restTemplate;
 
     private PayPalService payPalService;
-    private ObjectMapper objectMapper;
 
     private static final String CLIENT_ID = "test-client-id";
     private static final String CLIENT_SECRET = "test-client-secret";
@@ -56,8 +53,7 @@ class PayPalServiceTest {
     @BeforeEach
     void setUp() {
         payPalService = new PayPalService(rentRepository);
-        objectMapper = new ObjectMapper();
-        
+
         // Inject RestTemplate mock
         ReflectionTestUtils.setField(payPalService, "restTemplate", restTemplate);
         ReflectionTestUtils.setField(payPalService, "clientId", CLIENT_ID);
@@ -136,11 +132,11 @@ class PayPalServiceTest {
         when(rentRepository.findById(rentId)).thenReturn(Optional.empty());
 
         // Act & Assert
-        assertThatThrownBy(() -> 
-            payPalService.createOrder(rentId, new BigDecimal("50.00"), "EUR", "Test")
+        assertThatThrownBy(() ->
+                payPalService.createOrder(rentId, new BigDecimal("50.00"), "EUR", "Test")
         )
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessageContaining("Rent not found");
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Rent not found");
 
         verify(rentRepository).findById(rentId);
     }
@@ -158,11 +154,11 @@ class PayPalServiceTest {
         when(rentRepository.findById(rentId)).thenReturn(Optional.of(rent));
 
         // Act & Assert
-        assertThatThrownBy(() -> 
-            payPalService.createOrder(rentId, new BigDecimal("50.00"), "EUR", "Test")
+        assertThatThrownBy(() ->
+                payPalService.createOrder(rentId, new BigDecimal("50.00"), "EUR", "Test")
         )
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Only approved rentals can be paid");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Only approved rentals can be paid");
 
         verify(rentRepository).findById(rentId);
     }
@@ -325,7 +321,7 @@ class PayPalServiceTest {
 
         // Assert
         assertThat(result.getStatus()).isEqualTo("PENDING");
-        
+
         // Rent should not be updated when payment is not completed
         verify(rentRepository, never()).findById(any());
         verify(rentRepository, never()).save(any());
@@ -398,11 +394,11 @@ class PayPalServiceTest {
         )).thenThrow(new RuntimeException("Network error"));
 
         // Act & Assert
-        assertThatThrownBy(() -> 
-            payPalService.createOrder(rentId, new BigDecimal("50.00"), "EUR", "Test")
+        assertThatThrownBy(() ->
+                payPalService.createOrder(rentId, new BigDecimal("50.00"), "EUR", "Test")
         )
-        .isInstanceOf(RuntimeException.class)
-        .hasMessageContaining("Failed to authenticate with PayPal");
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Failed to authenticate with PayPal");
     }
 
     @Test
@@ -418,11 +414,11 @@ class PayPalServiceTest {
         when(rentRepository.findById(rentId)).thenReturn(Optional.of(rent));
 
         // Act & Assert
-        assertThatThrownBy(() -> 
-            payPalService.createOrder(rentId, new BigDecimal("50.00"), "EUR", "Test")
+        assertThatThrownBy(() ->
+                payPalService.createOrder(rentId, new BigDecimal("50.00"), "EUR", "Test")
         )
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Only approved rentals can be paid");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Only approved rentals can be paid");
     }
 
     @Test
@@ -438,10 +434,10 @@ class PayPalServiceTest {
         when(rentRepository.findById(rentId)).thenReturn(Optional.of(rent));
 
         // Act & Assert
-        assertThatThrownBy(() -> 
-            payPalService.createOrder(rentId, new BigDecimal("50.00"), "EUR", "Test")
+        assertThatThrownBy(() ->
+                payPalService.createOrder(rentId, new BigDecimal("50.00"), "EUR", "Test")
         )
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Only approved rentals can be paid");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Only approved rentals can be paid");
     }
 }
