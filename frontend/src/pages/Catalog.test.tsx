@@ -106,7 +106,7 @@ describe('CatalogPage', () => {
     renderCatalog();
 
     await waitFor(() => {
-      expect(screen.getByText('Promoções e Ofertas')).toBeDefined();
+      expect(screen.getByText('Catálogo')).toBeDefined();
     });
   });
 

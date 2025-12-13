@@ -149,7 +149,7 @@ export default function CatalogPage(): React.ReactElement {
             <div style={styles.container}>
                 <section style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 18, paddingTop: 12 }}>
                     <div style={{ flex: 1 }}>
-                        <h1 style={{ margin: 0, fontSize: 28 }}>Promoções e Ofertas</h1>
+                        <h1 style={{ margin: 0, fontSize: 28 }}>Catálogo</h1>
                         <p style={{ margin: "6px 0 12px", color: "rgba(255,255,255,0.9)" }}>Veja as ferramentas e filtre por localização, categoria e estado.</p>
 
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
