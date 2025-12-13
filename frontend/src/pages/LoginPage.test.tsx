@@ -23,7 +23,9 @@ describe('LoginPage', () => {
         <LoginPage />
       </BrowserRouter>
     );
-    expect(screen.getByText(/entrar ou registar/i)).toBeDefined();
+    // Check for actual text in the login page
+    expect(screen.getByText(/Já tem conta\?/i)).toBeDefined();
+    expect(screen.getByText(/Faça login para continuar/i)).toBeDefined();
   });
 
   it('should display error message on login failure', async () => {
