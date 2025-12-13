@@ -19,6 +19,7 @@ type RegisterForm = {
 
 export default function LoginPage(): React.ReactElement {
     const navigate = useNavigate();
+    const [showRegisterForm, setShowRegisterForm] = useState(false);
     const [login, setLogin] = useState<LoginForm>({ email: '', password: '', remember: false });
     const [reg, setReg] = useState<RegisterForm>({ name: '', email: '', password: '', passwordConfirm: '' });
     const [loginErrors, setLoginErrors] = useState<Record<string, string>>({});
@@ -163,10 +164,10 @@ export default function LoginPage(): React.ReactElement {
                 <Header />
 
                 <div style={styles.container}>
-                    <h1 style={styles.title}>Entrar ou Registar</h1>
+                    <h1 style={styles.title}>Entrar</h1>
 
-                    <div className="side-by-side" aria-live="polite">
-                        <section className="card" style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'center' }} aria-live="polite">
+                        <section className="card" style={{ maxWidth: 420, width: '100%' }}>
                             <div className="brand">
                                 <span className="brand-logo" aria-hidden />
                                 <div>
@@ -226,16 +227,38 @@ export default function LoginPage(): React.ReactElement {
                                 <button type="submit" className="btn">Entrar</button>
                             </form>
                         </section>
+                    </div>
 
-                        <section className="card" style={{ flex: 1 }}>
-                            <div className="brand">
-                                <div style={{ width: 44 }}>
-                                    <div style={{ width: 44, height: 44, borderRadius: 8, background: '#fde68a' }} />
+                    <div style={{ marginTop: 18, textAlign: 'center' }}>
+                        <span className="muted">Primeira vez?</span>
+                        <button className="btn secondary" style={{ marginLeft: 10 }} onClick={() => setShowRegisterForm(true)}>Criar conta</button>
+                    </div>
+
+                    <div style={{ marginTop: 18, textAlign: 'center', color: '#6b7280' }}>
+                        <small>Ao prosseguir aceita os termos e a política de privacidade.</small>
+                    </div>
+                </div>
+
+                <footer style={styles.footer}>
+                    © {new Date().getFullYear()} Crafting Stable — Aluguer de ferramentas.
+                </footer>
+            </div>
+
+            {showRegisterForm && (
+                <div className="modal-backdrop" onClick={() => setShowRegisterForm(false)}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+                        <section className="card" style={{ maxWidth: 540, width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <div className="brand">
+                                    <div style={{ width: 44 }}>
+                                        <div style={{ width: 44, height: 44, borderRadius: 8, background: '#fde68a' }} />
+                                    </div>
+                                    <div>
+                                        <strong>Crie a sua conta</strong>
+                                        <div className="muted">Rápido e fácil.</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <strong>Primeira vez?</strong>
-                                    <div className="muted">Crie a sua conta.</div>
-                                </div>
+                                <button className="btn secondary" onClick={() => setShowRegisterForm(false)}>Fechar</button>
                             </div>
 
                             <form onSubmit={handleRegisterSubmit}>
@@ -288,20 +311,15 @@ export default function LoginPage(): React.ReactElement {
                                     {regErrors.general && <div className="error">{regErrors.general}</div>}
                                 </div>
 
-                                <button type="submit" className="btn">Criar conta</button>
+                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                    <button type="button" className="btn secondary" onClick={() => setShowRegisterForm(false)}>Cancelar</button>
+                                    <button type="submit" className="btn">Criar conta</button>
+                                </div>
                             </form>
                         </section>
                     </div>
-
-                    <div style={{ marginTop: 18, textAlign: 'center', color: '#6b7280' }}>
-                        <small>Ao prosseguir aceita os termos e a política de privacidade.</small>
-                    </div>
                 </div>
-
-                <footer style={styles.footer}>
-                    © {new Date().getFullYear()} Crafting Stable — Aluguer de ferramentas.
-                </footer>
-            </div>
+            )}
 
             <style>{`
               @media (max-width: 780px) {
@@ -317,6 +335,11 @@ export default function LoginPage(): React.ReactElement {
               input { width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:6px; }
               .error { color:#d32f2f; font-size:13px; margin-top:6px; }
               .muted { color:#6b7280; font-size:14px; }
+              .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index: 9999; }
+              .modal { padding: 18px; max-width: 96vw; box-sizing: border-box; }
+              .modal .card { box-shadow: 0 10px 30px rgba(0,0,0,0.18); }
+              .modal .card::-webkit-scrollbar { height: 8px; }
+              .modal .card { max-height: 80vh; overflow: auto; }
             `}</style>
         </div>
     );
@@ -351,10 +374,15 @@ const styles: Record<string, React.CSSProperties> = {
     },
     container: {
         width: '100%',
-        maxWidth: 1150,
+        maxWidth: 1980,
         marginTop: 28,
         padding: 32,
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '60vh'
     },
     title: {
         margin: '0 0 18px 0',
