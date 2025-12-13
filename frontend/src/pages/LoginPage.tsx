@@ -266,7 +266,7 @@ export default function LoginPage(): React.ReactElement {
                             </div>
                         </section>
                     </div>
-                </div>
+                </button>
             )}
 
             <style>{`
