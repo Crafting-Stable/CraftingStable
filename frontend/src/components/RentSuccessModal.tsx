@@ -35,6 +35,10 @@ const RentSuccessModal: React.FC<RentSuccessModalProps> = ({ rentData, toolName,
         }
     };
 
+    const stopKeyboardPropagation = (e: React.KeyboardEvent) => {
+        e.stopPropagation();
+    };
+
     return (
         <div
             ref={overlayRef}
@@ -48,6 +52,7 @@ const RentSuccessModal: React.FC<RentSuccessModalProps> = ({ rentData, toolName,
             <div
                 style={styles.modal}
                 onClick={(e) => e.stopPropagation()}
+                onKeyDown={stopKeyboardPropagation}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
@@ -57,7 +62,6 @@ const RentSuccessModal: React.FC<RentSuccessModalProps> = ({ rentData, toolName,
                     <h2 id={titleId} style={styles.title}>Reserva Criada com Sucesso!</h2>
                 </div>
 
-                {/* resto do conteúdo permanece igual */}
                 <div style={styles.content}>
                     <div style={styles.infoSection}>
                         <h3 style={styles.sectionTitle}>Detalhes da Reserva</h3>
@@ -144,7 +148,6 @@ const styles: Record<string, React.CSSProperties> = {
         justifyContent: 'center',
         zIndex: 1000,
         padding: 20,
-        // permitir foco visível
         outline: 'none',
     },
     modal: {

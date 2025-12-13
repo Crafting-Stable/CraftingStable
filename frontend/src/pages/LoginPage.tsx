@@ -28,9 +28,11 @@ export default function LoginPage(): React.ReactElement {
 
     const emailValid = (e: string) => /\S+@\S+\.\S+/.test(e);
 
-    // Helpers
     const safeJson = async (res: Response) => {
-        return await res.json().catch(() => ({}));
+        return await res.json().catch((err) => {
+            console.warn('safeJson: falha ao parsear JSON da resposta', err);
+            return {};
+        });
     };
 
     const extractServerErrors = (data: any, defaultMsg: string) => {
@@ -46,7 +48,7 @@ export default function LoginPage(): React.ReactElement {
         try {
             globalThis.localStorage?.setItem('jwt', data.token);
         } catch (e) {
-            // localStorage não disponível — silencioso
+            console.warn('saveAuthData: localStorage indisponível ao gravar jwt', e);
         }
 
         const userToStore = {
@@ -59,7 +61,7 @@ export default function LoginPage(): React.ReactElement {
         try {
             globalThis.localStorage?.setItem('user', JSON.stringify(userToStore));
         } catch (e) {
-            // falha ao gravar user — silencioso
+            console.warn('saveAuthData: falha ao gravar user em localStorage', e);
         }
     };
 
@@ -98,7 +100,7 @@ export default function LoginPage(): React.ReactElement {
             try {
                 globalThis.dispatchEvent(new Event('authChanged'));
             } catch (e) {
-                // dispatchEvent não disponível — silencioso
+                console.warn('handleLoginSubmit: dispatchEvent não disponível', e);
             }
 
             setLogin({ ...login, password: '' });
@@ -106,6 +108,7 @@ export default function LoginPage(): React.ReactElement {
             const route = data.role === 'ADMIN' ? '/admin' : '/catalog';
             navigate(route);
         } catch (e) {
+            console.error('handleLoginSubmit: erro de rede ou exceção inesperada', e);
             setLoginErrors({ general: 'Erro de rede' });
         }
     };
@@ -146,6 +149,7 @@ export default function LoginPage(): React.ReactElement {
             setReg({ name: '', email: '', password: '', passwordConfirm: '' });
             navigate('/loginPage');
         } catch (e) {
+            console.error('handleRegisterSubmit: exceção ao registar', e);
             setRegErrors({ general: 'Erro de rede' });
         }
     };

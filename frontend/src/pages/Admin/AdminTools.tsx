@@ -202,6 +202,10 @@ const AdminTools: React.FC = () => {
         }
     };
 
+    const stopKeyboardPropagation = (e: React.KeyboardEvent) => {
+        e.stopPropagation();
+    };
+
     return (
         <div style={styles.container}>
             <header style={styles.header}>
@@ -296,8 +300,15 @@ const AdminTools: React.FC = () => {
                     tabIndex={0}
                     aria-label="Fechar modal de edição"
                 >
-                    <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-                        <h2 style={styles.modalTitle}>Edit Tool #{editingTool.id}</h2>
+                    <div
+                        style={styles.modal}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={stopKeyboardPropagation}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby={`edit-modal-title-${editingTool.id}`}
+                    >
+                        <h2 id={`edit-modal-title-${editingTool.id}`} style={styles.modalTitle}>Edit Tool #{editingTool.id}</h2>
 
                         <div style={styles.formGroup}>
                             <label htmlFor={`name-${editingTool.id}`} style={styles.label}>Name</label>
@@ -321,7 +332,6 @@ const AdminTools: React.FC = () => {
                                 <option value="Elétricas">Elétricas</option>
                             </select>
                         </div>
-
                         <div style={styles.formGroup}>
                             <label htmlFor={`location-${editingTool.id}`} style={styles.label}>Location</label>
                             <input id={`location-${editingTool.id}`} style={styles.input} value={editingTool.location} onChange={(e) => setEditingTool(prev => prev ? { ...prev, location: e.target.value } : prev)} />

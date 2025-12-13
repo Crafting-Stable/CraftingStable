@@ -277,7 +277,7 @@ function BookingCalendar({
 
             <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                 <label style={{ color: "#fff" }}>
-                    Início:
+                    Início:{' '}
                     <input
                         type="date"
                         value={start}
@@ -288,7 +288,7 @@ function BookingCalendar({
                 </label>
 
                 <label style={{ color: "#fff" }}>
-                    Fim:
+                    Fim:{' '}
                     <input
                         type="date"
                         value={end}
@@ -297,6 +297,7 @@ function BookingCalendar({
                         disabled={!!success}
                     />
                 </label>
+
 
                 <div style={{ color: "#fff", marginLeft: "auto", textAlign: "right" }}>
                     <div>Dias: <strong>{days}</strong></div>
