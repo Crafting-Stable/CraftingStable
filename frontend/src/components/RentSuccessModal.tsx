@@ -51,6 +51,8 @@ const RentSuccessModal: React.FC<RentSuccessModalProps> = ({ rentData, toolName,
             <dialog
                 ref={dialogRef}
                 open
+                role="dialog"
+                tabIndex={-1}
                 style={styles.dialog}
                 onClick={(e) => {
                     // fechar se clicar diretamente no elemento <dialog> (área de fundo do próprio diálogo)

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { adminStyles } from './adminStyles';
+import { apiUrl, getJwt, handleAuthError } from './adminUtils';
 
 interface AdminStats {
     totalRents: number;
@@ -17,27 +19,31 @@ interface AdminStats {
 }
 
 const AdminDashboard: React.FC = () => {
+    const navigate = useNavigate();
     const [stats, setStats] = useState<AdminStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         fetchStats();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchStats = async () => {
         try {
-            const token = localStorage.getItem('jwt');
-            const protocol = globalThis.location.protocol;
-            const hostname = globalThis.location.hostname;
-            const response = await fetch(`${protocol}//${hostname}:8081/api/users/stats/admin`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            setLoading(true);
+            const token = getJwt();
+            const headers: Record<string, string> = {};
+            if (token) headers.Authorization = `Bearer ${token}`;
+
+            const response = await fetch(apiUrl('/api/users/stats/admin'), { headers });
+
             if (!response.ok) {
-                throw new Error('Failed to fetch stats');
+                const handled = handleAuthError(response.status, response.statusText, navigate, setError);
+                if (handled) return;
+                throw new Error(response.statusText || 'Failed to fetch stats');
             }
+
             const data = await response.json();
             setStats(data);
         } catch (err) {
@@ -63,11 +69,8 @@ const AdminDashboard: React.FC = () => {
         );
     }
 
-    if (!stats) {
-        return null;
-    }
+    if (!stats) return null;
 
-    // Segurança: evita chamar toFixed em undefined
     const approvalRateDisplay =
         typeof stats.approvalRate === 'number' && Number.isFinite(stats.approvalRate)
             ? `${stats.approvalRate.toFixed(1)}%`
@@ -86,7 +89,6 @@ const AdminDashboard: React.FC = () => {
             </header>
 
             <div style={styles.content}>
-                {/* Main Stats Grid */}
                 <div style={styles.grid}>
                     <StatCard
                         title="Total Users"
@@ -114,7 +116,6 @@ const AdminDashboard: React.FC = () => {
                     />
                 </div>
 
-                {/* Secondary Stats */}
                 <div style={styles.secondaryGrid}>
                     <div style={styles.card}>
                         <h3 style={styles.cardTitle}>Most Rented Tool</h3>
@@ -126,7 +127,6 @@ const AdminDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Quick Actions */}
                 <div style={styles.actionsSection}>
                     <h2 style={styles.sectionTitle}>Quick Actions</h2>
                     <div style={styles.actionsGrid}>
@@ -164,54 +164,14 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, color }) =>
     </div>
 );
 
+// Mescla adminStyles com estilos do componente
 const styles: { [key: string]: React.CSSProperties } = {
-    container: {
-        minHeight: '100vh',
-        backgroundColor: '#f5f5f5',
-        fontFamily: 'Inter, Arial, sans-serif',
-    },
-    header: {
-        backgroundColor: '#1976d2',
-        color: 'white',
-        padding: '20px 40px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    },
-    title: {
-        margin: 0,
-        fontSize: '28px',
-        fontWeight: 'bold',
-    },
-    nav: {
-        display: 'flex',
-        gap: '20px',
-    },
-    navLink: {
-        color: 'white',
-        textDecoration: 'none',
-        fontSize: '16px',
-        padding: '8px 16px',
-        borderRadius: '4px',
-        transition: 'background-color 0.3s',
-    },
-    content: {
-        maxWidth: '1400px',
-        margin: '0 auto',
-        padding: '40px 20px',
-    },
+    ...adminStyles,
     grid: {
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
         gap: '24px',
         marginBottom: '40px',
-    },
-    statCard: {
-        backgroundColor: 'white',
-        padding: '24px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
     },
     statTitle: {
         margin: '0 0 12px 0',
@@ -259,12 +219,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     actionsSection: {
         marginTop: '40px',
     },
-    sectionTitle: {
-        margin: '0 0 24px 0',
-        fontSize: '24px',
-        fontWeight: 'bold',
-        color: '#333',
-    },
     actionsGrid: {
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -286,22 +240,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     },
     actionIcon: {
         fontSize: '48px',
-    },
-    loading: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        fontSize: '24px',
-        color: '#666',
-    },
-    error: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        fontSize: '20px',
-        color: '#f44336',
     },
 };
 

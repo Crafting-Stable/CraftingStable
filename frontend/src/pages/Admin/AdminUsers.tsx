@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { adminStyles } from './adminStyles';
+import { apiUrl, getJwt, handleAuthError } from './adminUtils';
 
 interface User {
     id: number;
@@ -10,12 +12,7 @@ interface User {
 }
 
 const AdminUsers: React.FC = () => {
-    const apiUrl = (path: string) => {
-        const protocol = globalThis.location.protocol;
-        const hostname = globalThis.location.hostname;
-        const normalized = path.startsWith('/') ? path : `/${path}`;
-        return `${protocol}//${hostname}:8081${normalized}`;
-    };
+    const navigate = useNavigate();
 
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
@@ -24,19 +21,23 @@ const AdminUsers: React.FC = () => {
 
     useEffect(() => {
         fetchUsers();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchUsers = async () => {
         try {
-            const token = localStorage.getItem('jwt');
+            setLoading(true);
+            const token = getJwt();
+            const headers: Record<string, string> = {};
+            if (token) headers.Authorization = `Bearer ${token}`;
 
-            const response = await fetch(apiUrl('/api/users'), {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const response = await fetch(apiUrl('/api/users'), { headers });
 
-            if (!response.ok) throw new Error('Failed to fetch users');
+            if (!response.ok) {
+                const handled = handleAuthError(response.status, response.statusText, navigate, setError);
+                if (handled) return;
+                throw new Error(response.statusText || 'Failed to fetch users');
+            }
 
             const data = await response.json();
             setUsers(data);
@@ -47,74 +48,79 @@ const AdminUsers: React.FC = () => {
         }
     };
 
+    const handleActivateUser = async (id: number) => {
+        try {
+            const token = getJwt();
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            if (token) headers.Authorization = `Bearer ${token}`;
 
-const handleActivateUser = async (id: number) => {
-    try {
-        const token = localStorage.getItem('jwt'); // 🔥
+            const response = await fetch(apiUrl(`/api/users/${id}/activate`), {
+                method: 'PUT',
+                headers,
+            });
 
-        const response = await fetch(apiUrl(`/api/users/${id}/activate`), {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` // 🔥
-            },
-        });
+            if (!response.ok) {
+                const handled = handleAuthError(response.status, response.statusText, navigate, setError);
+                if (handled) return;
+                throw new Error('Failed to activate user');
+            }
 
-        if (!response.ok) throw new Error('Failed to activate user');
+            fetchUsers();
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to activate user');
+        }
+    };
 
-        fetchUsers();
-    } catch (err) {
-        alert(err instanceof Error ? err.message : 'Failed to activate user');
-    }
-};
+    const handleDeactivateUser = async (id: number) => {
+        try {
+            const token = getJwt();
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            if (token) headers.Authorization = `Bearer ${token}`;
 
+            const response = await fetch(apiUrl(`/api/users/${id}/deactivate`), {
+                method: 'PUT',
+                headers,
+            });
 
-const handleDeactivateUser = async (id: number) => {
-    try {
-        const token = localStorage.getItem('jwt');
+            if (!response.ok) {
+                const handled = handleAuthError(response.status, response.statusText, navigate, setError);
+                if (handled) return;
+                throw new Error('Failed to deactivate user');
+            }
 
-        const response = await fetch(apiUrl(`/api/users/${id}/deactivate`), {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-        });
+            fetchUsers();
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to deactivate user');
+        }
+    };
 
-        if (!response.ok) throw new Error('Failed to deactivate user');
+    const handleChangeRole = async (id: number, newRole: 'CUSTOMER' | 'ADMIN') => {
+        if (!confirm(`Are you sure you want to change this user's role to ${newRole}?`)) return;
 
-        fetchUsers();
-    } catch (err) {
-        alert(err instanceof Error ? err.message : 'Failed to deactivate user');
-    }
-};
+        try {
+            const token = getJwt();
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            if (token) headers.Authorization = `Bearer ${token}`;
 
+            const response = await fetch(apiUrl(`/api/users/${id}/role`), {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({ role: newRole }),
+            });
 
-const handleChangeRole = async (id: number, newRole: 'CUSTOMER' | 'ADMIN') => {
-    if (!confirm(`Are you sure you want to change this user's role to ${newRole}?`)) return;
+            if (!response.ok) {
+                const handled = handleAuthError(response.status, response.statusText, navigate, setError);
+                if (handled) return;
+                throw new Error('Failed to change user role');
+            }
 
-    try {
-        const token = localStorage.getItem('jwt');
+            fetchUsers();
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to change user role');
+        }
+    };
 
-        const response = await fetch(apiUrl(`/api/users/${id}/role`), {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ role: newRole }),
-        });
-
-        if (!response.ok) throw new Error('Failed to change user role');
-
-        fetchUsers();
-    } catch (err) {
-        alert(err instanceof Error ? err.message : 'Failed to change user role');
-    }
-};
-
-
-const filteredUsers = users.filter(user => {
+    const filteredUsers = users.filter(user => {
         if (filter === 'ALL') return true;
         if (filter === 'ACTIVE') return user.active;
         if (filter === 'INACTIVE') return !user.active;
@@ -192,14 +198,14 @@ const filteredUsers = users.filter(user => {
                                 <td style={styles.tableCell}>{user.name}</td>
                                 <td style={styles.tableCell}>{user.email}</td>
                                 <td style={styles.tableCell}>
-                                        <span style={{ ...styles.badge, backgroundColor: user.type === 'ADMIN' ? '#1976d2' : '#4caf50' }}>
-                                            {user.type}
-                                        </span>
+                                    <span style={{ ...styles.badge, backgroundColor: user.type === 'ADMIN' ? '#1976d2' : '#4caf50' }}>
+                                        {user.type}
+                                    </span>
                                 </td>
                                 <td style={styles.tableCell}>
-                                        <span style={{ ...styles.badge, backgroundColor: user.active ? '#4caf50' : '#f44336' }}>
-                                            {user.active ? 'ACTIVE' : 'INACTIVE'}
-                                        </span>
+                                    <span style={{ ...styles.badge, backgroundColor: user.active ? '#4caf50' : '#f44336' }}>
+                                        {user.active ? 'ACTIVE' : 'INACTIVE'}
+                                    </span>
                                 </td>
                                 <td style={styles.tableCell}>
                                     <div style={styles.actionButtons}>
@@ -224,50 +230,9 @@ const filteredUsers = users.filter(user => {
 };
 
 const styles: { [key: string]: React.CSSProperties } = {
-    container: {
-        minHeight: '100vh',
-        backgroundColor: '#f5f5f5',
-        fontFamily: 'Inter, Arial, sans-serif',
-    },
-    header: {
-        backgroundColor: '#1976d2',
-        color: 'white',
-        padding: '20px 40px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    },
-    title: {
-        margin: 0,
-        fontSize: '28px',
-        fontWeight: 'bold',
-    },
-    nav: {
-        display: 'flex',
-        gap: '20px',
-    },
-    navLink: {
-        color: 'white',
-        textDecoration: 'none',
-        fontSize: '16px',
-        padding: '8px 16px',
-        borderRadius: '4px',
-        transition: 'background-color 0.3s',
-    },
-    content: {
-        maxWidth: '1400px',
-        margin: '0 auto',
-        padding: '40px 20px',
-    },
+    ...adminStyles,
     filtersSection: {
         marginBottom: '32px',
-    },
-    sectionTitle: {
-        margin: '0 0 16px 0',
-        fontSize: '24px',
-        fontWeight: 'bold',
-        color: '#333',
     },
     filters: {
         display: 'flex',
@@ -345,22 +310,6 @@ const styles: { [key: string]: React.CSSProperties } = {
         fontWeight: '500',
         cursor: 'pointer',
         transition: 'opacity 0.3s',
-    },
-    loading: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        fontSize: '24px',
-        color: '#666',
-    },
-    error: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        fontSize: '20px',
-        color: '#f44336',
     },
 };
 

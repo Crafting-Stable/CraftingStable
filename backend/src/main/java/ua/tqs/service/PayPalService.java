@@ -1,3 +1,4 @@
+// java
 package ua.tqs.service;
 
 import java.math.BigDecimal;
@@ -16,8 +17,10 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -25,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import ua.tqs.dto.PayPalCaptureDTO;
 import ua.tqs.dto.PayPalOrderDTO;
 import ua.tqs.enums.RentStatus;
+import ua.tqs.exception.PayPalApiException;
 import ua.tqs.exception.ResourceNotFoundException;
 import ua.tqs.model.Rent;
 import ua.tqs.repository.RentRepository;
@@ -67,28 +71,19 @@ public class PayPalService {
         this.rentRepository = rentRepository;
     }
 
-    /**
-     * Create a PayPal order for a rental payment
-     * If rentId is 0 or null, this is for a new rental (pay-first flow)
-     * Otherwise, validates the existing rental is in APPROVED status
-     */
     public PayPalOrderDTO createOrder(Long rentId, BigDecimal amount, String currency, String description) {
         log.info("Creating PayPal order for rent ID: {}, amount: {} {}", rentId, amount, currency);
 
-        // If rentId is provided and not 0, verify the rent exists and is approved
         if (rentId != null && rentId > 0) {
             Rent rent = rentRepository.findById(rentId)
                     .orElseThrow(() -> new ResourceNotFoundException("Rent not found with ID: " + rentId));
 
-            // Verify rent is in a valid state for payment
             if (rent.getStatus() != RentStatus.APPROVED) {
                 throw new IllegalArgumentException("Only approved rentals can be paid. Current status: " + rent.getStatus());
             }
         }
-        // If rentId is 0 or null, this is a "pay first" flow - proceed without validation
 
         String accessToken = getAccessToken();
-
         String requestBody = buildOrderRequestBody(amount, currency, description);
 
         HttpHeaders headers = new HttpHeaders();
@@ -124,15 +119,18 @@ public class PayPalService {
                     .approvalUrl(approvalUrl)
                     .build();
 
+        } catch (RestClientException e) {
+            log.error("PayPal API error while creating order", e);
+            throw new PayPalApiException("Failed to create PayPal order: PayPal API error", e);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to parse PayPal create order response", e);
+            throw new PayPalApiException("Failed to parse PayPal create order response", e);
         } catch (Exception e) {
-            log.error("Failed to create PayPal order", e);
-            throw new RuntimeException("Failed to create PayPal order: " + e.getMessage(), e);
+            log.error("Unexpected error while creating PayPal order", e);
+            throw new PayPalApiException("Unexpected error while creating PayPal order", e);
         }
     }
 
-    /**
-     * Capture a PayPal order after user approval
-     */
     public PayPalCaptureDTO captureOrder(String orderId, Long rentId) {
         log.info("Capturing PayPal order: {} for rent ID: {}", orderId, rentId);
 
@@ -162,16 +160,16 @@ public class PayPalService {
                     .rentId(rentId)
                     .build();
 
-            // Extract payer information
             if (responseBody.has("payer")) {
                 JsonNode payer = responseBody.get("payer");
-                captureDTO.setPayerId(payer.get("payer_id").asText());
+                if (payer.has("payer_id")) {
+                    captureDTO.setPayerId(payer.get("payer_id").asText());
+                }
                 if (payer.has("email_address")) {
                     captureDTO.setPayerEmail(payer.get("email_address").asText());
                 }
             }
 
-            // Extract capture details
             if (responseBody.has(FIELD_PURCHASE_UNITS)) {
                 JsonNode purchaseUnits = responseBody.get(FIELD_PURCHASE_UNITS);
                 if (purchaseUnits.isArray() && purchaseUnits.size() > 0) {
@@ -186,7 +184,6 @@ public class PayPalService {
                 }
             }
 
-            // Update rent status to ACTIVE if payment completed
             if ("COMPLETED".equals(status)) {
                 updateRentStatusAfterPayment(rentId);
             }
@@ -194,15 +191,18 @@ public class PayPalService {
             log.info("PayPal order captured successfully. Status: {}", status);
             return captureDTO;
 
+        } catch (RestClientException e) {
+            log.error("PayPal API error while capturing order", e);
+            throw new PayPalApiException("Failed to capture PayPal order: PayPal API error", e);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to parse PayPal capture response", e);
+            throw new PayPalApiException("Failed to parse PayPal capture response", e);
         } catch (Exception e) {
-            log.error("Failed to capture PayPal order", e);
-            throw new RuntimeException("Failed to capture PayPal order: " + e.getMessage(), e);
+            log.error("Unexpected error while capturing PayPal order", e);
+            throw new PayPalApiException("Unexpected error while capturing PayPal order", e);
         }
     }
 
-    /**
-     * Get order details from PayPal
-     */
     public PayPalOrderDTO getOrderDetails(String orderId) {
         log.info("Getting PayPal order details for: {}", orderId);
 
@@ -228,7 +228,6 @@ public class PayPalService {
                     .status(responseBody.get(FIELD_STATUS).asText())
                     .build();
 
-            // Extract amount
             if (responseBody.has(FIELD_PURCHASE_UNITS)) {
                 JsonNode purchaseUnits = responseBody.get(FIELD_PURCHASE_UNITS);
                 if (purchaseUnits.isArray() && purchaseUnits.size() > 0) {
@@ -240,15 +239,18 @@ public class PayPalService {
 
             return orderDTO;
 
+        } catch (RestClientException e) {
+            log.error("PayPal API error while getting order details", e);
+            throw new PayPalApiException("Failed to get PayPal order details: PayPal API error", e);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to parse PayPal order details response", e);
+            throw new PayPalApiException("Failed to parse PayPal order details response", e);
         } catch (Exception e) {
-            log.error("Failed to get PayPal order details", e);
-            throw new RuntimeException("Failed to get PayPal order details: " + e.getMessage(), e);
+            log.error("Unexpected error while getting PayPal order details", e);
+            throw new PayPalApiException("Unexpected error while getting PayPal order details", e);
         }
     }
 
-    /**
-     * Get OAuth2 access token from PayPal
-     */
     private String getAccessToken() {
         String auth = clientId + ":" + clientSecret;
         String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes(StandardCharsets.UTF_8));
@@ -270,21 +272,23 @@ public class PayPalService {
             JsonNode responseBody = objectMapper.readTree(response.getBody());
             return responseBody.get("access_token").asText();
 
+        } catch (RestClientException e) {
+            log.error("PayPal API error while obtaining access token", e);
+            throw new PayPalApiException("Failed to authenticate with PayPal: API error", e);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to parse access token response", e);
+            throw new PayPalApiException("Failed to parse PayPal access token response", e);
         } catch (Exception e) {
-            log.error("Failed to get PayPal access token", e);
-            throw new RuntimeException("Failed to authenticate with PayPal: " + e.getMessage(), e);
+            log.error("Unexpected error while obtaining PayPal access token", e);
+            throw new PayPalApiException("Failed to authenticate with PayPal: API error", e);
         }
     }
 
-    /**
-     * Build the order creation request body
-     */
     private String buildOrderRequestBody(BigDecimal amount, String currency, String description) {
         try {
             Map<String, Object> orderRequest = new LinkedHashMap<>();
             orderRequest.put("intent", INTENT_CAPTURE);
 
-            // Purchase units
             List<Map<String, Object>> purchaseUnits = new ArrayList<>();
             Map<String, Object> purchaseUnit = new LinkedHashMap<>();
 
@@ -298,27 +302,26 @@ public class PayPalService {
 
             orderRequest.put(FIELD_PURCHASE_UNITS, purchaseUnits);
 
-            // Application context (redirect URLs and checkout preferences)
             Map<String, Object> applicationContext = new LinkedHashMap<>();
             applicationContext.put("return_url", returnUrl);
             applicationContext.put("cancel_url", cancelUrl);
             applicationContext.put("brand_name", "CraftingStable");
             applicationContext.put("user_action", "PAY_NOW");
-            // NO_SHIPPING = Don't collect shipping address (tool rentals don't need shipping)
             applicationContext.put("shipping_preference", "NO_SHIPPING");
 
             orderRequest.put("application_context", applicationContext);
 
             return objectMapper.writeValueAsString(orderRequest);
 
+        } catch (JsonProcessingException e) {
+            log.error("Failed to build/serialize order request body", e);
+            throw new PayPalApiException("Failed to build PayPal order request body", e);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to build order request body", e);
+            log.error("Unexpected error while building order request body", e);
+            throw new PayPalApiException("Unexpected error while building PayPal order request body", e);
         }
     }
 
-    /**
-     * Extract approval URL from PayPal response
-     */
     private String extractApprovalUrl(JsonNode responseBody) {
         if (responseBody.has("links")) {
             for (JsonNode link : responseBody.get("links")) {
@@ -330,10 +333,6 @@ public class PayPalService {
         return null;
     }
 
-    /**
-     * Update rent status after successful payment
-     * Skips update if rentId is 0 (pay-first flow where rent doesn't exist yet)
-     */
     private void updateRentStatusAfterPayment(Long rentId) {
         if (rentId == null || rentId <= 0) {
             log.info("Skipping rent status update - rentId is {} (pay-first flow)", rentId);
