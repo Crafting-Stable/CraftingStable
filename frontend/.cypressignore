@@ -1,0 +1,8 @@
+# Cypress directories
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+
+# Code coverage output
+coverage/
+.nyc_output/

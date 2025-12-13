@@ -67,14 +67,39 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
           restore-keys: ${{ runner.os }}-node-
 
-      - name: Install and build frontend
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Run Vitest unit tests with coverage
+        working-directory: frontend
+        run: npm run test:coverage || true
+
+      - name: Run Cypress E2E tests
         working-directory: frontend
         run: |
-          # Regenerate package-lock.json to sync with updated package.json (React 19 + @testing-library/react 16)
-          npm install
-          # Run tests with coverage for SonarCloud
-          npm run test:coverage || true
-          npm run build
+          # Start the dev server in background
+          npm run dev &
+          DEV_PID=$!
+          
+          # Wait for server to be ready
+          npx wait-on http://localhost:5173 --timeout 60000
+          
+          # Run Cypress tests headlessly
+          npx cypress run --headless || true
+          
+          # Kill dev server
+          kill $DEV_PID || true
+
+      - name: Debug coverage files
+        working-directory: frontend
+        run: |
+          echo "Coverage files:"
+          ls -la coverage/ || true
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
 
       - name: Build backend
         env:

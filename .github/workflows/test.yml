@@ -74,13 +74,47 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: |
-          # Regenerate package-lock.json to sync with updated package.json (React 19 + @testing-library/react 16)
-          npm install
+        run: npm install
 
-      - name: Run frontend tests
+      - name: Run frontend unit tests (Vitest)
         working-directory: frontend
         run: npm run test --if-present
+
+      - name: Create .env file for Docker Compose
+        run: |
+          cat > .env << EOF
+          POSTGRES_DB=craftingstable
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=postgres
+          PAYPAL_CLIENT_ID=test
+          PAYPAL_CLIENT_SECRET=test
+          VITE_PAYPAL_CLIENT_ID=test
+          EOF
+
+      - name: Start Docker Compose services
+        run: |
+          docker compose up -d --build
+          # Wait for services to be healthy
+          echo "Waiting for services to start..."
+          sleep 30
+          # Check if frontend is responding
+          for i in {1..30}; do
+            if curl -s http://localhost:80 > /dev/null 2>&1; then
+              echo "Frontend is ready!"
+              break
+            fi
+            echo "Waiting for frontend... attempt $i"
+            sleep 5
+          done
+
+      - name: Run frontend E2E tests (Cypress)
+        working-directory: frontend
+        run: npx cypress run --headless --browser chrome
+        continue-on-error: true
+
+      - name: Stop Docker Compose
+        if: always()
+        run: docker compose down -v
 
       - name: Run backend tests
         env:
@@ -114,6 +148,14 @@ jobs:
         with:
           name: frontend-test-results
           path: frontend/test-results
+          retention-days: 5
+
+      - name: Upload Cypress screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: frontend/cypress/screenshots
           retention-days: 5
 
       - name: Comment on Jira on Success
