@@ -108,7 +108,6 @@ jobs:
 
       # ===== 5. INTEGRAÇÃO COM XRAY (AUTOMÁTICA - ZIP) =====
       - name: Send Test Results to Xray
-        # Executa apenas se houver Issue Key e tivermos credenciais
         if: always() && env.JIRA_ISSUE_KEY != '' && env.JIRA_PROJECT_KEY != ''
         env:
           XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
@@ -116,38 +115,53 @@ jobs:
           XRAY_BASE_URL: https://xray.cloud.getxray.app/api/v2
         run: |
           set -e
-          
-          echo "======================================"
+
           echo "🔐 Authenticating with Xray..."
-          echo "======================================"
-          
-          # Obter Token
           TOKEN=$(curl -s -H "Content-Type: application/json" -X POST \
             -d "{\"client_id\":\"$XRAY_CLIENT_ID\",\"client_secret\":\"$XRAY_CLIENT_SECRET\"}" \
             "$XRAY_BASE_URL/authenticate" | tr -d '"')
-          
+
           if [ -z "${TOKEN}" ] || [ "${TOKEN}" == "null" ]; then
             echo "❌ Failed to obtain Xray token. Check secrets." >&2
             exit 1
           fi
-          
-          echo "✓ Token obtained."
 
-          echo "======================================"
-          echo "📦 Zipping Test Reports..."
-          echo "======================================"
-          
-          # Instalar zip se necessário (ubuntu-latest já costuma ter)
+          echo "📦 Gathering XML test reports..."
+          # Cria zip apenas com arquivos .xml existentes (trata nomes com espaços)
           sudo apt-get install -y zip > /dev/null 2>&1 || true
+          rm -f test_reports.zip
 
-          # Criar ZIP com todos os XMLs encontrados (backend e frontend)
-          # O '|| true' previne erro se uma das pastas estiver vazia
-          zip -r test_reports.zip backend/target/surefire-reports/*.xml frontend/test-results/*.xml || true
-          
-          # Verifica se o ZIP tem conteúdo (maior que 22 bytes que é o header de zip vazio)
-          if [ ! -s test_reports.zip ] || [ $(wc -c < test_reports.zip) -le 22 ]; then
-             echo "⚠ No XML reports found to upload."
-             exit 0
+          find backend/target/surefire-reports frontend/test-results -type f -name '*.xml' -print0 2>/dev/null | \
+            xargs -0 zip -j test_reports.zip || true
+
+          if [ ! -f test_reports.zip ] || [ $(wc -c < test_reports.zip) -le 22 ]; then
+            echo "⚠ No XML reports found to upload."
+            exit 0
+          fi
+
+          echo "✓ Zip created: $(du -h test_reports.zip | cut -f1)"
+
+          echo "📤 Uploading to Xray (Auto-Provisioning)..."
+          URL="${XRAY_BASE_URL}/import/execution/junit?projectKey=${JIRA_PROJECT_KEY}"
+          echo "Target URL: .../import/execution/junit?projectKey=${JIRA_PROJECT_KEY}"
+
+          # Enviar como multipart/form-data (campo 'file')
+          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -F "file=@test_reports.zip;type=application/zip" \
+            "$URL")
+
+          echo "HTTP Status: $HTTP_CODE"
+          cat response.json
+          echo ""
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            NEW_EXEC_KEY=$(jq -r '.key' response.json 2>/dev/null || echo "Unknown")
+            echo "✅ SUCCESS! Test Execution created: $NEW_EXEC_KEY"
+            echo "XRAY_EXEC_KEY=$NEW_EXEC_KEY" >> $GITHUB_ENV
+          else
+            echo "❌ Upload Failed."
+            exit 1
           fi
           
           echo "✓ Zip created: test_reports.zip ($(du -h test_reports.zip | cut -f1))"
