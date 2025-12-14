@@ -480,7 +480,6 @@ describe('AddRent', () => {
             expect(screen.getByText('Martelo')).toBeDefined();
         });
 
-        // Try to create a tool
         fireEvent.change(screen.getByLabelText(/Nome da Ferramenta/), { target: { value: 'Test' } });
         fireEvent.change(screen.getByLabelText(/Categoria/), { target: { value: 'Obras' } });
         fireEvent.change(screen.getByLabelText(/Preço por Dia/), { target: { value: '10' } });
