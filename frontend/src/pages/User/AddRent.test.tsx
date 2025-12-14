@@ -538,7 +538,6 @@ describe('AddRent', () => {
 
         renderComponent();
 
-        // Wait for page to load
         await waitFor(() => {
             expect(screen.getByText('Minhas Ferramentas')).toBeDefined();
         });
