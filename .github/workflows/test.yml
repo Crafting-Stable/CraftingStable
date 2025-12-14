@@ -107,6 +107,14 @@ jobs:
             echo "Using jwt.secret from application-test.properties"
             mvn -B -f backend/pom.xml clean test
           fi
+          
+          # Verificar se os relatórios foram gerados corretamente
+          echo "Checking test reports..."
+          if [ -d "backend/target/surefire-reports" ]; then
+            ls -lh backend/target/surefire-reports/*.xml || echo "No XML files found"
+            # Mostrar tamanho dos arquivos
+            find backend/target/surefire-reports -name "*.xml" -exec sh -c 'echo "Size of {}: $(wc -c < {})" bytes' \;
+          fi
 
       # ===== UPLOAD DE ARTIFACTS =====
       - name: Upload backend test results
@@ -182,22 +190,37 @@ jobs:
           # Coletar todos os relatórios JUnit XML
           declare -a reports
           
-          # Backend reports
+          # Backend reports (apenas arquivos não vazios)
           while IFS= read -r -d '' f; do 
-            reports+=("$f")
-            echo "   Found: $f"
+            if [ -s "$f" ]; then  # -s verifica se o arquivo não está vazio
+              reports+=("$f")
+              size=$(wc -c < "$f")
+              echo "   Found: $f ($size bytes)"
+            else
+              echo "   ⚠ Skipping empty file: $f"
+            fi
           done < <(find backend/target/surefire-reports -name "*.xml" -print0 2>/dev/null || true)
           
           # Frontend unit test reports
           while IFS= read -r -d '' f; do 
-            reports+=("$f")
-            echo "   Found: $f"
+            if [ -s "$f" ]; then
+              reports+=("$f")
+              size=$(wc -c < "$f")
+              echo "   Found: $f ($size bytes)"
+            else
+              echo "   ⚠ Skipping empty file: $f"
+            fi
           done < <(find frontend/test-results -name "*.xml" -print0 2>/dev/null || true)
           
           # Cypress E2E reports (se existirem)
           while IFS= read -r -d '' f; do 
-            reports+=("$f")
-            echo "   Found: $f"
+            if [ -s "$f" ]; then
+              reports+=("$f")
+              size=$(wc -c < "$f")
+              echo "   Found: $f ($size bytes)"
+            else
+              echo "   ⚠ Skipping empty file: $f"
+            fi
           done < <(find frontend/cypress/results -name "*.xml" -print0 2>/dev/null || true)
           
           if [ "${#reports[@]}" -eq 0 ]; then
