@@ -5,7 +5,6 @@ on:
       - '**'
   pull_request:
     types: [opened, synchronize, reopened]
-
 jobs:
   test:
     name: Run Tests
@@ -24,38 +23,39 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
-
     steps:
       - uses: actions/checkout@v4
 
-      # ===== 1. EXTRAÇÃO DO JIRA ISSUE KEY & PROJECT KEY =====
-      - name: Extract Jira Info
+      # ===== EXTRAÇÃO DO JIRA ISSUE KEY =====
+      - name: Extract Jira Issue Key
         id: extract_jira
         run: |
           BRANCH_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
           echo "Branch name: $BRANCH_NAME"
           
-          # Tenta extrair padroes como SCRUMDEMO-123, PROJ-456
-          ISSUE_KEY=$(echo "$BRANCH_NAME" | grep -oP '[A-Z]+-\d+' | head -1 || echo "")
+          # Procura padrões como SCRUMDEMO193, SCRUM-123, etc.
+          # Aceita tanto SCRUMDEMO193 quanto SCRUMDEMO-193
+          ISSUE_KEY=$(echo "$BRANCH_NAME" | grep -oP 'SCRUMDEMO\d+|SCRUM-?\d+|[A-Z]+-\d+' | head -1 || echo "")
           
-          # Se falhar, tenta padrao sem hifen (ex: SCRUMDEMO123)
-          if [ -z "$ISSUE_KEY" ]; then
-             ISSUE_KEY=$(echo "$BRANCH_NAME" | grep -oP '[A-Z]+\d+' | head -1 || echo "")
-          fi
-          
-          # Extrai a Project Key (Tudo antes do numero ou hifen). Ex: SCRUMDEMO
-          PROJECT_KEY=$(echo "$ISSUE_KEY" | sed -E 's/[-0-9]//g')
-
           echo "JIRA_ISSUE_KEY=$ISSUE_KEY" >> $GITHUB_ENV
-          echo "JIRA_PROJECT_KEY=$PROJECT_KEY" >> $GITHUB_ENV
           
           if [ -n "$ISSUE_KEY" ]; then
-            echo "✓ Found Issue: $ISSUE_KEY (Project: $PROJECT_KEY)"
+            echo "✓ Found Jira issue: $ISSUE_KEY"
           else
-            echo "⚠ No Jira issue found. Will skip Xray upload."
+            echo "⚠ No Jira issue key found in branch name: $BRANCH_NAME"
+            echo "Expected patterns: SCRUMDEMO193, SCRUM-123, PROJECT-456"
           fi
+      # ===== LOGIN NO JIRA =====
+      - name: Login to Jira
+        if: env.JIRA_ISSUE_KEY != ''
+        continue-on-error: true
+        uses: atlassian/gajira-login@v3
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
 
-      # ===== 2. SETUP DO AMBIENTE =====
+      # ===== SETUP DO AMBIENTE =====
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -74,30 +74,46 @@ jobs:
         with:
           node-version: '20.19.0'
 
+      - name: Cache frontend node_modules
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-node-
+
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci || npm install
-
-      # ===== 3. EXECUÇÃO DOS TESTES =====
+        run: |
+          if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+      # ===== EXECUÇÃO DOS TESTES =====
       - name: Run frontend tests
         working-directory: frontend
-        # Continua mesmo se falhar para podermos reportar os erros ao Xray
-        continue-on-error: true
         run: npm run test --if-present
 
       - name: Run backend tests
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        # Continua mesmo se falhar para podermos reportar os erros ao Xray
-        continue-on-error: true
         run: |
           if [ -n "$JWT_SECRET" ]; then
+            echo "Using JWT_SECRET from GitHub Secrets"
             mvn -B -f backend/pom.xml clean test -Djwt.secret="$JWT_SECRET"
           else
+            echo "Using jwt.secret from application-test.properties"
             mvn -B -f backend/pom.xml clean test
           fi
-
-      # ===== 4. UPLOAD DE ARTIFACTS (BACKUP) =====
+          
+          # Verificar se os relatórios foram gerados corretamente
+          echo "Checking test reports..."
+          if [ -d "backend/target/surefire-reports" ]; then
+            ls -lh backend/target/surefire-reports/*.xml || echo "No XML files found"
+            # Mostrar tamanho dos arquivos
+            find backend/target/surefire-reports -name "*.xml" -exec sh -c 'echo "Size of {}: $(wc -c < {})" bytes' \;
+          fi
+      # ===== UPLOAD DE ARTIFACTS =====
       - name: Upload backend test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -106,109 +122,156 @@ jobs:
           path: backend/target/surefire-reports
           retention-days: 5
 
-      # ===== 5. INTEGRAÇÃO COM XRAY (AUTOMÁTICA - ZIP) =====
+      - name: Upload frontend test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-results
+          path: frontend/test-results
+          retention-days: 5
+
+      # ===== INTEGRAÇÃO COM XRAY =====
       - name: Send Test Results to Xray
-        if: always() && env.JIRA_ISSUE_KEY != '' && env.JIRA_PROJECT_KEY != ''
+        if: always() && env.JIRA_ISSUE_KEY != ''
         env:
           XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
           XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
           XRAY_BASE_URL: https://xray.cloud.getxray.app/api/v2
+          ISSUE_KEY: ${{ env.JIRA_ISSUE_KEY }}
         run: |
-          set -e
-
+          set -euo pipefail
+          
+          echo "======================================"
           echo "🔐 Authenticating with Xray..."
+          echo "======================================"
+          
           TOKEN=$(curl -s -H "Content-Type: application/json" -X POST \
             -d "{\"client_id\":\"$XRAY_CLIENT_ID\",\"client_secret\":\"$XRAY_CLIENT_SECRET\"}" \
             "$XRAY_BASE_URL/authenticate" | tr -d '"')
-
-          if [ -z "${TOKEN}" ] || [ "${TOKEN}" == "null" ]; then
-            echo "❌ Failed to obtain Xray token. Check secrets." >&2
+          
+          if [ -z "${TOKEN}" ]; then
+            echo "❌ Failed to obtain Xray token" >&2
             exit 1
           fi
-
-          echo "📦 Gathering XML test reports..."
-          # Cria zip apenas com arquivos .xml existentes (trata nomes com espaços)
-          sudo apt-get install -y zip > /dev/null 2>&1 || true
-          rm -f test_reports.zip
-
-          find backend/target/surefire-reports frontend/test-results -type f -name '*.xml' -print0 2>/dev/null | \
-            xargs -0 zip -j test_reports.zip || true
-
-          if [ ! -f test_reports.zip ] || [ $(wc -c < test_reports.zip) -le 22 ]; then
-            echo "⚠ No XML reports found to upload."
+          
+          echo "✓ Token obtained successfully (length: ${#TOKEN})"
+          
+          # Função para fazer upload de um arquivo
+          upload_file() {
+            local file="$1"
+            echo ""
+            echo "📤 Uploading: ${file}"
+            echo "   Test Execution: ${ISSUE_KEY}"
+          
+            http_response=$(curl -s -w "%{http_code}" -o /tmp/xray_resp -X POST \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -F "file=@${file}" \
+              "${XRAY_BASE_URL}/import/execution/junit?testExecKey=${ISSUE_KEY}")
+          
+            status=$http_response
+          
+            if [ "${status}" -ge 200 ] && [ "${status}" -lt 300 ]; then
+              echo "   ✓ Upload successful (HTTP ${status})"
+              cat /tmp/xray_resp
+            else
+              echo "   ❌ Upload failed (HTTP ${status})" >&2
+              cat /tmp/xray_resp >&2
+            fi
+          }
+          
+          echo ""
+          echo "======================================"
+          echo "🔍 Collecting JUnit XML reports..."
+          echo "======================================"
+          
+          # Coletar todos os relatórios JUnit XML
+          declare -a reports
+          
+          # Backend reports (apenas arquivos não vazios)
+          while IFS= read -r -d '' f; do 
+            if [ -s "$f" ]; then  # -s verifica se o arquivo não está vazio
+              reports+=("$f")
+              size=$(wc -c < "$f")
+              echo "   Found: $f ($size bytes)"
+            else
+              echo "   ⚠ Skipping empty file: $f"
+            fi
+          done < <(find backend/target/surefire-reports -name "*.xml" -print0 2>/dev/null || true)
+          
+          # Frontend unit test reports
+          while IFS= read -r -d '' f; do 
+            if [ -s "$f" ]; then
+              reports+=("$f")
+              size=$(wc -c < "$f")
+              echo "   Found: $f ($size bytes)"
+            else
+              echo "   ⚠ Skipping empty file: $f"
+            fi
+          done < <(find frontend/test-results -name "*.xml" -print0 2>/dev/null || true)
+          
+          # Cypress E2E reports (se existirem)
+          while IFS= read -r -d '' f; do 
+            if [ -s "$f" ]; then
+              reports+=("$f")
+              size=$(wc -c < "$f")
+              echo "   Found: $f ($size bytes)"
+            else
+              echo "   ⚠ Skipping empty file: $f"
+            fi
+          done < <(find frontend/cypress/results -name "*.xml" -print0 2>/dev/null || true)
+          
+          if [ "${#reports[@]}" -eq 0 ]; then
+            echo ""
+            echo "⚠ No JUnit XML reports found - skipping Xray upload"
             exit 0
           fi
-
-          echo "✓ Zip created: $(du -h test_reports.zip | cut -f1)"
-
-          echo "📤 Uploading to Xray (Auto-Provisioning)..."
-          URL="${XRAY_BASE_URL}/import/execution/junit?projectKey=${JIRA_PROJECT_KEY}"
-          echo "Target URL: .../import/execution/junit?projectKey=${JIRA_PROJECT_KEY}"
-
-          # Enviar como multipart/form-data (campo 'file')
-          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" -X POST \
-            -H "Authorization: Bearer ${TOKEN}" \
-            -F "file=@test_reports.zip;type=application/zip" \
-            "$URL")
-
-          echo "HTTP Status: $HTTP_CODE"
-          cat response.json
-          echo ""
-
-          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-            NEW_EXEC_KEY=$(jq -r '.key' response.json 2>/dev/null || echo "Unknown")
-            echo "✅ SUCCESS! Test Execution created: $NEW_EXEC_KEY"
-            echo "XRAY_EXEC_KEY=$NEW_EXEC_KEY" >> $GITHUB_ENV
-          else
-            echo "❌ Upload Failed."
-            exit 1
-          fi
           
-          echo "✓ Zip created: test_reports.zip ($(du -h test_reports.zip | cut -f1))"
-
+          echo ""
+          echo "Total reports found: ${#reports[@]}"
+          
+          echo ""
           echo "======================================"
-          echo "📤 Uploading to Xray (Auto-Provisioning)..."
+          echo "📤 Uploading reports to Xray..."
           echo "======================================"
           
-          # Endpoint JUnit Standard.
-          # projectKey: Obriga o Xray a criar a execução neste projeto.
-          # Se os testes não existirem, o Xray cria-os.
+          # Upload de cada relatório
+          for r in "${reports[@]}"; do
+            if [ -f "$r" ]; then
+              upload_file "$r"
+            else
+              echo "   ⚠ File not found: $r"
+            fi
+          done
           
-          URL="${XRAY_BASE_URL}/import/execution/junit?projectKey=${JIRA_PROJECT_KEY}"
-          
-          echo "Target URL: .../import/execution/junit?projectKey=${JIRA_PROJECT_KEY}"
-          
-          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" -X POST \
-            -H "Authorization: Bearer ${TOKEN}" \
-            -H "Content-Type: application/zip" \
-            --data-binary "@test_reports.zip" \
-            "$URL")
-          
-          echo "HTTP Status: $HTTP_CODE"
-          cat response.json
           echo ""
-
-          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-             NEW_EXEC_KEY=$(jq -r '.key' response.json 2>/dev/null || echo "Unknown")
-             echo "✅ SUCCESS! Test Execution created: $NEW_EXEC_KEY"
-             echo "XRAY_EXEC_KEY=$NEW_EXEC_KEY" >> $GITHUB_ENV
-          else
-             echo "❌ Upload Failed."
-             exit 1
-          fi
-
-      # ===== 6. COMENTÁRIO NO JIRA =====
-      - name: Comment on Jira
-        if: always() && env.XRAY_EXEC_KEY != ''
+          echo "======================================"
+          echo "✓ Xray upload process completed"
+          echo "======================================"
+      # ===== COMENTÁRIOS NO JIRA =====
+      - name: Comment on Jira (Success)
+        if: success() && env.JIRA_ISSUE_KEY != ''
         continue-on-error: true
         uses: atlassian/gajira-comment@v3
         with:
           issue: ${{ env.JIRA_ISSUE_KEY }}
           comment: |
-            🤖 **CI Test Results**
+            ✅ **CI Tests Passed!**
+            
+            Test results have been imported to Xray.
+            Check the Test Coverage section for the new Test Execution.
+            
+            Build: [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+      - name: Comment on Jira (Failure)
+        if: failure() && env.JIRA_ISSUE_KEY != ''
+        continue-on-error: true
+        uses: atlassian/gajira-comment@v3
+        with:
+          issue: ${{ env.JIRA_ISSUE_KEY }}
+          comment: |
+            ❌ **CI Tests Failed!**
+            
+            Partial test results have been imported to Xray.
             
             Build: [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
             
-            📂 **Xray Execution:** [${{ env.XRAY_EXEC_KEY }}](${{ secrets.JIRA_BASE_URL }}/browse/${{ env.XRAY_EXEC_KEY }})
-            
-            Status: ${{ job.status == 'success' && '✅ PASSED' || '❌ FAILED' }}
+            Please check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) and Test Execution for details.
