@@ -11,7 +11,10 @@ import org.springframework.test.context.ActiveProfiles;
 
 import ua.tqs.model.User;
 
-@DataJpaTest
+@DataJpaTest(properties = {
+        "spring.sql.init.mode=never",
+        "spring.datasource.initialization-mode=never"
+})
 @ActiveProfiles("test")
 class UserRepositoryTest {
 

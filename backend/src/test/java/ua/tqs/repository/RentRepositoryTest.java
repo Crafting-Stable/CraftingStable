@@ -10,7 +10,10 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DataJpaTest
+@DataJpaTest(properties = {
+        "spring.sql.init.mode=never",
+        "spring.datasource.initialization-mode=never"
+})
 class RentRepositoryTest {
 
     @Autowired

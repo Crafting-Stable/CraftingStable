@@ -11,7 +11,10 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
 import ua.tqs.model.Tool;
 
-@DataJpaTest
+@DataJpaTest(properties = {
+        "spring.sql.init.mode=never",
+        "spring.datasource.initialization-mode=never"
+})
 class ToolRepositoryTest {
 
     @Autowired
