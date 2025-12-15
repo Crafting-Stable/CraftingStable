@@ -44,8 +44,8 @@ export default function LoginPage(): React.ReactElement {
         const handleKey = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && showRegisterForm) setShowRegisterForm(false);
         };
-        if (showRegisterForm) window.addEventListener('keydown', handleKey);
-        return () => window.removeEventListener('keydown', handleKey);
+        if (showRegisterForm) globalThis.addEventListener('keydown', handleKey);
+        return () => globalThis.removeEventListener('keydown', handleKey);
     }, [showRegisterForm]);
 
     const handleLoginSubmit = async (ev?: React.FormEvent) => {
@@ -270,6 +270,8 @@ export default function LoginPage(): React.ReactElement {
                             className="card"
                             style={{ maxWidth: 540, width: '100%', maxHeight: '80vh', overflow: 'auto' }}
                             onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                            tabIndex={0}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                                 <div className="brand">
