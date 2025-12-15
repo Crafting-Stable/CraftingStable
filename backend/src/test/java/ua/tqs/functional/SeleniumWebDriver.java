@@ -21,7 +21,6 @@ public class SeleniumWebDriver {
         options.addArguments("--start-maximized");
         // Visual mode enabled - browser window will be visible
         // To enable headless mode, uncomment the line below:
-        // options.addArguments("--headless");
         FirefoxDriver firefoxDriver = new FirefoxDriver(options);
         driver.set(firefoxDriver);
     }

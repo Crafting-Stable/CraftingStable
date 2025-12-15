@@ -2,6 +2,8 @@ package ua.tqs.functional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import ua.tqs.enums.ToolStatus;
 import ua.tqs.enums.UserRole;
@@ -17,6 +19,7 @@ public class TestDataFactory {
 
     private static int userCounter = 1;
     private static int toolCounter = 1;
+    private static final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     /**
      * Create a User with all required fields
@@ -25,7 +28,7 @@ public class TestDataFactory {
         User user = new User();
         user.setName("Test User " + userCounter++);
         user.setEmail(email);
-        user.setPassword(password);
+        user.setPassword(passwordEncoder.encode(password));
         user.setType(role);
         user.setActive(true);
         return user;

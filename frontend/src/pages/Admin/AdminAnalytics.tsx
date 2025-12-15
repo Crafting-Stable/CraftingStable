@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { adminStyles } from './adminStyles';
+import { apiUrl, getJwt, handleAuthError } from './adminUtils';
 
 interface AnalyticsSummary {
     uniqueUsers: number;
@@ -9,6 +11,8 @@ interface AnalyticsSummary {
 }
 
 const AdminAnalytics: React.FC = () => {
+    const navigate = useNavigate();
+
     const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -23,13 +27,24 @@ const AdminAnalytics: React.FC = () => {
             setLoading(true);
             const daysAgo = new Date();
             daysAgo.setDate(daysAgo.getDate() - timeRange);
+            const token = getJwt();
 
             const response = await fetch(
-                `/api/analytics/summary?since=${encodeURIComponent(daysAgo.toISOString())}`
+                apiUrl(`/api/analytics/summary?since=${encodeURIComponent(daysAgo.toISOString())}`),
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
             );
+
             if (!response.ok) {
-                throw new Error('Failed to fetch analytics');
+                // tenta tratar 401/403 centralmente; se tratado, retorna
+                const handled = handleAuthError(response.status, response.statusText, navigate, setError);
+                if (handled) return;
+                throw new Error(response.statusText || 'Failed to fetch analytics');
             }
+
             const data = await response.json();
             setSummary(data);
         } catch (err) {
@@ -184,50 +199,9 @@ const AdminAnalytics: React.FC = () => {
 };
 
 const styles: { [key: string]: React.CSSProperties } = {
-    container: {
-        minHeight: '100vh',
-        backgroundColor: '#f5f5f5',
-        fontFamily: 'Inter, Arial, sans-serif',
-    },
-    header: {
-        backgroundColor: '#1976d2',
-        color: 'white',
-        padding: '20px 40px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    },
-    title: {
-        margin: 0,
-        fontSize: '28px',
-        fontWeight: 'bold',
-    },
-    nav: {
-        display: 'flex',
-        gap: '20px',
-    },
-    navLink: {
-        color: 'white',
-        textDecoration: 'none',
-        fontSize: '16px',
-        padding: '8px 16px',
-        borderRadius: '4px',
-        transition: 'background-color 0.3s',
-    },
-    content: {
-        maxWidth: '1400px',
-        margin: '0 auto',
-        padding: '40px 20px',
-    },
+    ...adminStyles,
     timeRangeSection: {
         marginBottom: '32px',
-    },
-    sectionTitle: {
-        margin: '0 0 16px 0',
-        fontSize: '24px',
-        fontWeight: 'bold',
-        color: '#333',
     },
     timeRangeButtons: {
         display: 'flex',
@@ -254,13 +228,6 @@ const styles: { [key: string]: React.CSSProperties } = {
         gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
         gap: '24px',
         marginBottom: '40px',
-    },
-    statCard: {
-        backgroundColor: 'white',
-        padding: '24px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        borderLeft: '4px solid #1976d2',
     },
     statTitle: {
         margin: '0 0 12px 0',
@@ -376,22 +343,6 @@ const styles: { [key: string]: React.CSSProperties } = {
         textAlign: 'center',
         color: '#999',
         fontSize: '16px',
-    },
-    loading: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        fontSize: '24px',
-        color: '#666',
-    },
-    error: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        fontSize: '20px',
-        color: '#f44336',
     },
 };
 

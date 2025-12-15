@@ -1,16 +1,20 @@
 package ua.tqs.repository;
 
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+
 import ua.tqs.model.Tool;
 
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-@DataJpaTest
+@DataJpaTest(properties = {
+        "spring.sql.init.mode=never",
+        "spring.datasource.initialization-mode=never"
+})
 class ToolRepositoryTest {
 
     @Autowired
@@ -18,6 +22,14 @@ class ToolRepositoryTest {
 
     @Autowired
     private ToolRepository toolRepository;
+
+    @BeforeEach
+    void setUp() {
+        // Clear existing data from data.sql to avoid conflicts
+        toolRepository.deleteAll();
+        entityManager.flush();
+        entityManager.clear();
+    }
 
     @Test
     void whenFindByType_thenReturnTools() {

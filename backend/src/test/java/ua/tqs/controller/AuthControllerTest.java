@@ -94,8 +94,6 @@ public class AuthControllerTest {
 
     @Test
     void quandoRequestMalFormado_retorna400ou401() throws Exception {
-        // dependendo da validação no controller pode ser 400 ou 401;
-        // aqui simulamos que a autenticação falha e esperamos 401
         when(authManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new BadCredentialsException("Invalid"));
 

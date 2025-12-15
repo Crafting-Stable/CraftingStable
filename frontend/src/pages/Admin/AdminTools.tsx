@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { adminStyles } from './adminStyles';
+import { apiUrl, getJwt, handleAuthError } from './adminUtils';
 
 interface Tool {
     id: number;
@@ -15,20 +17,6 @@ interface Tool {
     ownerId: number;
 }
 
-const API_PORT = '8081';
-
-function apiUrl(path: string) {
-    const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
-    const normalized = path.startsWith('/') ? path : `/${path}`;
-    return `${protocol}//${hostname}:${API_PORT}${normalized}`;
-}
-
-const getJwt = () => {
-    const jwt = localStorage.getItem('jwt');
-    return jwt || undefined;
-};
-
 const AdminTools: React.FC = () => {
     const navigate = useNavigate();
     const [tools, setTools] = useState<Tool[]>([]);
@@ -37,24 +25,34 @@ const AdminTools: React.FC = () => {
     const [filter, setFilter] = useState<'ALL' | 'AVAILABLE' | 'RENTED' | 'UNDER_MAINTENANCE' | 'INACTIVE'>('ALL');
     const [editingTool, setEditingTool] = useState<Tool | null>(null);
 
+    const modalOverlayRef = useRef<HTMLButtonElement | null>(null);
+    const dialogRef = useRef<HTMLDialogElement | null>(null);
+    const firstInputRef = useRef<HTMLInputElement | null>(null);
+    const dialogOpenedRef = useRef(false);
+
     useEffect(() => {
         fetchTools();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const handleAuthError = (status?: number, statusText?: string) => {
-        if (status === 401 || status === 403) {
-            localStorage.removeItem('jwt');
-            localStorage.removeItem('user');
-            setError('Sessão expirada. Por favor faça login novamente.');
-            setTimeout(() => navigate('/loginPage'), 1200);
-            return true;
+    useEffect(() => {
+        if (!editingTool) {
+            dialogOpenedRef.current = false;
+            return;
         }
-        if (status && !statusText) {
-            setError(statusText || 'Erro de autenticação');
+
+        if (!dialogOpenedRef.current) {
+            setTimeout(() => firstInputRef.current?.focus(), 0);
+            dialogOpenedRef.current = true;
         }
-        return false;
-    };
+
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setEditingTool(null);
+        };
+
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [editingTool]);
 
     const fetchTools = async () => {
         setLoading(true);
@@ -64,18 +62,20 @@ const AdminTools: React.FC = () => {
             const res = await fetch(apiUrl('/api/tools'), {
                 headers: {
                     'Accept': 'application/json',
-                    ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
-                }
+                    ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+                },
             });
+
             if (!res.ok) {
                 const text = await res.text().catch(() => res.statusText);
-                if (handleAuthError(res.status, text)) return;
+                if (handleAuthError(res.status, text, navigate, setError)) return;
                 throw new Error(text || res.statusText);
             }
+
             const data: Tool[] = await res.json().catch(() => []);
             setTools(data);
         } catch (err: any) {
-            setError(err.message || 'Failed to fetch tools');
+            setError(err?.message || 'Failed to fetch tools');
         } finally {
             setLoading(false);
         }
@@ -88,24 +88,24 @@ const AdminTools: React.FC = () => {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
+                    ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
                 },
                 body: JSON.stringify({ status: newStatus }),
             });
+
             if (!res.ok) {
                 const text = await res.text().catch(() => res.statusText);
-                if (handleAuthError(res.status, text)) return;
+                if (handleAuthError(res.status, text, navigate, setError)) return;
                 throw new Error(text || res.statusText);
             }
+
             await fetchTools();
         } catch (err: any) {
-            alert(err.message || 'Failed to update tool status');
+            alert(err?.message || 'Failed to update tool status');
         }
     };
 
-    const handleEdit = (tool: Tool) => {
-        setEditingTool(tool);
-    };
+    const handleEdit = (tool: Tool) => setEditingTool(tool);
 
     const handleSaveEdit = async () => {
         if (!editingTool) return;
@@ -116,52 +116,51 @@ const AdminTools: React.FC = () => {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
+                    ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
                 },
                 body: JSON.stringify(editingTool),
             });
+
             if (!res.ok) {
                 const text = await res.text().catch(() => res.statusText);
-                if (handleAuthError(res.status, text)) return;
+                if (handleAuthError(res.status, text, navigate, setError)) return;
                 throw new Error(text || res.statusText);
             }
+
             setEditingTool(null);
             await fetchTools();
             alert('Ferramenta atualizada com sucesso!');
         } catch (err: any) {
-            alert(err.message || 'Failed to update tool');
+            alert(err?.message || 'Failed to update tool');
         }
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('Are you sure you want to delete this tool?')) {
-            return;
-        }
+        if (!confirm('Are you sure you want to delete this tool?')) return;
 
         try {
             const jwt = getJwt();
             const res = await fetch(apiUrl(`/api/tools/${id}`), {
                 method: 'DELETE',
                 headers: {
-                    ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
-                }
+                    ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+                },
             });
+
             if (!res.ok) {
                 const text = await res.text().catch(() => res.statusText);
-                if (handleAuthError(res.status, text)) return;
+                if (handleAuthError(res.status, text, navigate, setError)) return;
                 throw new Error(text || res.statusText);
             }
+
             await fetchTools();
             alert('Ferramenta apagada com sucesso!');
         } catch (err: any) {
-            alert(err.message || 'Failed to delete tool');
+            alert(err?.message || 'Failed to delete tool');
         }
     };
 
-    const filteredTools = tools.filter(tool => {
-        if (filter === 'ALL') return true;
-        return tool.status === filter;
-    });
+    const filteredTools = tools.filter(tool => (filter === 'ALL' ? true : tool.status === filter));
 
     if (loading) {
         return (
@@ -179,6 +178,8 @@ const AdminTools: React.FC = () => {
         );
     }
 
+    const closeModal = () => setEditingTool(null);
+
     return (
         <div style={styles.container}>
             <header style={styles.header}>
@@ -192,7 +193,6 @@ const AdminTools: React.FC = () => {
             </header>
 
             <div style={styles.content}>
-                {/* Filters */}
                 <div style={styles.filtersSection}>
                     <h2 style={styles.sectionTitle}>Filters</h2>
                     <div style={styles.filters}>
@@ -212,7 +212,6 @@ const AdminTools: React.FC = () => {
                     <p style={styles.resultCount}>{filteredTools.length} tools</p>
                 </div>
 
-                {/* Tools Table */}
                 <div style={styles.tableContainer}>
                     <table style={styles.table}>
                         <thead>
@@ -262,23 +261,48 @@ const AdminTools: React.FC = () => {
                 </div>
             </div>
 
-            {/* Edit Modal */}
             {editingTool && (
-                <div style={styles.modalOverlay} onClick={() => setEditingTool(null)}>
-                    <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-                        <h2 style={styles.modalTitle}>Edit Tool #{editingTool.id}</h2>
+                <div style={styles.modalOverlay}>
+                    <button
+                        ref={modalOverlayRef}
+                        style={styles.modalOverlayButton}
+                        onClick={closeModal}
+                        aria-label="Fechar modal de edição"
+                        type="button"
+                        tabIndex={-1}
+                    >
+                        Fechar
+                    </button>
+
+                    <dialog
+                        ref={dialogRef}
+                        open
+                        style={styles.modal}
+                        aria-modal="true"
+                        aria-labelledby={`edit-modal-title-${editingTool.id}`}
+                    >
+                        <h2 id={`edit-modal-title-${editingTool.id}`} style={styles.modalTitle}>Edit Tool #{editingTool.id}</h2>
 
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>Name</label>
-                            <input style={styles.input} value={editingTool.name} onChange={(e) => setEditingTool(prev => prev ? { ...prev, name: e.target.value } : prev)} />
+                            <label htmlFor={`name-${editingTool.id}`} style={styles.label}>Name</label>
+                            <input
+                                ref={firstInputRef}
+                                id={`name-${editingTool.id}`}
+                                style={styles.input}
+                                value={editingTool.name}
+                                onChange={(e) => setEditingTool(prev => prev ? { ...prev, name: e.target.value } : prev)}
+                            />
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>Type</label>
+                            <label htmlFor={`type-${editingTool.id}`} style={styles.label}>Type</label>
                             <select
+                                id={`type-${editingTool.id}`}
                                 value={editingTool.type ?? ''}
-                                onChange={(e) => setEditingTool(prev => prev ? { ...prev, type: e.target.value } : prev)}
-                                style={styles.input as React.CSSProperties}
+                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                    setEditingTool(prev => prev ? { ...prev, type: e.target.value } : prev)
+                                }
+                                style={styles.input}
                             >
                                 <option value="">Selecione uma categoria</option>
                                 <option value="Jardinagem">Jardinagem</option>
@@ -289,23 +313,24 @@ const AdminTools: React.FC = () => {
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>Location</label>
-                            <input style={styles.input} value={editingTool.location} onChange={(e) => setEditingTool(prev => prev ? { ...prev, location: e.target.value } : prev)} />
+                            <label htmlFor={`location-${editingTool.id}`} style={styles.label}>Location</label>
+                            <input id={`location-${editingTool.id}`} style={styles.input} value={editingTool.location} onChange={(e) => setEditingTool(prev => prev ? { ...prev, location: e.target.value } : prev)} />
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>Daily Price</label>
-                            <input style={styles.input} type="number" value={editingTool.dailyPrice} onChange={(e) => setEditingTool(prev => prev ? { ...prev, dailyPrice: Number(e.target.value) } : prev)} />
+                            <label htmlFor={`dailyPrice-${editingTool.id}`} style={styles.label}>Daily Price</label>
+                            <input id={`dailyPrice-${editingTool.id}`} style={styles.input} type="number" value={editingTool.dailyPrice} onChange={(e) => setEditingTool(prev => prev ? { ...prev, dailyPrice: Number(e.target.value ?? 0) } : prev)} />
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>Deposit Amount</label>
-                            <input style={styles.input} type="number" value={editingTool.depositAmount} onChange={(e) => setEditingTool(prev => prev ? { ...prev, depositAmount: Number(e.target.value) } : prev)} />
+                            <label htmlFor={`depositAmount-${editingTool.id}`} style={styles.label}>Deposit Amount</label>
+                            <input id={`depositAmount-${editingTool.id}`} style={styles.input} type="number" value={editingTool.depositAmount} onChange={(e) => setEditingTool(prev => prev ? { ...prev, depositAmount: Number(e.target.value ?? 0) } : prev)} />
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>Image URL</label>
+                            <label htmlFor={`imageUrl-${editingTool.id}`} style={styles.label}>Image URL</label>
                             <input
+                                id={`imageUrl-${editingTool.id}`}
                                 style={styles.input}
                                 value={editingTool.imageUrl ?? ''}
                                 onChange={(e) => setEditingTool(prev => prev ? { ...prev, imageUrl: e.target.value || null } : prev)}
@@ -314,15 +339,15 @@ const AdminTools: React.FC = () => {
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>Description</label>
-                            <textarea style={{ ...styles.input, height: 100 }} value={editingTool.description} onChange={(e) => setEditingTool(prev => prev ? { ...prev, description: e.target.value } : prev)} />
+                            <label htmlFor={`description-${editingTool.id}`} style={styles.label}>Description</label>
+                            <textarea id={`description-${editingTool.id}`} style={{ ...styles.input, height: 100 }} value={editingTool.description} onChange={(e) => setEditingTool(prev => prev ? { ...prev, description: e.target.value } : prev)} />
                         </div>
 
                         <div style={styles.modalActions}>
-                            <button style={styles.cancelBtn} onClick={() => setEditingTool(null)}>Cancel</button>
+                            <button style={styles.cancelBtn} onClick={closeModal}>Cancel</button>
                             <button style={styles.saveBtn} onClick={handleSaveEdit}>Save</button>
                         </div>
-                    </div>
+                    </dialog>
                 </div>
             )}
         </div>
@@ -330,42 +355,7 @@ const AdminTools: React.FC = () => {
 };
 
 const styles: { [key: string]: React.CSSProperties } = {
-    container: {
-        minHeight: '100vh',
-        backgroundColor: '#f5f5f5',
-        fontFamily: 'Inter, Arial, sans-serif',
-    },
-    header: {
-        backgroundColor: '#1976d2',
-        color: 'white',
-        padding: '20px 40px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    },
-    title: {
-        margin: 0,
-        fontSize: '28px',
-        fontWeight: 'bold',
-    },
-    nav: {
-        display: 'flex',
-        gap: '20px',
-    },
-    navLink: {
-        color: 'white',
-        textDecoration: 'none',
-        fontSize: '16px',
-        padding: '8px 16px',
-        borderRadius: '4px',
-        transition: 'background-color 0.3s',
-    },
-    content: {
-        maxWidth: '1400px',
-        margin: '0 auto',
-        padding: '40px 20px',
-    },
+    ...adminStyles,
     filtersSection: {
         marginBottom: '32px',
     },
@@ -464,7 +454,24 @@ const styles: { [key: string]: React.CSSProperties } = {
         alignItems: 'center',
         zIndex: 1000,
     },
+    modalOverlayButton: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+        border: 'none',
+        backgroundColor: 'transparent',
+        cursor: 'pointer',
+        fontSize: 0,
+        color: 'transparent',
+        padding: 0,
+        zIndex: 1,
+    },
     modal: {
+        position: 'relative',
         backgroundColor: 'white',
         borderRadius: '8px',
         padding: '32px',
@@ -472,6 +479,8 @@ const styles: { [key: string]: React.CSSProperties } = {
         maxWidth: '600px',
         maxHeight: '90vh',
         overflow: 'auto',
+        zIndex: 2,
+        border: 'none',
     },
     modalTitle: {
         margin: '0 0 24px 0',
@@ -523,22 +532,8 @@ const styles: { [key: string]: React.CSSProperties } = {
         fontWeight: '500',
         cursor: 'pointer',
     },
-    loading: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        fontSize: '24px',
-        color: '#666',
-    },
-    error: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        fontSize: '20px',
-        color: '#f44336',
-    },
+    loading: adminStyles.loading,
+    error: adminStyles.error,
 };
 
 export default AdminTools;

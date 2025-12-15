@@ -26,6 +26,8 @@ import java.util.stream.Collectors;
 @Service
 public class UserService {
 
+    private static final String USER_NOT_FOUND_MSG_PREFIX = "User not found with id: ";
+
     private final UserRepository userRepository;
     private final RentRepository rentRepository;
     private final ToolRepository toolRepository;
@@ -203,7 +205,7 @@ public class UserService {
     @Transactional
     public User activateUser(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_MSG_PREFIX + id));
         user.setActive(true);
         return userRepository.save(user);
     }
@@ -211,7 +213,7 @@ public class UserService {
     @Transactional
     public User deactivateUser(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_MSG_PREFIX + id));
         user.setActive(false);
         return userRepository.save(user);
     }
@@ -219,8 +221,16 @@ public class UserService {
     @Transactional
     public User changeUserRole(Long id, UserRole newRole) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_MSG_PREFIX + id));
         user.setType(newRole);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User updatePayPalEmail(Long id, String paypalEmail) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        user.setPaypalEmail(paypalEmail);
         return userRepository.save(user);
     }
 }

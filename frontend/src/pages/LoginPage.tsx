@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 
@@ -7,40 +7,58 @@ import bgImg from '../assets/rust.jpg';
 type LoginForm = {
     email: string;
     password: string;
-    remember: boolean;
 };
 
 type RegisterForm = {
     name: string;
     email: string;
     password: string;
-    passwordConfirm: string;
+    confirm: string;
 };
+
+const MIN_PASSWORD_LENGTH = 6;
+const ERR_NAME_REQUIRED = 'Nome obrigatório';
+const ERR_EMAIL_REQUIRED = 'Email obrigatório';
+const ERR_EMAIL_INVALID = 'Email inválido';
+const ERR_PASSWORD_REQUIRED = 'Password obrigatória'; // NOSONAR - mensagem de UI, não é uma credencial
+const ERR_PASSWORD_TOO_SHORT = `Password muito curta (mínimo ${MIN_PASSWORD_LENGTH} caracteres)`;
+const ERR_CONFIRM_MISMATCH = 'Passwords não coincidem';
+const ERR_NETWORK = 'Erro de rede';
+const ERR_LOGIN = 'Erro no login';
+const ERR_REGISTER = 'Erro no registo';
+const ERR_INVALID_RESPONSE = 'Resposta inválida do servidor';
 
 export default function LoginPage(): React.ReactElement {
     const navigate = useNavigate();
-    const [login, setLogin] = useState<LoginForm>({ email: '', password: '', remember: false });
-    const [reg, setReg] = useState<RegisterForm>({ name: '', email: '', password: '', passwordConfirm: '' });
+    const [showRegisterForm, setShowRegisterForm] = useState(false);
+    const [login, setLogin] = useState<LoginForm>({ email: '', password: '' });
     const [loginErrors, setLoginErrors] = useState<Record<string, string>>({});
-    const [regErrors, setRegErrors] = useState<Record<string, string>>({});
     const [showLoginPw, setShowLoginPw] = useState(false);
-    const [showRegPw, setShowRegPw] = useState(false);
+
+    const [register, setRegister] = useState<RegisterForm>({ name: '', email: '', password: '', confirm: '' });
+    const [registerErrors, setRegisterErrors] = useState<Record<string, string>>({});
 
     const emailValid = (e: string) => /\S+@\S+\.\S+/.test(e);
+
+    useEffect(() => {
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && showRegisterForm) setShowRegisterForm(false);
+        };
+        if (showRegisterForm) globalThis.addEventListener('keydown', handleKey);
+        return () => globalThis.removeEventListener('keydown', handleKey);
+    }, [showRegisterForm]);
 
     const handleLoginSubmit = async (ev?: React.FormEvent) => {
         ev?.preventDefault();
         const errs: Record<string, string> = {};
 
-        if (!login.email) errs.email = 'Email obrigatório';
-        else if (!emailValid(login.email)) errs.email = 'Email inválido';
+        if (!login.email) errs.email = ERR_EMAIL_REQUIRED;
+        else if (!emailValid(login.email)) errs.email = ERR_EMAIL_INVALID;
 
-        if (!login.password) errs.password = 'Password obrigatória';
+        if (!login.password) errs.password = ERR_PASSWORD_REQUIRED;
 
         setLoginErrors(errs);
         if (Object.keys(errs).length > 0) return;
-
-        console.log('🔐 Attempting login with email:', login.email);
 
         try {
             const res = await fetch('/api/auth/login', {
@@ -49,110 +67,110 @@ export default function LoginPage(): React.ReactElement {
                 body: JSON.stringify({ email: login.email, password: login.password })
             });
 
-            console.log('📥 Login response status:', res.status);
-
-            const data: any = await res.json().catch(() => ({}));
-            console.log('📦 Login response data:', data);
+            let data: any = {};
+            try {
+                data = await res.json();
+            } catch (error_) {
+                console.error('Failed to parse JSON response for login:', error_);
+                data = {};
+            }
 
             if (!res.ok) {
                 if (data.errors) setLoginErrors(data.errors);
                 else if (data.message) setLoginErrors({ general: data.message });
-                else setLoginErrors({ general: 'Erro no login' });
+                else setLoginErrors({ general: ERR_LOGIN });
                 return;
             }
 
             if (data.token) {
-                console.log('🎫 JWT Token received:', data.token.substring(0, 30) + '...');
-
-                // 🔥 IMPORTANTE: Guarda o ID do utilizador
                 const userId = data.id || data.user_id || data.userId;
-                console.log('🆔 User ID from response:', userId);
-
                 localStorage.setItem('jwt', data.token);
-
                 const userToStore = {
                     username: data.username || data.name,
                     email: data.email || login.email,
                     role: data.role,
-                    id: userId  // ✅ GUARDA O ID
+                    id: userId
                 };
-
-                console.log('💾 Saving user to localStorage:', userToStore);
                 localStorage.setItem('user', JSON.stringify(userToStore));
-
-                // Verifica se guardou corretamente
-                const savedJwt = localStorage.getItem('jwt');
-                const savedUser = localStorage.getItem('user');
-                console.log('✅ JWT saved:', savedJwt ? 'YES' : 'NO');
-                console.log('✅ User saved:', savedUser);
-
-                window.dispatchEvent(new Event('authChanged'));
-
+                globalThis.dispatchEvent(new Event('authChanged'));
                 setLogin({ ...login, password: '' });
 
                 if (data.role === 'ADMIN') {
-                    console.log('🚀 Redirecting ADMIN to /admin');
                     navigate('/admin');
                 } else {
-                    console.log('🚀 Redirecting CUSTOMER to /catalog');
                     navigate('/catalog');
                 }
             } else {
-                console.error('❌ No token in response');
-                setLoginErrors({ general: 'Resposta inválida do servidor' });
+                setLoginErrors({ general: ERR_INVALID_RESPONSE });
             }
         } catch (e) {
-            console.error('💥 Login exception:', e);
-            setLoginErrors({ general: 'Erro de rede' });
+            console.error('Network/login error:', e);
+            setLoginErrors({ general: ERR_NETWORK });
         }
     };
 
     const handleRegisterSubmit = async (ev?: React.FormEvent) => {
         ev?.preventDefault();
         const errs: Record<string, string> = {};
-        if (!reg.name) errs.name = 'Nome obrigatório';
-        if (!reg.email) errs.email = 'Email obrigatório';
-        else if (!emailValid(reg.email)) errs.email = 'Email inválido';
-        if (!reg.password) errs.password = 'Password obrigatória';
-        else if (reg.password.length < 6) errs.password = 'Mínimo 6 caracteres';
-        if (reg.password !== reg.passwordConfirm) errs.passwordConfirm = 'Passwords não coincidem';
-        setRegErrors(errs);
-        if (Object.keys(errs).length > 0) return;
 
-        console.log('📝 Attempting registration with email:', reg.email);
+        if (!register.name) {
+            errs.name = ERR_NAME_REQUIRED;
+        }
+
+        if (!register.email) {
+            errs.email = ERR_EMAIL_REQUIRED;
+        } else if (!emailValid(register.email)) {
+            errs.email = ERR_EMAIL_INVALID;
+        }
+
+        if (!register.password) {
+            errs.password = ERR_PASSWORD_REQUIRED;
+        } else if (register.password.length < MIN_PASSWORD_LENGTH) {
+            errs.password = ERR_PASSWORD_TOO_SHORT;
+        }
+
+        if (register.password !== register.confirm) {
+            errs.confirm = ERR_CONFIRM_MISMATCH;
+        }
+
+        setRegisterErrors(errs);
+        if (Object.keys(errs).length > 0) return;
 
         try {
             const res = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    name: reg.name,
-                    email: reg.email,
-                    password: reg.password,
-                    passwordConfirm: reg.passwordConfirm,
+                    name: register.name,
+                    email: register.email,
+                    password: register.password,
+                    passwordConfirm: register.confirm,
                     role: 'CUSTOMER'
                 })
             });
 
-            console.log('📥 Register response status:', res.status);
-
-            const data: any = await res.json().catch(() => ({}));
-            console.log('📦 Register response data:', data);
+            let data: any = {};
+            try {
+                data = await res.json();
+            } catch (error_) {
+                console.error('Failed to parse JSON response for register:', error_);
+                data = {};
+            }
 
             if (!res.ok) {
-                if (data.errors) setRegErrors(data.errors);
-                else if (data.message) setRegErrors({ general: data.message });
-                else setRegErrors({ general: 'Erro no registo' });
+                if (data.errors) setRegisterErrors(data.errors);
+                else if (data.message) setRegisterErrors({ general: data.message });
+                else setRegisterErrors({ general: ERR_REGISTER });
                 return;
             }
 
-            console.log('✅ Registration successful');
-            alert('Registo efetuado. Por favor inicie sessão.');
-            setReg({ name: '', email: '', password: '', passwordConfirm: '' });
-            navigate('/loginPage');
+            setShowRegisterForm(false);
+            setLogin({ ...login, email: register.email, password: '' });
+            setRegister({ name: '', email: '', password: '', confirm: '' });
+            globalThis.dispatchEvent(new Event('authChanged'));
         } catch (e) {
-            console.error('💥 Register exception:', e);
-            setRegErrors({ general: 'Erro de rede' });
+            console.error('Network/register error:', e);
+            setRegisterErrors({ general: ERR_NETWORK });
         }
     };
 
@@ -163,10 +181,10 @@ export default function LoginPage(): React.ReactElement {
                 <Header />
 
                 <div style={styles.container}>
-                    <h1 style={styles.title}>Entrar ou Registar</h1>
+                    <h1 style={styles.title}>Entrar</h1>
 
-                    <div className="side-by-side" aria-live="polite">
-                        <section className="card" style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'center' }} aria-live="polite">
+                        <section className="card" style={{ maxWidth: 420, width: '100%' }}>
                             <div className="brand">
                                 <span className="brand-logo" aria-hidden />
                                 <div>
@@ -177,8 +195,9 @@ export default function LoginPage(): React.ReactElement {
 
                             <form onSubmit={handleLoginSubmit}>
                                 <div style={{ marginBottom: 12 }}>
-                                    <label className="muted">Email</label>
+                                    <label className="muted" htmlFor="login-email">Email</label>
                                     <input
+                                        id="login-email"
                                         type="email"
                                         value={login.email}
                                         onChange={(e) => setLogin({ ...login, email: e.target.value })}
@@ -188,9 +207,10 @@ export default function LoginPage(): React.ReactElement {
                                 </div>
 
                                 <div style={{ marginBottom: 12 }}>
-                                    <label className="muted">Password</label>
+                                    <label className="muted" htmlFor="login-password">Password</label>
                                     <div style={{ display: 'flex', gap: 8 }}>
                                         <input
+                                            id="login-password"
                                             type={showLoginPw ? 'text' : 'password'}
                                             value={login.password}
                                             onChange={(e) => setLogin({ ...login, password: e.target.value })}
@@ -198,99 +218,26 @@ export default function LoginPage(): React.ReactElement {
                                         />
                                         <button
                                             type="button"
-                                            onClick={() => setShowLoginPw((s) => !s)}
+                                            onClick={() => setShowLoginPw(!showLoginPw)}
                                             className="btn secondary"
+                                            aria-label="Mostrar ou esconder password"
+                                            style={{ whiteSpace: 'nowrap' }}
                                         >
-                                            {showLoginPw ? 'Ocultar' : 'Mostrar'}
+                                            {showLoginPw ? 'Esconder' : 'Mostrar'}
                                         </button>
                                     </div>
                                     {loginErrors.password && <div className="error">{loginErrors.password}</div>}
-                                    {loginErrors.general && <div className="error">{loginErrors.general}</div>}
-                                </div>
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={login.remember}
-                                            onChange={(e) => setLogin({ ...login, remember: e.target.checked })}
-                                        />
-                                        <span className="muted">Lembrar-me</span>
-                                    </label>
-
-                                    <button type="button" className="btn secondary" onClick={() => alert('Recuperação de password (simulado)')}>
-                                        Esqueceu a password?
-                                    </button>
+                                    {loginErrors.general && <div className="error" style={{ marginTop: 8 }}>{loginErrors.general}</div>}
                                 </div>
 
                                 <button type="submit" className="btn">Entrar</button>
                             </form>
                         </section>
+                    </div>
 
-                        <section className="card" style={{ flex: 1 }}>
-                            <div className="brand">
-                                <div style={{ width: 44 }}>
-                                    <div style={{ width: 44, height: 44, borderRadius: 8, background: '#fde68a' }} />
-                                </div>
-                                <div>
-                                    <strong>Primeira vez?</strong>
-                                    <div className="muted">Crie a sua conta.</div>
-                                </div>
-                            </div>
-
-                            <form onSubmit={handleRegisterSubmit}>
-                                <div style={{ marginBottom: 12 }}>
-                                    <label className="muted">Nome</label>
-                                    <input
-                                        value={reg.name}
-                                        onChange={(e) => setReg({ ...reg, name: e.target.value })}
-                                    />
-                                    {regErrors.name && <div className="error">{regErrors.name}</div>}
-                                </div>
-
-                                <div style={{ marginBottom: 12 }}>
-                                    <label className="muted">Email</label>
-                                    <input
-                                        type="email"
-                                        value={reg.email}
-                                        onChange={(e) => setReg({ ...reg, email: e.target.value })}
-                                    />
-                                    {regErrors.email && <div className="error">{regErrors.email}</div>}
-                                </div>
-
-                                <div style={{ marginBottom: 12 }}>
-                                    <label className="muted">Password</label>
-                                    <div style={{ display: 'flex', gap: 8 }}>
-                                        <input
-                                            type={showRegPw ? 'text' : 'password'}
-                                            value={reg.password}
-                                            onChange={(e) => setReg({ ...reg, password: e.target.value })}
-                                        />
-                                        <button
-                                            type="button"
-                                            className="btn secondary"
-                                            onClick={() => setShowRegPw((s) => !s)}
-                                        >
-                                            {showRegPw ? 'Ocultar' : 'Mostrar'}
-                                        </button>
-                                    </div>
-                                    {regErrors.password && <div className="error">{regErrors.password}</div>}
-                                </div>
-
-                                <div style={{ marginBottom: 12 }}>
-                                    <label className="muted">Confirmar Password</label>
-                                    <input
-                                        type={showRegPw ? 'text' : 'password'}
-                                        value={reg.passwordConfirm}
-                                        onChange={(e) => setReg({ ...reg, passwordConfirm: e.target.value })}
-                                    />
-                                    {regErrors.passwordConfirm && <div className="error">{regErrors.passwordConfirm}</div>}
-                                    {regErrors.general && <div className="error">{regErrors.general}</div>}
-                                </div>
-
-                                <button type="submit" className="btn">Criar conta</button>
-                            </form>
-                        </section>
+                    <div style={{ marginTop: 18, textAlign: 'center' }}>
+                        <span className="muted">Primeira vez?</span>
+                        <button className="btn secondary" style={{ marginLeft: 10 }} onClick={() => setShowRegisterForm(true)}>Criar conta</button>
                     </div>
 
                     <div style={{ marginTop: 18, textAlign: 'center', color: '#6b7280' }}>
@@ -302,6 +249,108 @@ export default function LoginPage(): React.ReactElement {
                     © {new Date().getFullYear()} Crafting Stable — Aluguer de ferramentas.
                 </footer>
             </div>
+
+            {showRegisterForm && (
+                <>
+                    <button
+                        className="modal-backdrop"
+                        aria-label="Fechar formulário de registo"
+                        onClick={() => setShowRegisterForm(false)}
+                        style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
+                    ></button>
+
+                    <dialog
+                        className="modal"
+                        open
+                        aria-modal="true"
+                        tabIndex={-1}
+                        style={{ zIndex: 10000 }}
+                    >
+                        <section
+                            className="card"
+                            style={{ maxWidth: 540, width: '100%', maxHeight: '80vh', overflow: 'auto' }}
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                            tabIndex={0}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <div className="brand">
+                                    <div style={{ width: 44 }}>
+                                        <div style={{ width: 44, height: 44, borderRadius: 8, background: '#fde68a' }} />
+                                    </div>
+                                    <div>
+                                        <strong>Crie a sua conta</strong>
+                                        <div className="muted">Rápido e fácil.</div>
+                                    </div>
+                                </div>
+
+                                <button className="btn secondary" onClick={() => setShowRegisterForm(false)} aria-label="Fechar">
+                                    Fechar
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleRegisterSubmit}>
+                                <div style={{ marginBottom: 12 }}>
+                                    <label className="muted" htmlFor="register-name">Nome</label>
+                                    <input
+                                        id="register-name"
+                                        type="text"
+                                        value={register.name}
+                                        onChange={(e) => setRegister({ ...register, name: e.target.value })}
+                                        aria-invalid={!!registerErrors.name}
+                                    />
+                                    {registerErrors.name && <div className="error">{registerErrors.name}</div>}
+                                </div>
+
+                                <div style={{ marginBottom: 12 }}>
+                                    <label className="muted" htmlFor="register-email">Email</label>
+                                    <input
+                                        id="register-email"
+                                        type="email"
+                                        value={register.email}
+                                        onChange={(e) => setRegister({ ...register, email: e.target.value })}
+                                        aria-invalid={!!registerErrors.email}
+                                    />
+                                    {registerErrors.email && <div className="error">{registerErrors.email}</div>}
+                                </div>
+
+                                <div style={{ marginBottom: 12 }}>
+                                    <label className="muted" htmlFor="register-password">Password</label>
+                                    <input
+                                        id="register-password"
+                                        type="password"
+                                        value={register.password}
+                                        onChange={(e) => setRegister({ ...register, password: e.target.value })}
+                                        aria-invalid={!!registerErrors.password}
+                                    />
+                                    {registerErrors.password && <div className="error">{registerErrors.password}</div>}
+                                </div>
+
+                                <div style={{ marginBottom: 12 }}>
+                                    <label className="muted" htmlFor="register-confirm">Confirmar Password</label>
+                                    <input
+                                        id="register-confirm"
+                                        type="password"
+                                        value={register.confirm}
+                                        onChange={(e) => setRegister({ ...register, confirm: e.target.value })}
+                                        aria-invalid={!!registerErrors.confirm}
+                                    />
+                                    {registerErrors.confirm && <div className="error">{registerErrors.confirm}</div>}
+                                </div>
+
+                                {registerErrors.general && <div className="error" style={{ marginBottom: 12 }}>{registerErrors.general}</div>}
+
+                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                    <button type="button" className="btn secondary" onClick={() => setShowRegisterForm(false)}>
+                                        Cancelar
+                                    </button>
+                                    <button type="submit" className="btn">Criar conta</button>
+                                </div>
+                            </form>
+                        </section>
+                    </dialog>
+                </>
+            )}
 
             <style>{`
               @media (max-width: 780px) {
@@ -317,6 +366,11 @@ export default function LoginPage(): React.ReactElement {
               input { width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:6px; }
               .error { color:#d32f2f; font-size:13px; margin-top:6px; }
               .muted { color:#6b7280; font-size:14px; }
+              .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index: 9999; border: none; padding: 0; }
+              .modal { padding: 18px; max-width: 96vw; box-sizing: border-box; }
+              .modal .card { box-shadow: 0 10px 30px rgba(0,0,0,0.18); }
+              .modal .card::-webkit-scrollbar { height: 8px; }
+              .modal .card { max-height: 80vh; overflow: auto; }
             `}</style>
         </div>
     );
@@ -351,10 +405,15 @@ const styles: Record<string, React.CSSProperties> = {
     },
     container: {
         width: '100%',
-        maxWidth: 1150,
+        maxWidth: 1980,
         marginTop: 28,
         padding: 32,
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '60vh'
     },
     title: {
         margin: '0 0 18px 0',

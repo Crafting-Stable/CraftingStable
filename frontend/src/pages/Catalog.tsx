@@ -149,7 +149,7 @@ export default function CatalogPage(): React.ReactElement {
             <div style={styles.container}>
                 <section style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 18, paddingTop: 12 }}>
                     <div style={{ flex: 1 }}>
-                        <h1 style={{ margin: 0, fontSize: 28 }}>Promoções e Ofertas</h1>
+                        <h1 style={{ margin: 0, fontSize: 28 }}>Catálogo</h1>
                         <p style={{ margin: "6px 0 12px", color: "rgba(255,255,255,0.9)" }}>Veja as ferramentas e filtre por localização, categoria e estado.</p>
 
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -181,11 +181,37 @@ export default function CatalogPage(): React.ReactElement {
 
                         <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.06)", cursor: "pointer", fontSize: 13 }} onClick={() => { setCategory("all"); setLocation("all"); setStatus("all"); }}>Ver tudo</div>
-                                <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.06)", cursor: "pointer", fontSize: 13 }} onClick={() => setCategory("Jardinagem")}>Jardinagem</div>
-                                <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.06)", cursor: "pointer", fontSize: 13 }} onClick={() => setCategory("Obras")}>Obras</div>
-                                <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.06)", cursor: "pointer", fontSize: 13 }} onClick={() => setCategory("Carpintaria")}>Carpintaria</div>
-                                <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.06)", cursor: "pointer", fontSize: 13 }} onClick={() => setCategory("Elétricas")}>Elétricas</div>
+                                {[
+                                    {
+                                        key: "all",
+                                        label: "Ver tudo",
+                                        onClick: () => { setCategory("all"); setLocation("all"); setStatus("all"); },
+                                        isActive: category === "all" && location === "all" && status === "all"
+                                    },
+                                    { key: "jardinagem", label: "Jardinagem", onClick: () => setCategory("Jardinagem"), isActive: category === "Jardinagem" },
+                                    { key: "obras", label: "Obras", onClick: () => setCategory("Obras"), isActive: category === "Obras" },
+                                    { key: "carpintaria", label: "Carpintaria", onClick: () => setCategory("Carpintaria"), isActive: category === "Carpintaria" },
+                                    { key: "eletricas", label: "Elétricas", onClick: () => setCategory("Elétricas"), isActive: category === "Elétricas" }
+                                ].map(item => (
+                                    <button
+                                        key={item.key}
+                                        type="button"
+                                        onClick={item.onClick}
+                                        aria-pressed={item.isActive}
+                                        style={{
+                                            padding: "8px 10px",
+                                            borderRadius: 999,
+                                            background: item.isActive ? "rgba(248,183,73,0.12)" : "rgba(255,255,255,0.06)",
+                                            cursor: "pointer",
+                                            fontSize: 13,
+                                            border: "none",
+                                            color: "#fff",
+                                            outline: "none"
+                                        }}
+                                    >
+                                        {item.label}
+                                    </button>
+                                ))}
                             </div>
 
                             <div style={{ marginLeft: "auto", color: "rgba(255,255,255,0.8)" }}>{filtered.length} resultados</div>

@@ -2,9 +2,12 @@ package ua.tqs.integration;
 
 import java.util.Map;
 import java.util.UUID;
+import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.awaitility.Awaitility.await;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -31,15 +34,26 @@ class AnalyticsControllerIT {
     }
 
     @Test
-    void summaryAndEvents_shouldReturnData() throws InterruptedException {
+    void summaryAndEvents_shouldReturnData() {
         String eventType = "TOOL_VIEW-" + UUID.randomUUID();
 
         // send two events
         restTemplate.postForEntity("/api/analytics/track?eventType=" + eventType + "&userId=42&toolId=99", null, Void.class);
         restTemplate.postForEntity("/api/analytics/track?eventType=" + eventType + "&userId=42&toolId=99", null, Void.class);
 
-        // small wait for async persistence
-        Thread.sleep(300);
+        // aguarda de forma reativa até que o resumo contenha ao menos 2 eventos do tipo
+        await().atMost(Duration.ofSeconds(5)).pollInterval(Duration.ofMillis(100)).until(() -> {
+            ResponseEntity<Map> summaryResp = restTemplate.getForEntity("/api/analytics/summary", Map.class);
+            if (!summaryResp.getStatusCode().is2xxSuccessful()) return false;
+            Map<?, ?> body = summaryResp.getBody();
+            if (body == null) return false;
+            Object eventCountsObj = body.get("eventCounts");
+            if (!(eventCountsObj instanceof Map)) return false;
+            @SuppressWarnings("unchecked")
+            Map<String, Number> eventCounts = (Map<String, Number>) eventCountsObj;
+            Number count = eventCounts.get(eventType);
+            return count != null && count.longValue() >= 2;
+        });
 
         // get summary
         ResponseEntity<Map> summaryResp = restTemplate.getForEntity("/api/analytics/summary", Map.class);

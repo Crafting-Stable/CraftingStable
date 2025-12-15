@@ -27,10 +27,78 @@ const pageStyle: React.CSSProperties = {
 const API_PORT = '8081';
 
 function apiUrl(path: string) {
-    const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
+    const protocol = globalThis.location.protocol;
+    const hostname = globalThis.location.hostname;
     const normalized = path.startsWith('/') ? path : `/${path}`;
     return `${protocol}//${hostname}:${API_PORT}${normalized}`;
+}
+
+/* Helpers moved to module scope to avoid deep nesting inside the component */
+function readStoredUser() {
+    try {
+        const userStr = localStorage.getItem('user');
+        if (!userStr) return null;
+        return JSON.parse(userStr);
+    } catch {
+        return null;
+    }
+}
+
+function getJwt() {
+    return localStorage.getItem('jwt') || undefined;
+}
+
+async function fetchAndStoreMe(
+    navigate: (path: string) => void,
+    setError: (s: string | null) => void,
+    setCurrentUserId: (id: number | null) => void
+) {
+    const jwt = getJwt();
+    if (!jwt) {
+        setError("Utilizador não identificado. Por favor faça login novamente.");
+        setTimeout(() => navigate('/loginPage'), 1500);
+        return null;
+    }
+
+    try {
+        const res = await fetch(apiUrl('/api/auth/me'), {
+            headers: {
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${jwt}`
+            }
+        });
+
+        if (res.status === 401 || res.status === 403) {
+            localStorage.removeItem('jwt');
+            localStorage.removeItem('user');
+            setError("Sessão expirada. Por favor faça login novamente.");
+            setTimeout(() => navigate('/loginPage'), 1500);
+            return null;
+        }
+
+        if (!res.ok) {
+            const text = await res.text().catch(() => res.statusText);
+            setError(text || "Erro ao obter utilizador");
+            return null;
+        }
+
+        const data = await res.json().catch(() => null);
+        if (data) {
+            const fetchedId = data?.id ?? data?.user_id ?? data?.userId ?? null;
+            if (fetchedId) setCurrentUserId(Number(fetchedId));
+            const userToStore = {
+                username: data.username ?? '',
+                email: data.email ?? '',
+                role: data.role ?? '',
+                id: fetchedId
+            };
+            localStorage.setItem('user', JSON.stringify(userToStore));
+            return data;
+        }
+    } catch {
+        setError("Erro ao obter utilizador");
+    }
+    return null;
 }
 
 export default function AddRent(): React.ReactElement {
@@ -49,21 +117,48 @@ export default function AddRent(): React.ReactElement {
     const [location, setLocation] = useState("");
     const [imageUrl, setImageUrl] = useState("");
 
-    const readStoredUser = () => {
-        try {
-            const userStr = localStorage.getItem('user');
-            if (!userStr) return null;
-            return JSON.parse(userStr);
-        } catch (e) {
-            console.error('Error parsing stored user', e);
-            return null;
-        }
-    };
+    function signOutAndRedirect(msg = "Sessão expirada. Por favor faça login novamente.") {
+        localStorage.removeItem('jwt');
+        localStorage.removeItem('user');
+        setError(msg);
+        setTimeout(() => navigate('/loginPage'), 1500);
+    }
 
-    const getJwt = () => {
-        const jwt = localStorage.getItem('jwt');
-        return jwt || undefined;
-    };
+    async function sendRequest<T = any>(method: string, url: string, body?: any): Promise<T> {
+        const jwt = getJwt();
+        if (!jwt) {
+            signOutAndRedirect("Token de autenticação não encontrado. Por favor faça login novamente.");
+            throw new Error('auth');
+        }
+
+        const headers: Record<string, string> = {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${jwt}`
+        };
+
+        const hasBody = body !== undefined;
+        if (hasBody) headers['Content-Type'] = 'application/json';
+
+        const res = await fetch(url, {
+            method,
+            headers,
+            body: hasBody ? JSON.stringify(body) : undefined
+        });
+
+        if (res.status === 401 || res.status === 403) {
+            signOutAndRedirect();
+            throw new Error('auth');
+        }
+
+        if (!res.ok) {
+            const text = await res.text().catch(() => res.statusText);
+            throw new Error(text || res.statusText);
+        }
+
+        if (res.status === 204) return {} as T;
+
+        return await res.json().catch(() => ({} as T));
+    }
 
     useEffect(() => {
         const stored = readStoredUser();
@@ -72,87 +167,21 @@ export default function AddRent(): React.ReactElement {
             setCurrentUserId(Number(id));
             return;
         }
-
-        const fetchMe = async () => {
-            const jwt = getJwt();
-            if (!jwt) {
-                setError("Utilizador não identificado. Por favor faça login novamente.");
-                setTimeout(() => navigate('/loginPage'), 1500);
-                return;
-            }
-
-            try {
-                const res = await fetch(apiUrl('/api/auth/me'), {
-                    headers: {
-                        'Accept': 'application/json',
-                        'Authorization': `Bearer ${jwt}`
-                    }
-                });
-
-                if (res.ok) {
-                    const data = await res.json().catch(() => null);
-                    if (data) {
-                        const fetchedId = data?.id ?? data?.user_id ?? data?.userId ?? null;
-                        if (fetchedId) {
-                            setCurrentUserId(Number(fetchedId));
-                        }
-                        const userToStore = {
-                            username: data.username ?? '',
-                            email: data.email ?? '',
-                            role: data.role ?? '',
-                            id: fetchedId
-                        };
-                        localStorage.setItem('user', JSON.stringify(userToStore));
-                    }
-                } else if (res.status === 401 || res.status === 403) {
-                    localStorage.removeItem('jwt');
-                    localStorage.removeItem('user');
-                    setError("Sessão expirada. Por favor faça login novamente.");
-                    setTimeout(() => navigate('/loginPage'), 1500);
-                } else {
-                    const text = await res.text().catch(() => res.statusText);
-                    setError(text || "Erro ao obter utilizador");
-                }
-            } catch (e: any) {
-                console.error('fetchMe exception', e);
-                setError("Erro ao obter utilizador");
-            }
-        };
-
-        fetchMe();
+        // chama a função movida para o escopo do módulo
+        fetchAndStoreMe(navigate, setError, setCurrentUserId);
     }, [navigate]);
 
     async function loadTools() {
-        if (!currentUserId) {
-            console.warn('loadTools: no currentUserId');
-            return;
-        }
-
+        if (!currentUserId) return;
         setLoading(true);
         setError(null);
-
         try {
-            const jwt = getJwt();
             const url = apiUrl(`/api/tools?owner_id=${currentUserId}`);
-            const res = await fetch(url, {
-                headers: {
-                    'Accept': 'application/json',
-                    ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
-                }
-            });
-
-            if (!res.ok) {
-                const text = await res.text().catch(() => res.statusText);
-                throw new Error(text || res.statusText);
-            }
-
-            const data: Tool[] = await res.json().catch(() => []);
-            // Filtrar adicionalmente no frontend por segurança
-            const filtered = data.filter(t => Number(t.ownerId) === Number(currentUserId));
+            const data = await sendRequest<Tool[]>('GET', url);
+            const filtered = Array.isArray(data) ? data.filter(t => Number(t.ownerId) === Number(currentUserId)) : [];
             setTools(filtered);
         } catch (e: any) {
-            console.error('loadTools error', e);
-            setError(e.message || "Erro ao carregar ferramentas");
+            if (e.message !== 'auth') setError(e.message || "Erro ao carregar ferramentas");
         } finally {
             setLoading(false);
         }
@@ -172,6 +201,24 @@ export default function AddRent(): React.ReactElement {
         setLocation("");
         setImageUrl("");
         setError(null);
+    }
+
+    async function handleCreated(created: Tool) {
+        if (Number(created.ownerId) === Number(currentUserId)) {
+            setTools(prev => [...prev, created]);
+        } else {
+            await loadTools();
+        }
+        alert("Ferramenta criada com sucesso!");
+    }
+
+    async function handleUpdated(updated: Tool, id: number | null) {
+        if (Number(updated.ownerId) === Number(currentUserId)) {
+            setTools(prev => prev.map(t => (t.id === id ? updated : t)));
+        } else {
+            await loadTools();
+        }
+        alert("Ferramenta atualizada com sucesso!");
     }
 
     async function handleSubmit(e?: React.FormEvent) {
@@ -203,78 +250,18 @@ export default function AddRent(): React.ReactElement {
 
         setLoading(true);
         try {
-            const jwt = getJwt();
-            if (!jwt) throw new Error('Token de autenticação não encontrado');
-
-            const headers: Record<string,string> = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'Authorization': `Bearer ${jwt}`
-            };
-
             if (editingId) {
                 const url = apiUrl(`/api/tools/${editingId}`);
-                const res = await fetch(url, {
-                    method: 'PUT',
-                    headers,
-                    body: JSON.stringify(payload)
-                });
-
-                if (!res.ok) {
-                    const text = await res.text().catch(() => res.statusText);
-                    if (res.status === 401 || res.status === 403) {
-                        localStorage.removeItem('jwt');
-                        localStorage.removeItem('user');
-                        setError("Sessão expirada. Por favor faça login novamente.");
-                        setTimeout(() => navigate('/loginPage'), 1500);
-                        return;
-                    }
-                    throw new Error(text || res.statusText);
-                }
-
-                const updated: Tool = await res.json().catch(() => ({} as Tool));
-                // Garantir UI consistente (só atualizamos se o owner corresponder)
-                if (Number(updated.ownerId) === Number(currentUserId)) {
-                    setTools(prev => prev.map(t => (t.id === editingId ? updated : t)));
-                } else {
-                    // Caso backend altere owner (não deveria) forcamos reload
-                    await loadTools();
-                }
-                alert("Ferramenta atualizada com sucesso!");
+                const updated = await sendRequest<Tool>('PUT', url, payload);
+                await handleUpdated(updated, editingId);
             } else {
                 const url = apiUrl('/api/tools');
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify(payload)
-                });
-
-                if (!res.ok) {
-                    const text = await res.text().catch(() => res.statusText);
-                    if (res.status === 401 || res.status === 403) {
-                        localStorage.removeItem('jwt');
-                        localStorage.removeItem('user');
-                        setError("Sessão expirada. Por favor faça login novamente.");
-                        setTimeout(() => navigate('/loginPage'), 1500);
-                        return;
-                    }
-                    throw new Error(text || res.statusText);
-                }
-
-                const created: Tool = await res.json().catch(() => ({} as Tool));
-                // Só adicionar se pertencer ao user atual
-                if (Number(created.ownerId) === Number(currentUserId)) {
-                    setTools(prev => [...prev, created]);
-                } else {
-                    await loadTools();
-                }
-                alert("Ferramenta criada com sucesso!");
+                const created = await sendRequest<Tool>('POST', url, payload);
+                await handleCreated(created);
             }
-
             clearForm();
         } catch (e: any) {
-            console.error('submit error', e);
-            setError(e.message || "Erro ao submeter");
+            if (e.message !== 'auth') setError(e.message || "Erro ao submeter");
         } finally {
             setLoading(false);
         }
@@ -293,7 +280,7 @@ export default function AddRent(): React.ReactElement {
         setDescription(tool.description);
         setLocation(tool.location);
         setImageUrl(tool.imageUrl || "");
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        globalThis.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     async function onDelete(id?: number) {
@@ -308,36 +295,86 @@ export default function AddRent(): React.ReactElement {
 
         setLoading(true);
         try {
-            const jwt = getJwt();
             const url = apiUrl(`/api/tools/${id}`);
-            const res = await fetch(url, {
-                method: 'DELETE',
-                headers: {
-                    'Accept': 'application/json',
-                    ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
-                }
-            });
-
-            if (!res.ok) {
-                const text = await res.text().catch(() => res.statusText);
-                if (res.status === 401 || res.status === 403) {
-                    localStorage.removeItem('jwt');
-                    localStorage.removeItem('user');
-                    setError("Sessão expirada. Por favor faça login novamente.");
-                    setTimeout(() => navigate('/loginPage'), 1500);
-                    return;
-                }
-                throw new Error(text || res.statusText);
-            }
-
+            await sendRequest('DELETE', url);
             setTools(prev => prev.filter(t => t.id !== id));
             alert("Ferramenta apagada com sucesso!");
         } catch (e: any) {
-            console.error('delete error', e);
-            setError(e.message || "Erro ao apagar");
+            if (e.message !== 'auth') setError(e.message || "Erro ao apagar");
         } finally {
             setLoading(false);
         }
+    }
+
+    /* pequenas funções auxiliares para reduzir arrow functions inline */
+    function handleImageError(e: React.SyntheticEvent<HTMLImageElement>) {
+        e.currentTarget.style.display = 'none';
+    }
+
+    function renderTool(tool: Tool) {
+        return (
+            <div
+                key={tool.id}
+                style={{
+                    padding: 16,
+                    background: "rgba(255,255,255,0.03)",
+                    borderRadius: 8,
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    display: "flex",
+                    gap: 16,
+                    alignItems: "flex-start"
+                }}
+            >
+                {tool.imageUrl && (
+                    <img
+                        src={tool.imageUrl}
+                        alt={tool.name}
+                        style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
+                        onError={handleImageError}
+                    />
+                )}
+
+                <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                        <div>
+                            <h4 style={{ margin: 0, fontSize: 18 }}>{tool.name}</h4>
+                            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>
+                                {tool.type} • {tool.location}
+                            </div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                            <div style={{ fontSize: 20, fontWeight: 700, color: "#f8b749" }}>
+                                €{(tool.dailyPrice ?? 0).toFixed(2)}/dia
+                            </div>
+                            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+                                Caução: €{(tool.depositAmount ?? 0).toFixed(2)}
+                            </div>
+                        </div>
+                    </div>
+
+                    <p style={{ margin: "8px 0", fontSize: 14, color: "rgba(255,255,255,0.8)", lineHeight: 1.5 }}>
+                        {tool.description}
+                    </p>
+
+                    {Number(tool.ownerId) === Number(currentUserId) ? (
+                        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                            <button
+                                onClick={() => onEdit(tool)}
+                                style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}
+                            >
+                                Editar
+                            </button>
+                            <button
+                                onClick={() => onDelete(tool.id)}
+                                style={{ background: "#ff5c5c", border: "none", color: "#fff", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}
+                            >
+                                Apagar
+                            </button>
+                        </div>
+                    ) : null}
+                </div>
+            </div>
+        );
     }
 
     const inputStyle: React.CSSProperties = {
@@ -349,6 +386,35 @@ export default function AddRent(): React.ReactElement {
         width: "100%",
         fontSize: 14
     };
+
+    let submitLabel = "Criar Anúncio";
+    if (loading) {
+        submitLabel = "A processar...";
+    } else if (editingId) {
+        submitLabel = "Atualizar";
+    }
+
+    const toolsContent: React.ReactNode = (() => {
+        if (loading) {
+            return (
+                <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.5)" }}>
+                    A carregar...
+                </div>
+            );
+        }
+        if (tools.length === 0) {
+            return (
+                <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.5)" }}>
+                    Ainda não criou nenhum anúncio. Crie o seu primeiro anúncio acima!
+                </div>
+            );
+        }
+        return (
+            <div style={{ display: "grid", gap: 16 }}>
+                {tools.map(renderTool)}
+            </div>
+        );
+    })();
 
     return (
         <div style={pageStyle}>
@@ -375,8 +441,9 @@ export default function AddRent(): React.ReactElement {
                     <div>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 16 }}>
                             <div>
-                                <label style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Nome da Ferramenta *</label>
+                                <label htmlFor="name-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Nome da Ferramenta *</label>
                                 <input
+                                    id="name-input"
                                     placeholder="Ex: Berbequim Bosch"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
@@ -385,8 +452,9 @@ export default function AddRent(): React.ReactElement {
                             </div>
 
                             <div>
-                                <label style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Categoria *</label>
+                                <label htmlFor="type-select" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Categoria *</label>
                                 <select
+                                    id="type-select"
                                     value={type}
                                     onChange={(e) => setType(e.target.value)}
                                     style={{ ...inputStyle, cursor: "pointer" }}
@@ -400,8 +468,9 @@ export default function AddRent(): React.ReactElement {
                             </div>
 
                             <div>
-                                <label style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Preço por Dia (€) *</label>
+                                <label htmlFor="dailyPrice-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Preço por Dia (€) *</label>
                                 <input
+                                    id="dailyPrice-input"
                                     type="number"
                                     step="0.01"
                                     placeholder="10.00"
@@ -412,8 +481,9 @@ export default function AddRent(): React.ReactElement {
                             </div>
 
                             <div>
-                                <label style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Caução (€) *</label>
+                                <label htmlFor="depositAmount-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Caução (€) *</label>
                                 <input
+                                    id="depositAmount-input"
                                     type="number"
                                     step="0.01"
                                     placeholder="50.00"
@@ -424,8 +494,9 @@ export default function AddRent(): React.ReactElement {
                             </div>
 
                             <div>
-                                <label style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Localização *</label>
+                                <label htmlFor="location-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Localização *</label>
                                 <input
+                                    id="location-input"
                                     placeholder="Ex: Lisboa, Coimbra"
                                     value={location}
                                     onChange={(e) => setLocation(e.target.value)}
@@ -434,8 +505,9 @@ export default function AddRent(): React.ReactElement {
                             </div>
 
                             <div>
-                                <label style={{ display: "block", marginBottom: 6, fontSize: 14 }}>URL da Imagem</label>
+                                <label htmlFor="imageUrl-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>URL da Imagem</label>
                                 <input
+                                    id="imageUrl-input"
                                     placeholder="https://exemplo.com/imagem.jpg"
                                     value={imageUrl}
                                     onChange={(e) => setImageUrl(e.target.value)}
@@ -445,8 +517,9 @@ export default function AddRent(): React.ReactElement {
                         </div>
 
                         <div style={{ marginBottom: 16 }}>
-                            <label style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Descrição *</label>
+                            <label htmlFor="description-textarea" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Descrição *</label>
                             <textarea
+                                id="description-textarea"
                                 placeholder="Descreva a ferramenta, estado, características..."
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
@@ -469,7 +542,7 @@ export default function AddRent(): React.ReactElement {
                                 disabled={loading}
                                 style={{ background: "#f8b749", color: "#111", padding: "10px 24px", borderRadius: 6, fontWeight: 700, border: "none", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1 }}
                             >
-                                {loading ? "A processar..." : editingId ? "Atualizar" : "Criar Anúncio"}
+                                {submitLabel}
                             </button>
                         </div>
                     </div>
@@ -480,81 +553,7 @@ export default function AddRent(): React.ReactElement {
                 <section style={{ background: "rgba(0,0,0,0.6)", padding: 24, borderRadius: 10 }}>
                     <h3 style={{ margin: "0 0 16px 0" }}>Meus Anúncios ({tools.length})</h3>
 
-                    {loading ? (
-                        <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.5)" }}>
-                            A carregar...
-                        </div>
-                    ) : tools.length === 0 ? (
-                        <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.5)" }}>
-                            Ainda não criou nenhum anúncio. Crie o seu primeiro anúncio acima!
-                        </div>
-                    ) : (
-                        <div style={{ display: "grid", gap: 16 }}>
-                            {tools.map(tool => (
-                                <div
-                                    key={tool.id}
-                                    style={{
-                                        padding: 16,
-                                        background: "rgba(255,255,255,0.03)",
-                                        borderRadius: 8,
-                                        border: "1px solid rgba(255,255,255,0.1)",
-                                        display: "flex",
-                                        gap: 16,
-                                        alignItems: "flex-start"
-                                    }}
-                                >
-                                    {tool.imageUrl && (
-                                        <img
-                                            src={tool.imageUrl}
-                                            alt={tool.name}
-                                            style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
-                                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                        />
-                                    )}
-
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                                            <div>
-                                                <h4 style={{ margin: 0, fontSize: 18 }}>{tool.name}</h4>
-                                                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>
-                                                    {tool.type} • {tool.location}
-                                                </div>
-                                            </div>
-                                            <div style={{ textAlign: "right" }}>
-                                                <div style={{ fontSize: 20, fontWeight: 700, color: "#f8b749" }}>
-                                                    €{(tool.dailyPrice ?? 0).toFixed(2)}/dia
-                                                </div>
-                                                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-                                                    Caução: €{(tool.depositAmount ?? 0).toFixed(2)}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <p style={{ margin: "8px 0", fontSize: 14, color: "rgba(255,255,255,0.8)", lineHeight: 1.5 }}>
-                                            {tool.description}
-                                        </p>
-
-                                        {Number(tool.ownerId) === Number(currentUserId) ? (
-                                            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                                                <button
-                                                    onClick={() => onEdit(tool)}
-                                                    style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}
-                                                >
-                                                    Editar
-                                                </button>
-                                                <button
-                                                    onClick={() => onDelete(tool.id)}
-                                                    style={{ background: "#ff5c5c", border: "none", color: "#fff", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}
-                                                >
-                                                    Apagar
-                                                </button>
-                                            </div>
-                                        ) : null}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                    {toolsContent}
                 </section>
             </main>
         </div>
