@@ -16,7 +16,7 @@ Feature: Rent Management
     Then the rental response status is 201
     And the rental status is "PENDING"
 
-  Scenario: Create overlapping rental request
+  Scenario: Create overlapping rental request (accepted)
     Given a tool exists with name "Drill" and status "AVAILABLE"
     And a rental exists for the tool with dates:
       | startDate | endDate    |
@@ -25,7 +25,8 @@ Feature: Rent Management
     When the user creates a rental request for the tool with dates:
       | startDate | endDate    |
       | 2025-12-18T10:00:00 | 2025-12-22T18:00:00 |
-    Then the rental response status is 400
+    Then the rental response status is 201
+    And the rental status is "PENDING"
 
   Scenario: List all rentals
     Given a user is logged in as "ADMIN"

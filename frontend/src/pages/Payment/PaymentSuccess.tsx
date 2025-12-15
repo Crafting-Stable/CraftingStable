@@ -1,6 +1,30 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../../components/Header";
+
+const API_PORT = '8081';
+function apiUrl(path: string) {
+    const protocol = globalThis.location.protocol;
+    const hostname = globalThis.location.hostname;
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+    return `${protocol}//${hostname}:${API_PORT}${normalized}`;
+}
+
+type Rent = {
+    id: number;
+    toolId?: number;
+    userId?: number;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    message?: string;
+};
+
+type Tool = {
+    id: number;
+    name?: string;
+    status?: string;
+};
 
 const pageStyle: React.CSSProperties = {
     minHeight: "100vh",
@@ -49,12 +73,56 @@ export default function PaymentSuccess(): React.ReactElement {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
 
-    // Extract payment details from URL params (PayPal returns these after approval)
     const paymentDetails = useMemo(() => ({
         orderId: searchParams.get("token") || undefined,
         rentId: searchParams.get("rentId") || undefined,
         amount: searchParams.get("amount") || undefined
     }), [searchParams]);
+
+    const [rent, setRent] = useState<Rent | null>(null);
+    const [tool, setTool] = useState<Tool | null>(null);
+    const [loading, setLoading] = useState<boolean>(!!paymentDetails.rentId);
+
+    useEffect(() => {
+        let mounted = true;
+        async function fetchRentAndTool() {
+            if (!paymentDetails.rentId) {
+                setLoading(false);
+                return;
+            }
+            setLoading(true);
+            const token = localStorage.getItem('jwt');
+            try {
+                const res = await fetch(apiUrl(`/api/rents/${paymentDetails.rentId}`), {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {}
+                });
+                if (!mounted) return;
+                if (res.ok) {
+                    const data: Rent = await res.json().catch(() => null);
+                    setRent(data);
+                    if (data?.toolId) {
+                        const tRes = await fetch(apiUrl(`/api/tools/${data.toolId}`), {
+                            headers: token ? { Authorization: `Bearer ${token}` } : {}
+                        });
+                        if (tRes.ok) {
+                            const tData: Tool = await tRes.json().catch(() => null);
+                            setTool(tData);
+                        }
+                    }
+                } else {
+                    // fallback: clear
+                    setRent(null);
+                }
+            } catch (err) {
+                console.error('Erro ao buscar reserva:', err);
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        }
+
+        fetchRentAndTool();
+        return () => { mounted = false; };
+    }, [paymentDetails.rentId]);
 
     const handleViewRentals = () => {
         navigate("/user");
@@ -63,6 +131,20 @@ export default function PaymentSuccess(): React.ReactElement {
     const handleBackHome = () => {
         navigate("/");
     };
+
+    const status = rent?.status ?? undefined;
+
+    const titleText = status === 'PENDING'
+        ? 'Pagamento Recebido — Aguardando Aprovação'
+        : status === 'APPROVED' || status === 'ACTIVE'
+            ? 'Reserva Confirmada!'
+            : 'Pagamento Recebido';
+
+    const bodyText = status === 'PENDING'
+        ? 'O pagamento foi processado com sucesso. A reserva está pendente de aprovação pelo proprietário. Será notificado assim que houver uma decisão.'
+        : status === 'APPROVED' || status === 'ACTIVE'
+            ? 'Obrigado. A reserva foi aprovada e a ferramenta está reservada para si.'
+            : 'Obrigado pelo pagamento. Verifique o detalhe da reserva em "Minhas Reservas".';
 
     return (
         <div style={pageStyle}>
@@ -80,7 +162,7 @@ export default function PaymentSuccess(): React.ReactElement {
                     WebkitBackgroundClip: "text",
                     WebkitTextFillColor: "transparent"
                 }}>
-                    Payment Successful!
+                    {titleText}
                 </h1>
 
                 <p style={{
@@ -89,8 +171,7 @@ export default function PaymentSuccess(): React.ReactElement {
                     marginBottom: 24,
                     lineHeight: 1.6
                 }}>
-                    Thank you for your payment. Your rental has been confirmed and is now active.
-                    You will receive a confirmation email shortly.
+                    {loading ? 'A obter estado da reserva...' : bodyText}
                 </p>
 
                 {paymentDetails.orderId && (
@@ -115,6 +196,18 @@ export default function PaymentSuccess(): React.ReactElement {
                     </div>
                 )}
 
+                {rent && (
+                    <div style={{ marginTop: 8, color: '#d1fae5' }}>
+                        <div style={{ fontSize: 14, marginBottom: 6 }}>
+                            <strong>Reserva:</strong> #{rent.id}
+                        </div>
+                        {tool?.name && <div style={{ fontSize: 14, marginBottom: 6 }}><strong>Ferramenta:</strong> {tool.name}</div>}
+                        <div style={{ fontSize: 14 }}>
+                            <strong>Estado:</strong> {status ?? 'Desconhecido'}
+                        </div>
+                    </div>
+                )}
+
                 <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
                     <button
                         style={buttonStyle}
@@ -136,7 +229,7 @@ export default function PaymentSuccess(): React.ReactElement {
                             e.currentTarget.style.boxShadow = "none";
                         }}
                     >
-                        View My Rentals
+                        Ver Minhas Reservas
                     </button>
 
                     <button

@@ -1,4 +1,3 @@
-// java
 package ua.tqs.service;
 
 import java.math.BigDecimal;
