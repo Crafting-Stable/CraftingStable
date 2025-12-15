@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 
@@ -20,7 +20,7 @@ const MIN_PASSWORD_LENGTH = 6;
 const ERR_NAME_REQUIRED = 'Nome obrigatório';
 const ERR_EMAIL_REQUIRED = 'Email obrigatório';
 const ERR_EMAIL_INVALID = 'Email inválido';
-const ERR_PASSWORD_REQUIRED = 'Password obrigatória';
+const ERR_PASSWORD_REQUIRED = 'Password obrigatória'; // NOSONAR - mensagem de UI, não é uma credencial
 const ERR_PASSWORD_TOO_SHORT = `Password muito curta (mínimo ${MIN_PASSWORD_LENGTH} caracteres)`;
 const ERR_CONFIRM_MISMATCH = 'Passwords não coincidem';
 const ERR_NETWORK = 'Erro de rede';
@@ -39,6 +39,14 @@ export default function LoginPage(): React.ReactElement {
     const [registerErrors, setRegisterErrors] = useState<Record<string, string>>({});
 
     const emailValid = (e: string) => /\S+@\S+\.\S+/.test(e);
+
+    useEffect(() => {
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && showRegisterForm) setShowRegisterForm(false);
+        };
+        if (showRegisterForm) window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [showRegisterForm]);
 
     const handleLoginSubmit = async (ev?: React.FormEvent) => {
         ev?.preventDefault();
@@ -62,8 +70,8 @@ export default function LoginPage(): React.ReactElement {
             let data: any = {};
             try {
                 data = await res.json();
-            } catch (parseErr) {
-                console.error('Failed to parse JSON response for login:', parseErr);
+            } catch (error_) {
+                console.error('Failed to parse JSON response for login:', error_);
                 data = {};
             }
 
@@ -144,8 +152,8 @@ export default function LoginPage(): React.ReactElement {
             let data: any = {};
             try {
                 data = await res.json();
-            } catch (parseErr) {
-                console.error('Failed to parse JSON response for register:', parseErr);
+            } catch (error_) {
+                console.error('Failed to parse JSON response for register:', error_);
                 data = {};
             }
 
@@ -256,13 +264,13 @@ export default function LoginPage(): React.ReactElement {
                         open
                         aria-modal="true"
                         tabIndex={-1}
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e: React.KeyboardEvent<HTMLDialogElement>) => {
-                            if (e.key === 'Escape') setShowRegisterForm(false);
-                        }}
                         style={{ zIndex: 10000 }}
                     >
-                        <section className="card" style={{ maxWidth: 540, width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
+                        <section
+                            className="card"
+                            style={{ maxWidth: 540, width: '100%', maxHeight: '80vh', overflow: 'auto' }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                                 <div className="brand">
                                     <div style={{ width: 44 }}>
