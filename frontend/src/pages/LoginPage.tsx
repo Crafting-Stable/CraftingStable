@@ -1,60 +1,176 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Header from '../components/Header';
 
-import logoImg from '../assets/craftingstable.png';
 import bgImg from '../assets/rust.jpg';
 
 type LoginForm = {
     email: string;
     password: string;
-    remember: boolean;
 };
 
 type RegisterForm = {
     name: string;
     email: string;
     password: string;
-    passwordConfirm: string;
+    confirm: string;
 };
 
+const MIN_PASSWORD_LENGTH = 6;
+const ERR_NAME_REQUIRED = 'Nome obrigatório';
+const ERR_EMAIL_REQUIRED = 'Email obrigatório';
+const ERR_EMAIL_INVALID = 'Email inválido';
+const ERR_PASSWORD_REQUIRED = 'Password obrigatória'; // NOSONAR - mensagem de UI, não é uma credencial
+const ERR_PASSWORD_TOO_SHORT = `Password muito curta (mínimo ${MIN_PASSWORD_LENGTH} caracteres)`;
+const ERR_CONFIRM_MISMATCH = 'Passwords não coincidem';
+const ERR_NETWORK = 'Erro de rede';
+const ERR_LOGIN = 'Erro no login';
+const ERR_REGISTER = 'Erro no registo';
+const ERR_INVALID_RESPONSE = 'Resposta inválida do servidor';
+
 export default function LoginPage(): React.ReactElement {
-    const [login, setLogin] = useState<LoginForm>({ email: '', password: '', remember: false });
-    const [reg, setReg] = useState<RegisterForm>({ name: '', email: '', password: '', passwordConfirm: '' });
+    const navigate = useNavigate();
+    const [showRegisterForm, setShowRegisterForm] = useState(false);
+    const [login, setLogin] = useState<LoginForm>({ email: '', password: '' });
     const [loginErrors, setLoginErrors] = useState<Record<string, string>>({});
-    const [regErrors, setRegErrors] = useState<Record<string, string>>({});
     const [showLoginPw, setShowLoginPw] = useState(false);
-    const [showRegPw, setShowRegPw] = useState(false);
+
+    const [register, setRegister] = useState<RegisterForm>({ name: '', email: '', password: '', confirm: '' });
+    const [registerErrors, setRegisterErrors] = useState<Record<string, string>>({});
 
     const emailValid = (e: string) => /\S+@\S+\.\S+/.test(e);
 
-    const handleLoginSubmit = (ev?: React.FormEvent) => {
+    useEffect(() => {
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && showRegisterForm) setShowRegisterForm(false);
+        };
+        if (showRegisterForm) globalThis.addEventListener('keydown', handleKey);
+        return () => globalThis.removeEventListener('keydown', handleKey);
+    }, [showRegisterForm]);
+
+    const handleLoginSubmit = async (ev?: React.FormEvent) => {
         ev?.preventDefault();
         const errs: Record<string, string> = {};
-        if (!login.email) errs.email = 'Email obrigatório';
-        else if (!emailValid(login.email)) errs.email = 'Email inválido';
-        if (!login.password) errs.password = 'Password obrigatória';
+
+        if (!login.email) errs.email = ERR_EMAIL_REQUIRED;
+        else if (!emailValid(login.email)) errs.email = ERR_EMAIL_INVALID;
+
+        if (!login.password) errs.password = ERR_PASSWORD_REQUIRED;
+
         setLoginErrors(errs);
-        if (Object.keys(errs).length === 0) {
-            console.log('Login', login);
-            alert('Login submetido (simulado)');
-            setLogin({ ...login, password: '' });
+        if (Object.keys(errs).length > 0) return;
+
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: login.email, password: login.password })
+            });
+
+            let data: any = {};
+            try {
+                data = await res.json();
+            } catch (error_) {
+                console.error('Failed to parse JSON response for login:', error_);
+                data = {};
+            }
+
+            if (!res.ok) {
+                if (data.errors) setLoginErrors(data.errors);
+                else if (data.message) setLoginErrors({ general: data.message });
+                else setLoginErrors({ general: ERR_LOGIN });
+                return;
+            }
+
+            if (data.token) {
+                const userId = data.id || data.user_id || data.userId;
+                localStorage.setItem('jwt', data.token);
+                const userToStore = {
+                    username: data.username || data.name,
+                    email: data.email || login.email,
+                    role: data.role,
+                    id: userId
+                };
+                localStorage.setItem('user', JSON.stringify(userToStore));
+                globalThis.dispatchEvent(new Event('authChanged'));
+                setLogin({ ...login, password: '' });
+
+                if (data.role === 'ADMIN') {
+                    navigate('/admin');
+                } else {
+                    navigate('/catalog');
+                }
+            } else {
+                setLoginErrors({ general: ERR_INVALID_RESPONSE });
+            }
+        } catch (e) {
+            console.error('Network/login error:', e);
+            setLoginErrors({ general: ERR_NETWORK });
         }
     };
 
-    const handleRegisterSubmit = (ev?: React.FormEvent) => {
+    const handleRegisterSubmit = async (ev?: React.FormEvent) => {
         ev?.preventDefault();
         const errs: Record<string, string> = {};
-        if (!reg.name) errs.name = 'Nome obrigatório';
-        if (!reg.email) errs.email = 'Email obrigatório';
-        else if (!emailValid(reg.email)) errs.email = 'Email inválido';
-        if (!reg.password) errs.password = 'Password obrigatória';
-        else if (reg.password.length < 6) errs.password = 'Mínimo 6 caracteres';
-        if (reg.password !== reg.passwordConfirm) errs.passwordConfirm = 'Passwords não coincidem';
-        setRegErrors(errs);
-        if (Object.keys(errs).length === 0) {
-            console.log('Registo', reg);
-            alert('Registo submetido (simulado)');
-            setReg({ name: '', email: '', password: '', passwordConfirm: '' });
+
+        if (!register.name) {
+            errs.name = ERR_NAME_REQUIRED;
+        }
+
+        if (!register.email) {
+            errs.email = ERR_EMAIL_REQUIRED;
+        } else if (!emailValid(register.email)) {
+            errs.email = ERR_EMAIL_INVALID;
+        }
+
+        if (!register.password) {
+            errs.password = ERR_PASSWORD_REQUIRED;
+        } else if (register.password.length < MIN_PASSWORD_LENGTH) {
+            errs.password = ERR_PASSWORD_TOO_SHORT;
+        }
+
+        if (register.password !== register.confirm) {
+            errs.confirm = ERR_CONFIRM_MISMATCH;
+        }
+
+        setRegisterErrors(errs);
+        if (Object.keys(errs).length > 0) return;
+
+        try {
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: register.name,
+                    email: register.email,
+                    password: register.password,
+                    passwordConfirm: register.confirm,
+                    role: 'CUSTOMER'
+                })
+            });
+
+            let data: any = {};
+            try {
+                data = await res.json();
+            } catch (error_) {
+                console.error('Failed to parse JSON response for register:', error_);
+                data = {};
+            }
+
+            if (!res.ok) {
+                if (data.errors) setRegisterErrors(data.errors);
+                else if (data.message) setRegisterErrors({ general: data.message });
+                else setRegisterErrors({ general: ERR_REGISTER });
+                return;
+            }
+
+            setShowRegisterForm(false);
+            setLogin({ ...login, email: register.email, password: '' });
+            setRegister({ name: '', email: '', password: '', confirm: '' });
+            globalThis.dispatchEvent(new Event('authChanged'));
+        } catch (e) {
+            console.error('Network/register error:', e);
+            setRegisterErrors({ general: ERR_NETWORK });
         }
     };
 
@@ -62,41 +178,26 @@ export default function LoginPage(): React.ReactElement {
         <div style={styles.root}>
             <div style={styles.overlay} />
             <div style={styles.content}>
-                <header style={styles.header}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', color: 'inherit' }}>
-                            <img src={logoImg} alt="Crafting Stable logo" style={styles.logoImage} />
-                            <div style={styles.logoText}>CraftingStable</div>
-                        </Link>
-
-                        <nav style={styles.nav}>
-                            <Link to="/catalog" style={{ color: 'inherit', textDecoration: 'none' }}>Catálogo</Link>
-                            <Link to="/about" style={{ color: 'inherit', textDecoration: 'none' }}>Sobre</Link>
-                        </nav>
-                    </div>
-
-                    <div style={styles.headerRight}>
-                        <Link to="/loginPage" style={styles.loginButton}>Iniciar sessão</Link>
-                    </div>
-                </header>
+                <Header />
 
                 <div style={styles.container}>
-                    <h1 style={styles.title}>Entrar ou Registar</h1>
+                    <h1 style={styles.title}>Entrar</h1>
 
-                    <div className="side-by-side" aria-live="polite">
-                        <section className="card" style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'center' }} aria-live="polite">
+                        <section className="card" style={{ maxWidth: 420, width: '100%' }}>
                             <div className="brand">
                                 <span className="brand-logo" aria-hidden />
                                 <div>
                                     <strong>Já tem conta?</strong>
-                                    <div className="muted">Faça login para continuar com a compra.</div>
+                                    <div className="muted">Faça login para continuar.</div>
                                 </div>
                             </div>
 
-                            <form onSubmit={handleLoginSubmit} aria-label="Formulário de login">
+                            <form onSubmit={handleLoginSubmit}>
                                 <div style={{ marginBottom: 12 }}>
-                                    <label className="muted">Email</label>
+                                    <label className="muted" htmlFor="login-email">Email</label>
                                     <input
+                                        id="login-email"
                                         type="email"
                                         value={login.email}
                                         onChange={(e) => setLogin({ ...login, email: e.target.value })}
@@ -106,9 +207,10 @@ export default function LoginPage(): React.ReactElement {
                                 </div>
 
                                 <div style={{ marginBottom: 12 }}>
-                                    <label className="muted">Password</label>
+                                    <label className="muted" htmlFor="login-password">Password</label>
                                     <div style={{ display: 'flex', gap: 8 }}>
                                         <input
+                                            id="login-password"
                                             type={showLoginPw ? 'text' : 'password'}
                                             value={login.password}
                                             onChange={(e) => setLogin({ ...login, password: e.target.value })}
@@ -116,85 +218,26 @@ export default function LoginPage(): React.ReactElement {
                                         />
                                         <button
                                             type="button"
-                                            onClick={() => setShowLoginPw((s) => !s)}
+                                            onClick={() => setShowLoginPw(!showLoginPw)}
                                             className="btn secondary"
-                                            aria-pressed={showLoginPw}
+                                            aria-label="Mostrar ou esconder password"
+                                            style={{ whiteSpace: 'nowrap' }}
                                         >
-                                            {showLoginPw ? 'Ocultar' : 'Mostrar'}
+                                            {showLoginPw ? 'Esconder' : 'Mostrar'}
                                         </button>
                                     </div>
                                     {loginErrors.password && <div className="error">{loginErrors.password}</div>}
+                                    {loginErrors.general && <div className="error" style={{ marginTop: 8 }}>{loginErrors.general}</div>}
                                 </div>
 
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={login.remember}
-                                            onChange={(e) => setLogin({ ...login, remember: e.target.checked })}
-                                        />
-                                        <span className="muted">Lembrar-me</span>
-                                    </label>
-                                    <button type="button" className="btn secondary" onClick={() => alert('Recuperação de password (simulado)')}>
-                                        Esqueceu a password?
-                                    </button>
-                                </div>
-
-                                <div style={{ display: 'flex', gap: 8 }}>
-                                    <button type="submit" className="btn">Entrar</button>
-                                    <button type="button" className="btn secondary" onClick={() => alert('Login com Google (simulado)')}>Google</button>
-                                    <button type="button" className="btn secondary" onClick={() => alert('Login com Facebook (simulado)')}>Facebook</button>
-                                </div>
+                                <button type="submit" className="btn">Entrar</button>
                             </form>
                         </section>
+                    </div>
 
-                        <section className="card" style={{ flex: 1 }}>
-                            <div className="brand">
-                                <div style={{ width: 44 }}>
-                                    <div style={{ width: 44, height: 44, borderRadius: 8, background: '#fde68a' }} />
-                                </div>
-                                <div>
-                                    <strong>Primeira vez?</strong>
-                                    <div className="muted">Crie a sua conta para um checkout mais rápido.</div>
-                                </div>
-                            </div>
-
-                            <form onSubmit={handleRegisterSubmit} aria-label="Formulário de registo">
-                                <div style={{ marginBottom: 12 }}>
-                                    <label className="muted">Nome</label>
-                                    <input value={reg.name} onChange={(e) => setReg({ ...reg, name: e.target.value })} />
-                                    {regErrors.name && <div className="error">{regErrors.name}</div>}
-                                </div>
-
-                                <div style={{ marginBottom: 12 }}>
-                                    <label className="muted">Email</label>
-                                    <input type="email" value={reg.email} onChange={(e) => setReg({ ...reg, email: e.target.value })} />
-                                    {regErrors.email && <div className="error">{regErrors.email}</div>}
-                                </div>
-
-                                <div style={{ marginBottom: 12 }}>
-                                    <label className="muted">Password</label>
-                                    <div style={{ display: 'flex', gap: 8 }}>
-                                        <input type={showRegPw ? 'text' : 'password'} value={reg.password} onChange={(e) => setReg({ ...reg, password: e.target.value })} />
-                                        <button type="button" className="btn secondary" onClick={() => setShowRegPw((s) => !s)} aria-pressed={showRegPw}>
-                                            {showRegPw ? 'Ocultar' : 'Mostrar'}
-                                        </button>
-                                    </div>
-                                    {regErrors.password && <div className="error">{regErrors.password}</div>}
-                                </div>
-
-                                <div style={{ marginBottom: 12 }}>
-                                    <label className="muted">Confirmar Password</label>
-                                    <input type={showRegPw ? 'text' : 'password'} value={reg.passwordConfirm} onChange={(e) => setReg({ ...reg, passwordConfirm: e.target.value })} />
-                                    {regErrors.passwordConfirm && <div className="error">{regErrors.passwordConfirm}</div>}
-                                </div>
-
-                                <div style={{ display: 'flex', gap: 8 }}>
-                                    <button type="submit" className="btn">Criar conta</button>
-                                    <button type="button" className="btn secondary" onClick={() => alert('Continuar como convidado (simulado)')}>Continuar como convidado</button>
-                                </div>
-                            </form>
-                        </section>
+                    <div style={{ marginTop: 18, textAlign: 'center' }}>
+                        <span className="muted">Primeira vez?</span>
+                        <button className="btn secondary" style={{ marginLeft: 10 }} onClick={() => setShowRegisterForm(true)}>Criar conta</button>
                     </div>
 
                     <div style={{ marginTop: 18, textAlign: 'center', color: '#6b7280' }}>
@@ -203,28 +246,132 @@ export default function LoginPage(): React.ReactElement {
                 </div>
 
                 <footer style={styles.footer}>
-                    © {new Date().getFullYear()} Crafting Stable — Aluguer de ferramentas. Políticas | Contato
+                    © {new Date().getFullYear()} Crafting Stable — Aluguer de ferramentas.
                 </footer>
             </div>
 
-            <style>
-                {`
-          @media (max-width: 780px) {
-            .side-by-side { flex-direction: column; padding: 16px; }
-            .card { width: 100%; margin: 8px 0; }
-          }
-          .side-by-side { display: flex; gap: 24px; align-items: stretch; }
-          .card { background: #fff; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); padding: 28px; width: 100%; max-width: 520px; }
-          .brand { display:flex; gap:12px; align-items:center; margin-bottom: 18px; }
-          .brand-logo { width:44px; height:44px; background:linear-gradient(135deg,#1f8bf5,#4bd3a8); border-radius:8px; display:inline-block; }
-          .btn { background:#1f8bf5; color:#fff; border:0; padding:10px 14px; border-radius:6px; cursor:pointer; }
-          .btn.secondary { background:#f3f4f6; color:#111; border:1px solid #e5e7eb; }
-          input { width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:6px; }
-          .input-row { display:flex; gap:8px; }
-          .error { color:#d32f2f; font-size:13px; margin-top:6px; }
-          .muted { color:#6b7280; font-size:14px; }
-        `}
-            </style>
+            {showRegisterForm && (
+                <>
+                    <button
+                        className="modal-backdrop"
+                        aria-label="Fechar formulário de registo"
+                        onClick={() => setShowRegisterForm(false)}
+                        style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
+                    ></button>
+
+                    <dialog
+                        className="modal"
+                        open
+                        aria-modal="true"
+                        tabIndex={-1}
+                        style={{ zIndex: 10000 }}
+                    >
+                        <section
+                            className="card"
+                            style={{ maxWidth: 540, width: '100%', maxHeight: '80vh', overflow: 'auto' }}
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                            tabIndex={0}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <div className="brand">
+                                    <div style={{ width: 44 }}>
+                                        <div style={{ width: 44, height: 44, borderRadius: 8, background: '#fde68a' }} />
+                                    </div>
+                                    <div>
+                                        <strong>Crie a sua conta</strong>
+                                        <div className="muted">Rápido e fácil.</div>
+                                    </div>
+                                </div>
+
+                                <button className="btn secondary" onClick={() => setShowRegisterForm(false)} aria-label="Fechar">
+                                    Fechar
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleRegisterSubmit}>
+                                <div style={{ marginBottom: 12 }}>
+                                    <label className="muted" htmlFor="register-name">Nome</label>
+                                    <input
+                                        id="register-name"
+                                        type="text"
+                                        value={register.name}
+                                        onChange={(e) => setRegister({ ...register, name: e.target.value })}
+                                        aria-invalid={!!registerErrors.name}
+                                    />
+                                    {registerErrors.name && <div className="error">{registerErrors.name}</div>}
+                                </div>
+
+                                <div style={{ marginBottom: 12 }}>
+                                    <label className="muted" htmlFor="register-email">Email</label>
+                                    <input
+                                        id="register-email"
+                                        type="email"
+                                        value={register.email}
+                                        onChange={(e) => setRegister({ ...register, email: e.target.value })}
+                                        aria-invalid={!!registerErrors.email}
+                                    />
+                                    {registerErrors.email && <div className="error">{registerErrors.email}</div>}
+                                </div>
+
+                                <div style={{ marginBottom: 12 }}>
+                                    <label className="muted" htmlFor="register-password">Password</label>
+                                    <input
+                                        id="register-password"
+                                        type="password"
+                                        value={register.password}
+                                        onChange={(e) => setRegister({ ...register, password: e.target.value })}
+                                        aria-invalid={!!registerErrors.password}
+                                    />
+                                    {registerErrors.password && <div className="error">{registerErrors.password}</div>}
+                                </div>
+
+                                <div style={{ marginBottom: 12 }}>
+                                    <label className="muted" htmlFor="register-confirm">Confirmar Password</label>
+                                    <input
+                                        id="register-confirm"
+                                        type="password"
+                                        value={register.confirm}
+                                        onChange={(e) => setRegister({ ...register, confirm: e.target.value })}
+                                        aria-invalid={!!registerErrors.confirm}
+                                    />
+                                    {registerErrors.confirm && <div className="error">{registerErrors.confirm}</div>}
+                                </div>
+
+                                {registerErrors.general && <div className="error" style={{ marginBottom: 12 }}>{registerErrors.general}</div>}
+
+                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                    <button type="button" className="btn secondary" onClick={() => setShowRegisterForm(false)}>
+                                        Cancelar
+                                    </button>
+                                    <button type="submit" className="btn">Criar conta</button>
+                                </div>
+                            </form>
+                        </section>
+                    </dialog>
+                </>
+            )}
+
+            <style>{`
+              @media (max-width: 780px) {
+                .side-by-side { flex-direction: column; padding: 16px; }
+                .card { width: 100%; margin: 8px 0; }
+              }
+              .side-by-side { display: flex; gap: 24px; align-items: stretch; }
+              .card { background: #fff; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); padding: 28px; width: 100%; max-width: 520px; }
+              .brand { display:flex; gap:12px; align-items:center; margin-bottom: 18px; }
+              .brand-logo { width:44px; height:44px; background:linear-gradient(135deg,#1f8bf5,#4bd3a8); border-radius:8px; display:inline-block; }
+              .btn { background:#1f8bf5; color:#fff; border:0; padding:10px 14px; border-radius:6px; cursor:pointer; }
+              .btn.secondary { background:#f3f4f6; color:#111; border:1px solid #e5e7eb; }
+              input { width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:6px; }
+              .error { color:#d32f2f; font-size:13px; margin-top:6px; }
+              .muted { color:#6b7280; font-size:14px; }
+              .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index: 9999; border: none; padding: 0; }
+              .modal { padding: 18px; max-width: 96vw; box-sizing: border-box; }
+              .modal .card { box-shadow: 0 10px 30px rgba(0,0,0,0.18); }
+              .modal .card::-webkit-scrollbar { height: 8px; }
+              .modal .card { max-height: 80vh; overflow: auto; }
+            `}</style>
         </div>
     );
 }
@@ -239,12 +386,14 @@ const styles: Record<string, React.CSSProperties> = {
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
-        color: '#111'
+        backgroundAttachment: 'fixed',
+        color: '#f1991e',
+        filter: 'contrast(110%)'
     },
     overlay: {
         position: 'absolute',
         inset: 0,
-        background: 'rgba(255,255,255,0.92)'
+        background: 'rgba(255,255,255,0.6)'
     },
     content: {
         position: 'relative',
@@ -254,22 +403,30 @@ const styles: Record<string, React.CSSProperties> = {
         flexDirection: 'column',
         flex: 1,
     },
-    header: { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', boxSizing: 'border-box', borderBottom: '1px solid rgba(0,0,0,0.04)', background: 'transparent', color: '#111' },
-    headerRight: { display: 'flex', alignItems: 'center', gap: 12 },
     container: {
         width: '100%',
-        maxWidth: 1150,
+        maxWidth: 1980,
         marginTop: 28,
         padding: 32,
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '60vh'
     },
-    logoText: { fontWeight: 700, fontSize: 20, color: '#198515' },
-    logoImage: { width: 48, height: 'auto', marginRight: 12 },
-    nav: { display: 'flex', gap: 12, color: '#111', fontFamily: 'Inter, Arial, sans-serif' },
-    loginButton: { padding: '8px 14px', borderRadius: 8, background: '#f8b749', color: '#222', textDecoration: 'none', fontWeight: 600, border: 'none', cursor: 'pointer' },
     title: {
         margin: '0 0 18px 0',
         fontSize: 22
     },
-    footer: { width: '100%', borderTop: '1px solid rgba(0,0,0,0.04)', padding: '18px 0', color: '#6b7280', textAlign: 'center', fontSize: 14, boxSizing: 'border-box', background: 'transparent', marginTop: 'auto' },
+    footer: {
+        width: '100%',
+        borderTop: '1px solid rgba(0,0,0,0.04)',
+        padding: '18px 0',
+        color: '#6b7280',
+        textAlign: 'center',
+        fontSize: 14,
+        background: 'transparent',
+        marginTop: 'auto'
+    }
 };

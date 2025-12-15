@@ -1,10 +1,18 @@
 package ua.tqs.model;
 
-import jakarta.persistence.*;
+
+import java.util.Objects;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.util.Objects;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -14,6 +22,11 @@ import ua.tqs.enums.UserRole;
 @Entity
 @Table(name = "users")
 public class User {
+
+    @Setter
+    @NotNull
+    @Column(nullable = false)
+    private Boolean active = true;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,7 +42,6 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    // Não retornar a senha em toString; getter/setter mantidos para uso interno
     @Setter
     @NotBlank
     private String password;
@@ -39,6 +51,11 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole type = UserRole.CUSTOMER;
+
+    @Setter
+    @Email
+    @Column(name = "paypal_email")
+    private String paypalEmail;
 
     public User() {
     }

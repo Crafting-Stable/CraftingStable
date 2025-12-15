@@ -5,30 +5,54 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:coverage": "VITE_COVERAGE=true vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --run --coverage",
+    "preview": "vite preview",
+    "cy:open": "cypress open",
+    "cy:run": "cypress run",
+    "cy:run:headed": "cypress run --headed --browser chrome",
+    "test:e2e": "start-server-and-test dev http://localhost:5173 cy:run",
+    "test:e2e:open": "start-server-and-test dev http://localhost:5173 cy:open",
+    "test:e2e:docker": "cypress run --headless --browser chrome",
+    "coverage:merge": "npx nyc merge coverage-cypress coverage/cypress-coverage.json && npx nyc report --reporter=lcov --reporter=text --report-dir=coverage-cypress-lcov"
   },
   "dependencies": {
+    "@paypal/react-paypal-js": "^8.9.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.9.6"
   },
   "devDependencies": {
+    "@cypress/code-coverage": "^3.13.4",
     "@eslint/js": "^9.39.1",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^16.0.1",
+    "@testing-library/user-event": "^14.5.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^1.6.1",
+    "@vitest/ui": "^1.1.0",
     "autoprefixer": "^10.4.22",
+    "cypress": "^13.6.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "happy-dom": "^12.10.3",
+    "nyc": "^17.1.0",
     "postcss": "^8.5.6",
+    "start-server-and-test": "^2.0.3",
     "tailwindcss": "^3.4.18",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vite": "^5.4.14",
+    "vite-plugin-istanbul": "^6.0.2",
+    "vitest": "^1.1.0"
   }
 }

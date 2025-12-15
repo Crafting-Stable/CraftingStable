@@ -13,7 +13,6 @@ public class RentRequestDTO {
     @NotNull
     private Long toolId;
 
-    @NotNull
     private Long userId;
 
     @NotNull

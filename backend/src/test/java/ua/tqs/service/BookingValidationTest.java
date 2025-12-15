@@ -1,20 +1,25 @@
 package ua.tqs.service;
 
+import java.time.LocalDateTime;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+
 import ua.tqs.model.Rent;
 import ua.tqs.repository.RentRepository;
 import ua.tqs.repository.ToolRepository;
-
-import java.time.LocalDateTime;
-
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class BookingValidationTest {
@@ -106,6 +111,11 @@ class BookingValidationTest {
         testRent.setStartDate(LocalDateTime.now().plusDays(1));
         testRent.setEndDate(LocalDateTime.now().plusDays(5));
 
+        ua.tqs.model.Tool tool = new ua.tqs.model.Tool();
+        tool.setId(1L);
+        tool.setOwnerId(100L); // Different from testRent.userId (200L)
+        
+        when(toolRepository.findById(1L)).thenReturn(java.util.Optional.of(tool));
         when(rentRepository.findOverlappingRents(anyLong(), any(), any(), anyList()))
                 .thenReturn(java.util.Collections.emptyList());
         when(rentRepository.save(any(Rent.class))).thenReturn(testRent);
@@ -123,6 +133,11 @@ class BookingValidationTest {
         testRent.setStartDate(now.plusSeconds(1)); // Slightly in future to avoid race condition
         testRent.setEndDate(now.plusDays(3));
 
+        ua.tqs.model.Tool tool = new ua.tqs.model.Tool();
+        tool.setId(1L);
+        tool.setOwnerId(100L); // Different from testRent.userId (200L)
+        
+        when(toolRepository.findById(1L)).thenReturn(java.util.Optional.of(tool));
         when(rentRepository.findOverlappingRents(anyLong(), any(), any(), anyList()))
                 .thenReturn(java.util.Collections.emptyList());
         when(rentRepository.save(any(Rent.class))).thenReturn(testRent);
@@ -137,6 +152,11 @@ class BookingValidationTest {
         testRent.setStartDate(LocalDateTime.now().plusDays(1));
         testRent.setEndDate(LocalDateTime.now().plusDays(60)); // 2 months
 
+        ua.tqs.model.Tool tool = new ua.tqs.model.Tool();
+        tool.setId(1L);
+        tool.setOwnerId(100L); // Different from testRent.userId (200L)
+        
+        when(toolRepository.findById(1L)).thenReturn(java.util.Optional.of(tool));
         when(rentRepository.findOverlappingRents(anyLong(), any(), any(), anyList()))
                 .thenReturn(java.util.Collections.emptyList());
         when(rentRepository.save(any(Rent.class))).thenReturn(testRent);
@@ -151,6 +171,11 @@ class BookingValidationTest {
         testRent.setStartDate(LocalDateTime.now().plusDays(1));
         testRent.setEndDate(LocalDateTime.now().plusDays(1).plusHours(1)); // Just over 1 day
 
+        ua.tqs.model.Tool tool = new ua.tqs.model.Tool();
+        tool.setId(1L);
+        tool.setOwnerId(100L); // Different from testRent.userId (200L)
+        
+        when(toolRepository.findById(1L)).thenReturn(java.util.Optional.of(tool));
         when(rentRepository.findOverlappingRents(anyLong(), any(), any(), anyList()))
                 .thenReturn(java.util.Collections.emptyList());
         when(rentRepository.save(any(Rent.class))).thenReturn(testRent);

@@ -69,3 +69,20 @@ button:focus-visible {
         background-color: #f9f9f9;
     }
 }
+
+.paypal-checkout-sandbox-iframe,
+iframe[name^="__zoid__paypal_checkout__"],
+iframe[title*="PayPal"] {
+    max-height: 100vh !important;
+    overflow: auto !important;
+}
+
+/* Ensure body doesn't block PayPal modals */
+body.paypal-overlay-active {
+    overflow: hidden;
+}
+
+/* Fix for PayPal buttons container */
+div[data-paypal-button] {
+    z-index: 1;
+}

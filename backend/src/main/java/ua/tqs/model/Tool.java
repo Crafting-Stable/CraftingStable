@@ -5,6 +5,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 import ua.tqs.enums.ToolStatus;
 
@@ -57,4 +58,5 @@ public class Tool {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private ToolStatus status = ToolStatus.AVAILABLE;
+
 }

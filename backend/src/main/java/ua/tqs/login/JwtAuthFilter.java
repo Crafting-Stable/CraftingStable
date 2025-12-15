@@ -1,6 +1,5 @@
 package ua.tqs.login;
 
-
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,32 +27,54 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         this.userDetailsService = userDetailsService;
     }
 
-
     @Override
-    public void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        String token = null;
         String authHeader = request.getHeader("Authorization");
+        String token = extractToken(authHeader);
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
-        }
-
-        if (token != null && jwtUtil.validateToken(token)) {
-            String username = jwtUtil.getUsername(token);
-
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
-                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                SecurityContextHolder.getContext().setAuthentication(auth);
+        if (token != null) {
+            boolean isValid = jwtUtil.validateToken(token);
+            if (isValid) {
+                handleValidToken(token, request);
             }
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String extractToken(String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+        return null;
+    }
+
+    private void handleValidToken(String token, HttpServletRequest request) {
+        String username = jwtUtil.getUsername(token);
+        if (username == null) {
+            return;
+        }
+
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            return;
+        }
+
+        try {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            setAuthenticationIfAbsent(userDetails, request);
+        } catch (Exception ignored) {
+            // erro ao carregar userDetails — sem logs conforme solicitado
+        }
+    }
+
+    private void setAuthenticationIfAbsent(UserDetails userDetails, HttpServletRequest request) {
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.getAuthorities());
+            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(auth);
+        }
     }
 }

@@ -8,7 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import ua.tqs.model.Tool;
-
+import ua.tqs.enums.ToolStatus;
 import java.math.BigDecimal;
 
 @Data
@@ -44,6 +44,8 @@ public class ToolDTO {
 
     private Long ownerId;
 
+    private ToolStatus status;
+
     public static ToolDTO fromModel(Tool f) {
         if (f == null) return null;
         return ToolDTO.builder()
@@ -57,6 +59,7 @@ public class ToolDTO {
                 .available(f.getAvailable())
                 .imageUrl(f.getImageUrl())
                 .ownerId(f.getOwnerId())
+                .status(f.getStatus())
                 .build();
     }
 
@@ -72,6 +75,7 @@ public class ToolDTO {
                 .available(this.available != null ? this.available : Boolean.TRUE)
                 .imageUrl(this.imageUrl)
                 .ownerId(this.ownerId)
+                .status(this.status != null ? this.status : ToolStatus.AVAILABLE)
                 .build();
     }
 }

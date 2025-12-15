@@ -1,29 +1,33 @@
 package ua.tqs.service;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import ua.tqs.enums.RentStatus;
-import ua.tqs.enums.ToolStatus;
-import ua.tqs.exception.ResourceNotFoundException;
-import ua.tqs.model.Rent;
-import ua.tqs.model.Tool;
-import ua.tqs.repository.RentRepository;
-import ua.tqs.repository.ToolRepository;
-
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.eq;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import ua.tqs.enums.RentStatus;
+import ua.tqs.enums.ToolStatus;
+import ua.tqs.model.Rent;
+import ua.tqs.model.Tool;
+import ua.tqs.repository.RentRepository;
+import ua.tqs.repository.ToolRepository;
 
 @ExtendWith(MockitoExtension.class)
 class RentServiceTest {
@@ -64,6 +68,9 @@ class RentServiceTest {
 
     @Test
     void whenCreateRent_thenSuccess() {
+        when(toolRepository.findById(1L)).thenReturn(Optional.of(testTool));
+        when(rentRepository.findOverlappingRents(anyLong(), any(), any(), anyList()))
+                .thenReturn(Collections.emptyList());
         when(rentRepository.save(any(Rent.class))).thenReturn(testRent);
 
         Rent created = rentService.create(testRent);

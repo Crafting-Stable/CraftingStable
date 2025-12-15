@@ -1,0 +1,63 @@
+groups:
+  - name: backend.rules
+    rules:
+      # Recording rule: taxa de erro do backend (5xx) nos últimos 5m
+      - record: job:backend:request_error_rate
+        expr: |
+          sum(
+            rate(http_server_requests_seconds_count{job="backend", status=~"5.."}[5m])
+          )
+          /
+          sum(
+            rate(http_server_requests_seconds_count{job="backend"}[5m])
+          )
+
+      # Recording rule: latência 95º percentil do backend nos últimos 5m
+      - record: job:backend:request_latency_seconds:95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(http_server_requests_seconds_bucket{job="backend"}[5m])) by (le)
+          )
+
+      # Alert: backend inativo
+      - alert: BackendDown
+        expr: up{job="backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend indisponível (job=backend)"
+          description: "O alvo backend (job=backend) está fora do ar por mais de 1 minuto."
+
+      # Alert: alta taxa de erros 5xx no backend
+      - alert: BackendHighErrorRate
+        expr: job:backend:request_error_rate > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alta taxa de erros 5xx no backend"
+          description: "Taxa de respostas 5xx do backend > 5% nos últimos 5 minutos."
+
+      # Alert: alta latência (p95) no backend
+      - alert: BackendHighLatencyP95
+        expr: job:backend:request_latency_seconds:95 > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Alta latência (P95) no backend"
+          description: "Latência P95 do backend maior que 1s nos últimos 5 minutos."
+
+  - name: infra.rules
+    rules:
+      # Alert: nginx inativo
+      - alert: NginxDown
+        expr: up{job="nginx"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Nginx indisponível (job=nginx)"
+          description: "O alvo nginx (job=nginx) está fora do ar por mais de 1 minuto."

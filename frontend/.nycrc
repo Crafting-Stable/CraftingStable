@@ -1,0 +1,14 @@
+{
+  "report-dir": "coverage-cypress",
+  "reporter": ["text", "lcov", "json"],
+  "all": true,
+  "include": ["src/**/*.tsx", "src/**/*.ts"],
+  "exclude": [
+    "src/test/**",
+    "src/**/*.test.tsx",
+    "src/**/*.test.ts",
+    "src/main.tsx",
+    "src/vite-env.d.ts"
+  ],
+  "extension": [".ts", ".tsx"]
+}

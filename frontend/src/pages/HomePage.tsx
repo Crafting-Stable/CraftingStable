@@ -1,7 +1,8 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import Header from '../components/Header';
+import LoadingScreen from '../components/LoadingScreen';
 
-import logoImg from '../assets/craftingstable.png';
 import bgImg from '../assets/rust.jpg';
 
 type Tool = {
@@ -9,24 +10,10 @@ type Tool = {
     name: string;
     category: string;
     pricePerDay: number;
+    oldPricePerDay?: number;
     image?: string;
-    description?: string;
+    promo?: boolean;
 };
-
-const sampleTools: Tool[] = [
-    { id: "1", name: "Perfuradora Elétrica", category: "Ferramentas Elétricas", pricePerDay: 12, description: "Perfuradora 800W, ideal para obra e bricolage." },
-    { id: "2", name: "Gerador Portátil", category: "Energia", pricePerDay: 45, description: "Gerador 2kW, silencioso e eficiente." },
-    { id: "3", name: "Martelo Demolidor", category: "Obras", pricePerDay: 30, description: "Para trabalhos pesados de demolição." },
-    { id: "4", name: "Cortador de Relva", category: "Jardinagem", pricePerDay: 18, description: "Corta relva a gasolina, ideal para jardins médios." },
-    { id: "5", name: "Soprador de Folhas", category: "Jardinagem", pricePerDay: 8, description: "Soprador portátil elétrico, leve e potente." },
-    { id: "6", name: "Plaina Elétrica", category: "Carpintaria", pricePerDay: 20, description: "Acabamento de madeira com precisão." },
-    { id: "7", name: "Serra Circular", category: "Carpintaria", pricePerDay: 15, description: "Serra para corte de madeira e painéis." },
-    { id: "8", name: "Aparador de Sebes", category: "Jardinagem", pricePerDay: 14, description: "Ideal para podar sebes e arbustos." },
-    { id: "9", name: "Andaime Modular", category: "Obras", pricePerDay: 60, description: "Andaime leve e modular para trabalhos em altura." },
-    { id: "10", name: "Compactadora de Solo", category: "Obras", pricePerDay: 55, description: "Compacta solo para preparação de bases." },
-    { id: "11", name: "Nível Laser", category: "Medição", pricePerDay: 10, description: "Nível laser para alinhamento e nivelamento precisos." },
-    { id: "12", name: "Medidor de Distância (Laser)", category: "Medição", pricePerDay: 9, description: "Mede distâncias até 50m com precisão." },
-];
 
 const styles: { [k: string]: React.CSSProperties } = {
     root: {
@@ -53,64 +40,174 @@ const styles: { [k: string]: React.CSSProperties } = {
         flexDirection: "column",
         flex: 1,
     },
-    header: { width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", boxSizing: "border-box", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "transparent", color: "#fff" },
-    headerRight: { display: "flex", alignItems: "center", gap: 12 },
-    container: { fontFamily: "Inter, Arial, sans-serif", color: "#fff", padding: "0 16px", maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", flex: 1, boxSizing: "border-box" },
-    logoText: { fontWeight: 700, fontSize: 20, color: "#f8b749" },
-    logoImage: { width: 64, height: "auto", marginRight: 12 },
-    nav: { display: "flex", gap: 12, color: "#fff", fontFamily: "Inter, Arial, sans-serif" },
-    hero: { display: "flex", gap: 24, alignItems: "center", padding: "24px 0" },
+    container: {
+        fontFamily: "Inter, Arial, sans-serif",
+        color: "#fff",
+        padding: "0 16px",
+        maxWidth: 1100,
+        margin: "0 auto",
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+        boxSizing: "border-box"
+    },
+    hero: {
+        display: "flex",
+        gap: 24,
+        alignItems: "center",
+        padding: "24px 0"
+    },
     heroText: { flex: 1 },
-    heroTitle: { fontSize: 32, margin: "0 0 8px", color: "#fff" },
-    heroDesc: { margin: "0 0 16px", color: "rgba(255,255,255,0.9)" },
-    search: { display: "flex", gap: 8 },
-    input: { padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.2)", flex: 1, background: "rgba(255,255,255,0.05)", color: "#fff" },
-
-    /* Carousel styles */
-    carouselWrapper: { position: "relative", marginTop: 8 },
-    carouselViewport: { display: "flex", gap: 16, overflowX: "auto", scrollBehavior: "smooth", paddingBottom: 8, paddingTop: 8 },
-    card: { border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: 12, background: "rgba(0,0,0,0.35)", display: "flex", flexDirection: "column", gap: 8, color: "#fff", minWidth: 260, boxSizing: "border-box" },
-    cardImage: { height: 140, background: "rgba(255,255,255,0.03)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", color: "#ddd" },
-
-    arrowButton: { position: "absolute", top: "50%", transform: "translateY(-50%)", background: "#f8b749", border: "none", padding: "8px 10px", borderRadius: 6, cursor: "pointer", zIndex: 3 },
+    heroTitle: {
+        fontSize: 32,
+        margin: "0 0 8px",
+        color: "#fff"
+    },
+    heroDesc: {
+        margin: "0 0 16px",
+        color: "rgba(255,255,255,0.9)"
+    },
+    carouselWrapper: {
+        position: "relative",
+        marginTop: 8
+    },
+    carouselViewport: {
+        display: "flex",
+        gap: 16,
+        overflowX: "auto",
+        scrollBehavior: "smooth",
+        paddingBottom: 8,
+        paddingTop: 8
+    },
+    card: {
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 8,
+        padding: 12,
+        background: "rgba(0,0,0,0.35)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        color: "#fff",
+        minWidth: 260,
+        boxSizing: "border-box"
+    },
+    cardImage: {
+        height: 140,
+        background: "rgba(255,255,255,0.03)",
+        borderRadius: 6,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "#ddd",
+        overflow: "hidden"
+    },
+    arrowButton: {
+        position: "absolute",
+        top: "50%",
+        transform: "translateY(-50%)",
+        background: "#f8b749",
+        border: "none",
+        padding: "8px 10px",
+        borderRadius: 6,
+        cursor: "pointer",
+        zIndex: 3
+    },
     arrowLeft: { left: 8 },
     arrowRight: { right: 8 },
-
-    loginButton: { padding: "8px 14px", borderRadius: 8, background: "#f8b749", color: "#222", textDecoration: "none", fontWeight: 600, border: "none", cursor: "pointer" },
-    footer: { width: "100%", borderTop: "1px solid rgba(255,255,255,0.06)", padding: "18px 0", color: "rgba(255,255,255,0.9)", textAlign: "center", fontSize: 14, boxSizing: "border-box", background: "transparent" },
+    footer: {
+        width: "100%",
+        borderTop: "1px solid rgba(255,255,255,0.06)",
+        padding: "18px 0",
+        color: "rgba(255,255,255,0.9)",
+        textAlign: "center",
+        fontSize: 14,
+        boxSizing: "border-box",
+        background: "transparent"
+    },
+    loadingOverlay: {
+        position: "fixed",
+        inset: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 9999,
+        pointerEvents: "none"
+    },
+    loadingInner: {
+        pointerEvents: "none",
+        transform: "scale(0.45)",
+        width: 340,
+        height: 340
+    }
 };
 
 export default function HomePage(): React.ReactElement {
     const carouselRef = useRef<HTMLDivElement | null>(null);
+    const [tools, setTools] = useState<Tool[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+
+    const placeholderFor = (type: string, name?: string) =>
+        `https://placehold.co/600x400?text=${encodeURIComponent((name || type).slice(0, 30))}`;
+
+    const mapApiToUi = (apiTool: any): Tool => ({
+        id: String(apiTool.id),
+        name: apiTool.name,
+        category: apiTool.type || apiTool.category || "Outros",
+        pricePerDay: Number(apiTool.dailyPrice ?? apiTool.pricePerDay ?? 0),
+        oldPricePerDay: apiTool.oldPricePerDay ? Number(apiTool.oldPricePerDay) : undefined,
+        image: apiTool.imageUrl || apiTool.image || placeholderFor(apiTool.type, apiTool.name),
+        promo: Boolean(apiTool.promo) || false
+    });
+
+    useEffect(() => {
+        let mounted = true;
+        async function loadAndEnrich() {
+            setLoading(true);
+            try {
+                const res = await fetch("/api/tools");
+                if (!res.ok) throw new Error("Erro ao obter ferramentas");
+
+                const data = await res.json();
+                if (Array.isArray(data)) {
+                    const mapped = data.map(mapApiToUi);
+                    if (mounted) setTools(mapped);
+                } else if (mounted) {
+                    setTools([]);
+                }
+            } catch (e) {
+                console.error(e);
+                if (mounted) setTools([]);
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        }
+        loadAndEnrich();
+        return () => { mounted = false; };
+    }, []);
 
     const scroll = (dir: "left" | "right") => {
         const el = carouselRef.current;
-        if (!el) return;
-        const amount = Math.floor(el.clientWidth * 0.8);
-        el.scrollBy({ left: dir === "left" ? -amount : amount, behavior: "smooth" });
+        if (el) {
+            const amount = Math.floor(el.clientWidth * 0.8);
+            el.scrollBy({ left: dir === "left" ? -amount : amount, behavior: "smooth" });
+        }
     };
+
+    const filteredTools = searchQuery.trim()
+        ? tools.filter(t =>
+            t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            t.category.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        : tools.slice(0, 10);
+
+    const isSearching = searchQuery.trim().length > 0;
 
     return (
         <div style={styles.root}>
             <div style={styles.overlay} />
             <div style={styles.content}>
-                <header style={styles.header}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <Link to="/" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "inherit" }}>
-                            <img src={logoImg} alt="Crafting Stable logo" style={styles.logoImage} />
-                            <div style={styles.logoText}>CraftingStable</div>
-                        </Link>
-
-                        <nav style={styles.nav}>
-                            <Link to="/catalog" style={{ color: "inherit", textDecoration: "none" }}>Catálogo</Link>
-                            <Link to="/about" style={{ color: "inherit", textDecoration: "none" }}>Sobre</Link>
-                        </nav>
-                    </div>
-
-                    <div style={styles.headerRight}>
-                        <Link to="/loginPage" style={styles.loginButton}>Iniciar sessão</Link>
-                    </div>
-                </header>
+                <Header />
 
                 <div style={styles.container}>
                     <main>
@@ -120,53 +217,216 @@ export default function HomePage(): React.ReactElement {
                                 <p style={styles.heroDesc}>Encontre ferramentas para obra, jardinagem ou eventos — entrega rápida e preços competitivos.</p>
 
                                 <div style={styles.search}>
-                                    <input style={styles.input} placeholder="O que pretende alugar?" />
+                                    <input
+                                        style={styles.input}
+                                        placeholder="O que pretende alugar?"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
                                 </div>
                             </div>
                         </section>
 
                         <section>
-                            <h2 style={{ color: "#fff" }}>Ferramentas em destaque</h2>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                                <h2 style={{ color: "#fff", margin: 0 }}>
+                                    {isSearching ? "Resultados da pesquisa" : "Ferramentas em destaque"}
+                                </h2>
+                                {isSearching && (
+                                    <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 14 }}>
+                                        {filteredTools.length} resultado{filteredTools.length === 1 ? '' : 's'}
+                                    </span>
+                                )}
+                            </div>
 
-                            <div style={styles.carouselWrapper}>
-                                <button
-                                    aria-label="Ver anteriores"
-                                    onClick={() => scroll("left")}
-                                    style={{ ...styles.arrowButton, ...styles.arrowLeft }}
-                                >
-                                    ‹
-                                </button>
+                            {loading ? (
+                                <div style={styles.loadingOverlay}>
+                                    <div style={styles.loadingInner}>
+                                        <LoadingScreen />
+                                    </div>
+                                </div>
+                            ) : null}
 
-                                <div ref={carouselRef} style={styles.carouselViewport}>
-                                    {sampleTools.map((tool) => (
-                                        <article key={tool.id} style={styles.card}>
-                                            <div style={styles.cardImage}>
+                            {isSearching ? (
+                                <div style={{
+                                    display: "grid",
+                                    gap: 16,
+                                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                                    marginTop: 12
+                                }}>
+                                    {filteredTools.length > 0 ? filteredTools.map((tool) => (
+                                        <article key={tool.id} style={{
+                                            background: "rgba(0,0,0,0.45)",
+                                            border: "1px solid rgba(255,255,255,0.06)",
+                                            padding: 12,
+                                            borderRadius: 10,
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            minHeight: 180
+                                        }}>
+                                            <div style={{
+                                                height: 120,
+                                                borderRadius: 8,
+                                                background: "rgba(255,255,255,0.03)",
+                                                marginBottom: 8,
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                color: "#ddd",
+                                                overflow: "hidden"
+                                            }}>
                                                 {tool.image ? (
-                                                    <img src={tool.image} alt={tool.name} style={{ maxHeight: "100%", borderRadius: 6 }} />
+                                                    <img
+                                                        src={tool.image}
+                                                        alt={tool.name}
+                                                        style={{
+                                                            width: "100%",
+                                                            height: "100%",
+                                                            objectFit: "cover",
+                                                            borderRadius: 8
+                                                        }}
+                                                    />
                                                 ) : (
                                                     <div>{tool.category}</div>
                                                 )}
                                             </div>
-                                            <div style={{ fontWeight: 600 }}>{tool.name}</div>
-                                            <div style={{ color: "#ddd", fontSize: 14 }}>{tool.description}</div>
-                                            <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                                <div style={{ fontWeight: 700 }}>€{tool.pricePerDay}/dia</div>
+
+                                            <div style={{ fontWeight: 700, marginBottom: 8 }}>{tool.name}</div>
+
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
                                                 <div>
-                                                    <Link to={`/tools/${tool.id}`} style={{ textDecoration: "none", color: "#f8b749" }}>Detalhes</Link>
+                                                    {tool.oldPricePerDay ? (
+                                                        <span style={{
+                                                            textDecoration: "line-through",
+                                                            color: "rgba(255,255,255,0.6)",
+                                                            fontSize: 12,
+                                                            marginRight: 8
+                                                        }}>
+                                                            €{tool.oldPricePerDay}
+                                                        </span>
+                                                    ) : null}
+                                                    <span style={{ fontWeight: 800, fontSize: 16 }}>€{tool.pricePerDay}/dia</span>
+                                                </div>
+
+                                                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                                    {tool.promo ? (
+                                                        <div style={{
+                                                            background: "#f8b749",
+                                                            color: "#111",
+                                                            padding: "4px 8px",
+                                                            borderRadius: 6,
+                                                            fontWeight: 700,
+                                                            fontSize: 12
+                                                        }}>
+                                                            Promo
+                                                        </div>
+                                                    ) : null}
+                                                    <Link
+                                                        to={`/tools/${tool.id}`}
+                                                        style={{
+                                                            color: "#f8b749",
+                                                            textDecoration: "none",
+                                                            fontWeight: 700
+                                                        }}
+                                                    >
+                                                        Ver
+                                                    </Link>
                                                 </div>
                                             </div>
                                         </article>
-                                    ))}
+                                    )) : (
+                                        <div style={{
+                                            gridColumn: "1 / -1",
+                                            textAlign: "center",
+                                            padding: "40px 20px",
+                                            color: "rgba(255,255,255,0.7)"
+                                        }}>
+                                            Nenhuma ferramenta encontrada para "{searchQuery}"
+                                        </div>
+                                    )}
                                 </div>
+                            ) : (
+                                <div style={styles.carouselWrapper}>
+                                    <button
+                                        aria-label="Ver anteriores"
+                                        onClick={() => scroll("left")}
+                                        style={{ ...styles.arrowButton, ...styles.arrowLeft }}
+                                    >
+                                        ‹
+                                    </button>
 
-                                <button
-                                    aria-label="Ver seguintes"
-                                    onClick={() => scroll("right")}
-                                    style={{ ...styles.arrowButton, ...styles.arrowRight }}
-                                >
-                                    ›
-                                </button>
-                            </div>
+                                    <div ref={carouselRef} style={styles.carouselViewport}>
+                                        {filteredTools.map((tool) => (
+                                            <article key={tool.id} style={styles.card}>
+                                                <div style={styles.cardImage}>
+                                                    {tool.image ? (
+                                                        <img
+                                                            src={tool.image}
+                                                            alt={tool.name}
+                                                            style={{
+                                                                width: "100%",
+                                                                height: "100%",
+                                                                objectFit: "cover",
+                                                                borderRadius: 6
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <div>{tool.category}</div>
+                                                    )}
+                                                </div>
+                                                <div style={{ fontWeight: 600 }}>{tool.name}</div>
+                                                <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                    <div>
+                                                        {tool.oldPricePerDay ? (
+                                                            <span style={{
+                                                                textDecoration: "line-through",
+                                                                color: "rgba(255,255,255,0.6)",
+                                                                fontSize: 12,
+                                                                marginRight: 8
+                                                            }}>
+                                                                €{tool.oldPricePerDay}
+                                                            </span>
+                                                        ) : null}
+                                                        <span style={{ fontWeight: 700 }}>€{tool.pricePerDay}/dia</span>
+                                                    </div>
+                                                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                                        {tool.promo ? (
+                                                            <div style={{
+                                                                background: "#f8b749",
+                                                                color: "#111",
+                                                                padding: "4px 8px",
+                                                                borderRadius: 6,
+                                                                fontWeight: 700,
+                                                                fontSize: 12
+                                                            }}>
+                                                                Promo
+                                                            </div>
+                                                        ) : null}
+                                                        <Link
+                                                            to={`/tools/${tool.id}`}
+                                                            style={{
+                                                                textDecoration: "none",
+                                                                color: "#f8b749",
+                                                                fontWeight: 600
+                                                            }}
+                                                        >
+                                                            Ver
+                                                        </Link>
+                                                    </div>
+                                                </div>
+                                            </article>
+                                        ))}
+                                    </div>
+
+                                    <button
+                                        aria-label="Ver seguintes"
+                                        onClick={() => scroll("right")}
+                                        style={{ ...styles.arrowButton, ...styles.arrowRight }}
+                                    >
+                                        ›
+                                    </button>
+                                </div>
+                            )}
                         </section>
 
                     </main>
