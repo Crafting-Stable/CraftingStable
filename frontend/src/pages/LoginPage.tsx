@@ -16,6 +16,18 @@ type RegisterForm = {
     confirm: string;
 };
 
+const MIN_PASSWORD_LENGTH = 6;
+const ERR_NAME_REQUIRED = 'Nome obrigatório';
+const ERR_EMAIL_REQUIRED = 'Email obrigatório';
+const ERR_EMAIL_INVALID = 'Email inválido';
+const ERR_PASSWORD_REQUIRED = 'Password obrigatória';
+const ERR_PASSWORD_TOO_SHORT = `Password muito curta (mínimo ${MIN_PASSWORD_LENGTH} caracteres)`;
+const ERR_CONFIRM_MISMATCH = 'Passwords não coincidem';
+const ERR_NETWORK = 'Erro de rede';
+const ERR_LOGIN = 'Erro no login';
+const ERR_REGISTER = 'Erro no registo';
+const ERR_INVALID_RESPONSE = 'Resposta inválida do servidor';
+
 export default function LoginPage(): React.ReactElement {
     const navigate = useNavigate();
     const [showRegisterForm, setShowRegisterForm] = useState(false);
@@ -32,10 +44,10 @@ export default function LoginPage(): React.ReactElement {
         ev?.preventDefault();
         const errs: Record<string, string> = {};
 
-        if (!login.email) errs.email = 'Email obrigatório';
-        else if (!emailValid(login.email)) errs.email = 'Email inválido';
+        if (!login.email) errs.email = ERR_EMAIL_REQUIRED;
+        else if (!emailValid(login.email)) errs.email = ERR_EMAIL_INVALID;
 
-        if (!login.password) errs.password = 'Password obrigatória';
+        if (!login.password) errs.password = ERR_PASSWORD_REQUIRED;
 
         setLoginErrors(errs);
         if (Object.keys(errs).length > 0) return;
@@ -47,12 +59,18 @@ export default function LoginPage(): React.ReactElement {
                 body: JSON.stringify({ email: login.email, password: login.password })
             });
 
-            const data: any = await res.json().catch(() => ({}));
+            let data: any = {};
+            try {
+                data = await res.json();
+            } catch (parseErr) {
+                console.error('Failed to parse JSON response for login:', parseErr);
+                data = {};
+            }
 
             if (!res.ok) {
                 if (data.errors) setLoginErrors(data.errors);
                 else if (data.message) setLoginErrors({ general: data.message });
-                else setLoginErrors({ general: 'Erro no login' });
+                else setLoginErrors({ general: ERR_LOGIN });
                 return;
             }
 
@@ -75,25 +93,37 @@ export default function LoginPage(): React.ReactElement {
                     navigate('/catalog');
                 }
             } else {
-                setLoginErrors({ general: 'Resposta inválida do servidor' });
+                setLoginErrors({ general: ERR_INVALID_RESPONSE });
             }
         } catch (e) {
-            setLoginErrors({ general: 'Erro de rede' });
+            console.error('Network/login error:', e);
+            setLoginErrors({ general: ERR_NETWORK });
         }
     };
 
-    // Handler do registo
     const handleRegisterSubmit = async (ev?: React.FormEvent) => {
         ev?.preventDefault();
         const errs: Record<string, string> = {};
 
-        if (!register.name) errs.name = 'Nome obrigatório';
-        if (!register.email) errs.email = !register.email ? 'Email obrigatório' : (!emailValid(register.email) ? 'Email inválido' : '');
-        if (!register.password) errs.password = 'Password obrigatória';
-        else if (register.password.length < 6) errs.password = 'Password muito curta';
-        if (register.password !== register.confirm) errs.confirm = 'Passwords não coincidem';
+        if (!register.name) {
+            errs.name = ERR_NAME_REQUIRED;
+        }
 
-        Object.keys(errs).forEach(k => { if (!errs[k]) delete errs[k]; });
+        if (!register.email) {
+            errs.email = ERR_EMAIL_REQUIRED;
+        } else if (!emailValid(register.email)) {
+            errs.email = ERR_EMAIL_INVALID;
+        }
+
+        if (!register.password) {
+            errs.password = ERR_PASSWORD_REQUIRED;
+        } else if (register.password.length < MIN_PASSWORD_LENGTH) {
+            errs.password = ERR_PASSWORD_TOO_SHORT;
+        }
+
+        if (register.password !== register.confirm) {
+            errs.confirm = ERR_CONFIRM_MISMATCH;
+        }
 
         setRegisterErrors(errs);
         if (Object.keys(errs).length > 0) return;
@@ -102,15 +132,27 @@ export default function LoginPage(): React.ReactElement {
             const res = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: register.name, email: register.email, password: register.password, passwordConfirm: register.confirm, role: 'CUSTOMER' })
+                body: JSON.stringify({
+                    name: register.name,
+                    email: register.email,
+                    password: register.password,
+                    passwordConfirm: register.confirm,
+                    role: 'CUSTOMER'
+                })
             });
 
-            const data: any = await res.json().catch(() => ({}));
+            let data: any = {};
+            try {
+                data = await res.json();
+            } catch (parseErr) {
+                console.error('Failed to parse JSON response for register:', parseErr);
+                data = {};
+            }
 
             if (!res.ok) {
                 if (data.errors) setRegisterErrors(data.errors);
                 else if (data.message) setRegisterErrors({ general: data.message });
-                else setRegisterErrors({ general: 'Erro no registo' });
+                else setRegisterErrors({ general: ERR_REGISTER });
                 return;
             }
 
@@ -119,7 +161,8 @@ export default function LoginPage(): React.ReactElement {
             setRegister({ name: '', email: '', password: '', confirm: '' });
             globalThis.dispatchEvent(new Event('authChanged'));
         } catch (e) {
-            setRegisterErrors({ general: 'Erro de rede' });
+            console.error('Network/register error:', e);
+            setRegisterErrors({ general: ERR_NETWORK });
         }
     };
 
@@ -211,8 +254,8 @@ export default function LoginPage(): React.ReactElement {
                     <dialog
                         className="modal"
                         open
-                        role="dialog"
                         aria-modal="true"
+                        tabIndex={-1}
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e: React.KeyboardEvent<HTMLDialogElement>) => {
                             if (e.key === 'Escape') setShowRegisterForm(false);

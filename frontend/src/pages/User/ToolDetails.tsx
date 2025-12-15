@@ -13,7 +13,7 @@ type Tool = {
     category: string;
     pricePerDay: number;
     depositAmount?: number;
-    ownerId?: number;
+    ownerId?: number | null;
     ownerName?: string;
     image?: string;
     description?: string;
@@ -30,7 +30,6 @@ type BookingCalendarProps = {
 const API_PORT = '8081';
 
 function apiUrl(path: string): string {
-    // MARK: Issue Fix - Prefer `globalThis` over `window`.
     const protocol = globalThis.location.protocol;
     const hostname = globalThis.location.hostname;
     const normalized = path.startsWith('/') ? path : `/${path}`;
@@ -55,16 +54,16 @@ function daysBetween(startStr: string, endStr: string, inclusive: boolean) {
     const utcStart = Date.UTC(s.getFullYear(), s.getMonth(), s.getDate());
     const utcEnd = Date.UTC(e.getFullYear(), e.getMonth(), e.getDate());
     let diff = Math.floor((utcEnd - utcStart) / (24 * 60 * 60 * 1000));
-
-    // MARK: Issue Fix - Prefer `Math.max()` to simplify ternary expressions.
     if (inclusive) diff = diff + 1;
-    return Math.max(0, diff); // Ensure diff is non-negative
+    return Math.max(0, diff);
 }
+
+type BlockedDateStatus = 'PENDING' | 'APPROVED' | 'CANCELLED' | 'OTHER';
 
 interface BlockedDateRange {
     startDate: string;
     endDate: string;
-    status: 'PENDING' | 'APPROVED' | 'CANCELLED' | string;
+    status: BlockedDateStatus;
 }
 
 function BookingCalendar({
@@ -91,23 +90,35 @@ function BookingCalendar({
 
     const fmt = new Intl.NumberFormat("pt-PT", { style: "currency", currency });
 
-    // Fetch blocked dates on mount
     useEffect(() => {
         const fetchBlockedDates = async () => {
             try {
                 const response = await fetch(apiUrl(`/api/tools/${toolId}/blocked-dates`));
-                if (response.ok) {
-                    const data = await response.json();
-                    setBlockedDates(data);
+                if (!response.ok) {
+                    setBlockedDates([]);
+                    return;
                 }
+
+                const raw = await response.json().catch(() => []);
+                const allowed = ['PENDING', 'APPROVED', 'CANCELLED'] as const;
+                const normalized = Array.isArray(raw)
+                    ? raw.map((r: any) => {
+                        const s = String(r?.startDate ?? "");
+                        const e = String(r?.endDate ?? "");
+                        const rs = String(r?.status ?? "").toUpperCase();
+                        const status = (allowed as readonly string[]).includes(rs) ? (rs as BlockedDateStatus) : 'OTHER';
+                        return { startDate: s, endDate: e, status };
+                    })
+                    : [];
+                setBlockedDates(normalized);
             } catch (err) {
                 console.error('Error fetching blocked dates:', err);
+                setBlockedDates([]);
             }
         };
         fetchBlockedDates();
     }, [toolId]);
 
-    // Check availability when dates change
     useEffect(() => {
         const checkAvailability = async () => {
             if (!start || !end || days <= 0) {
@@ -128,7 +139,7 @@ function BookingCalendar({
                 const headers: HeadersInit = {
                     'Accept': 'application/json'
                 };
-                if(jwt) {
+                if (jwt) {
                     headers['Authorization'] = `Bearer ${jwt}`;
                 }
 
@@ -156,7 +167,6 @@ function BookingCalendar({
         checkAvailability();
     }, [toolId, start, end, days]);
 
-    // Handler for successful PayPal payment and rent creation
     const handlePaymentSuccess = (data: RentCreatedData) => {
         console.log("✅ Payment and rent creation successful:", data);
         setRentData(data);
@@ -169,48 +179,46 @@ function BookingCalendar({
         navigate('/user');
     };
 
-    // Handler for PayPal errors
     const handlePaymentError = (errorMsg: string) => {
         console.error("❌ Payment error:", errorMsg);
         setError(errorMsg);
     };
 
-    // Handler for PayPal cancellation
     const handlePaymentCancel = () => {
         console.log("⚠️ Payment cancelled by user");
         setError("Pagamento cancelado. Pode tentar novamente quando estiver pronto.");
     };
 
-    // Check if user is logged in
     const jwt = getJwt();
     const isLoggedIn = !!jwt;
 
-    // MARK: Issue Fix - Extracted nested ternary operations into independent statements for clarity
-    const getBackgroundColor = (status: BlockedDateRange['status']): string => {
+    const getBackgroundColor = (status: BlockedDateStatus): string => {
         switch (status) {
             case 'PENDING': return '#fef3c7';
             case 'APPROVED': return '#d1fae5';
+            case 'CANCELLED': return '#fee2e2';
             default: return '#dbeafe';
         }
     };
 
-    const getTextColor = (status: BlockedDateRange['status']): string => {
+    const getTextColor = (status: BlockedDateStatus): string => {
         switch (status) {
             case 'PENDING': return '#92400e';
             case 'APPROVED': return '#065f46';
+            case 'CANCELLED': return '#7f1d1d';
             default: return '#1e40af';
         }
     };
 
-    const getStatusIcon = (status: BlockedDateRange['status']): string => {
+    const getStatusIcon = (status: BlockedDateStatus): string => {
         switch (status) {
             case 'PENDING': return '⏳';
             case 'APPROVED': return '✅';
-            default: return '🚀';
+            case 'CANCELLED': return '❌';
+            default: return '🚫';
         }
     };
 
-    // Extracted paymentSection logic
     let paymentSection: React.ReactNode;
     if (!isLoggedIn) {
         paymentSection = (
@@ -330,25 +338,25 @@ function BookingCalendar({
             )}
 
             <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                {/* MARK: Issue Fix - Ambiguous spacing fixed by using flexbox for alignment */}
                 <label style={{ color: "#fff", display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    Início:
+                    <span>Início:</span>
                     <input
                         type="date"
                         value={start}
                         onChange={(e) => setStart(e.target.value)}
                         disabled={!!success}
+                        aria-label="Data de início"
                     />
                 </label>
 
-                {/* MARK: Issue Fix - Ambiguous spacing fixed by using flexbox for alignment */}
                 <label style={{ color: "#fff", display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    Fim:
+                    <span>Fim:</span>
                     <input
                         type="date"
                         value={end}
                         onChange={(e) => setEnd(e.target.value)}
                         disabled={!!success}
+                        aria-label="Data de fim"
                     />
                 </label>
 
@@ -359,7 +367,6 @@ function BookingCalendar({
                 </div>
             </div>
 
-            {/* Blocked Dates Display */}
             {blockedDates.length > 0 && (
                 <div style={{
                     marginTop: 12,
@@ -372,7 +379,6 @@ function BookingCalendar({
                         📅 Datas Indisponíveis:
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                        {/* MARK: Issue Fix - Do not use Array index in keys */}
                         {blockedDates.map((range) => (
                             <span key={`${range.startDate}-${range.endDate}-${range.status}`} style={{
                                 background: getBackgroundColor(range.status),
@@ -392,17 +398,14 @@ function BookingCalendar({
                 </div>
             )}
 
-            {/* PayPal Buttons Section */}
             <div style={{ marginTop: 16 }}>
                 {paymentSection}
             </div>
 
-            {/* Success Modal */}
             {showModal && <RentSuccessModal rentData={rentData} onClose={handleCloseModal} />}
         </div>
     );
 }
-/* --- fim BookingCalendar --- */
 
 const containerStyle: React.CSSProperties = {
     minHeight: "100vh",
@@ -434,7 +437,7 @@ export default function ToolDetails(): React.ReactElement {
     useEffect(() => {
         let mounted = true;
 
-        async function fetchOwnerName(ownerId: number | undefined) {
+        async function fetchOwnerName(ownerId: number | null | undefined) {
             if (!ownerId) return undefined;
             const jwt = getJwt();
             const headers: HeadersInit = {
@@ -443,13 +446,11 @@ export default function ToolDetails(): React.ReactElement {
             };
 
             try {
-                // Tenta endpoint com id
                 const res = await fetch(apiUrl(`/api/users/${ownerId}`), { headers });
                 if (res.ok) {
                     const u = await res.json().catch(() => null);
                     return u?.username ?? u?.name ?? undefined;
                 }
-                // Fallback: buscar lista e procurar
                 const listRes = await fetch(apiUrl("/api/users"), { headers });
                 if (!listRes.ok) return undefined;
                 const list = await listRes.json().catch(() => []);
@@ -501,11 +502,10 @@ export default function ToolDetails(): React.ReactElement {
 
                 mapped.image = mapped.image ?? placeholderFor(mapped.category, mapped.name);
 
-                // buscar nome do proprietário se houver ownerId
                 if (mounted) {
                     setTool(mapped);
                 }
-                const ownerName = await fetchOwnerName(mapped.ownerId as number | undefined);
+                const ownerName = await fetchOwnerName(mapped.ownerId);
                 if (mounted && ownerName) {
                     setTool(prev => prev ? { ...prev, ownerName } : prev);
                 }
@@ -522,7 +522,6 @@ export default function ToolDetails(): React.ReactElement {
             mounted = false;
         };
     }, [id]);
-
 
     if (loading) {
         return (
