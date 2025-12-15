@@ -69,6 +69,26 @@ const buttonStyle: React.CSSProperties = {
     transition: "transform 0.2s, box-shadow 0.2s"
 };
 
+function getTitleText(status?: string): string {
+    if (status === 'PENDING') {
+        return 'Pagamento Recebido — Aguardando Aprovação';
+    }
+    if (status === 'APPROVED' || status === 'ACTIVE') {
+        return 'Reserva Confirmada!';
+    }
+    return 'Pagamento Recebido';
+}
+
+function getBodyText(status?: string): string {
+    if (status === 'PENDING') {
+        return 'O pagamento foi processado com sucesso. A reserva está pendente de aprovação pelo proprietário. Será notificado assim que houver uma decisão.';
+    }
+    if (status === 'APPROVED' || status === 'ACTIVE') {
+        return 'Obrigado. A reserva foi aprovada e a ferramenta está reservada para si.';
+    }
+    return 'Obrigado pelo pagamento. Verifique o detalhe da reserva em "Minhas Reservas".';
+}
+
 export default function PaymentSuccess(): React.ReactElement {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -110,7 +130,6 @@ export default function PaymentSuccess(): React.ReactElement {
                         }
                     }
                 } else {
-                    // fallback: clear
                     setRent(null);
                 }
             } catch (err) {
@@ -134,17 +153,8 @@ export default function PaymentSuccess(): React.ReactElement {
 
     const status = rent?.status ?? undefined;
 
-    const titleText = status === 'PENDING'
-        ? 'Pagamento Recebido — Aguardando Aprovação'
-        : status === 'APPROVED' || status === 'ACTIVE'
-            ? 'Reserva Confirmada!'
-            : 'Pagamento Recebido';
-
-    const bodyText = status === 'PENDING'
-        ? 'O pagamento foi processado com sucesso. A reserva está pendente de aprovação pelo proprietário. Será notificado assim que houver uma decisão.'
-        : status === 'APPROVED' || status === 'ACTIVE'
-            ? 'Obrigado. A reserva foi aprovada e a ferramenta está reservada para si.'
-            : 'Obrigado pelo pagamento. Verifique o detalhe da reserva em "Minhas Reservas".';
+    const titleText = useMemo(() => getTitleText(status), [status]);
+    const bodyText = useMemo(() => getBodyText(status), [status]);
 
     return (
         <div style={pageStyle}>

@@ -410,7 +410,7 @@ const ToolItem: React.FC<ToolItemProps> = ({ tool, onUpdateStatus }) => {
             return;
         }
 
-        const confirmChange = window.confirm(
+        const confirmChange = globalThis.confirm(
             `Tem certeza que deseja alterar o status para ${getToolStatusInfo(newStatus).label}?`
         );
 
@@ -545,7 +545,12 @@ export default function UserDetailsPage(): React.ReactElement {
                     });
 
                     if (res.ok) {
-                        const data = await res.json().catch(() => null);
+                        let data: any = null;
+                        try {
+                            data = await res.json();
+                        } catch {
+                            data = null;
+                        }
                         if (data) {
                             parsed = {
                                 id: data.id,
@@ -594,8 +599,20 @@ export default function UserDetailsPage(): React.ReactElement {
                 fetch(apiUrl('/api/tools'), { headers: { Authorization: `Bearer ${token}` } })
             ]);
 
-            const allRents: Rent[] = await rentsResponse.json().catch(() => []);
-            const allTools: Tool[] = await toolsResponse.json().catch(() => []);
+            let allRents: Rent[] = [];
+            let allTools: Tool[] = [];
+
+            try {
+                allRents = await rentsResponse.json();
+            } catch {
+                allRents = [];
+            }
+
+            try {
+                allTools = await toolsResponse.json();
+            } catch {
+                allTools = [];
+            }
 
             const toolsMap = new Map(allTools.map(t => [t.id, t]));
             setTools(toolsMap);
@@ -640,7 +657,7 @@ export default function UserDetailsPage(): React.ReactElement {
 
     const handleReject = useCallback((rentId: number) => {
         if (!user?.id) return;
-        const reason = prompt('Motivo da rejeição (opcional):') ?? '';
+        const reason = globalThis.prompt('Motivo da rejeição (opcional):') ?? '';
         const messageParam = reason ? `&message=${encodeURIComponent(reason)}` : '';
         const url = apiUrl(`/api/rents/${rentId}/reject?ownerId=${user.id}${messageParam}`);
         performPutAction(url, 'Reserva rejeitada', user.id);
@@ -649,7 +666,7 @@ export default function UserDetailsPage(): React.ReactElement {
     const handleCancel = useCallback((rentId: number) => {
         if (!user?.id) return;
 
-        const confirmCancel = window.confirm(
+        const confirmCancel = globalThis.confirm(
             'Tem certeza que deseja cancelar esta reserva?\n\nEsta ação não pode ser desfeita.'
         );
 

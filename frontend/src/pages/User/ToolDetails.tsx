@@ -1,4 +1,3 @@
-// typescript
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import bgImg from "../../assets/rust.jpg";
@@ -22,17 +21,18 @@ type Tool = {
 };
 
 type BookingCalendarProps = {
-    toolId: string;
-    pricePerDay: number;
-    inclusive?: boolean;
-    currency?: string;
+    readonly toolId: string;
+    readonly pricePerDay: number;
+    readonly inclusive?: boolean;
+    readonly currency?: string;
 };
 
 const API_PORT = '8081';
 
 function apiUrl(path: string): string {
-    const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
+    // MARK: Issue Fix - Prefer `globalThis` over `window`.
+    const protocol = globalThis.location.protocol;
+    const hostname = globalThis.location.hostname;
     const normalized = path.startsWith('/') ? path : `/${path}`;
     return `${protocol}//${hostname}:${API_PORT}${normalized}`;
 }
@@ -55,14 +55,16 @@ function daysBetween(startStr: string, endStr: string, inclusive: boolean) {
     const utcStart = Date.UTC(s.getFullYear(), s.getMonth(), s.getDate());
     const utcEnd = Date.UTC(e.getFullYear(), e.getMonth(), e.getDate());
     let diff = Math.floor((utcEnd - utcStart) / (24 * 60 * 60 * 1000));
+
+    // MARK: Issue Fix - Prefer `Math.max()` to simplify ternary expressions.
     if (inclusive) diff = diff + 1;
-    return diff > 0 ? diff : 0;
+    return Math.max(0, diff); // Ensure diff is non-negative
 }
 
 interface BlockedDateRange {
     startDate: string;
     endDate: string;
-    status: string;
+    status: 'PENDING' | 'APPROVED' | 'CANCELLED' | string;
 }
 
 function BookingCalendar({
@@ -115,7 +117,6 @@ function BookingCalendar({
             }
 
             const jwt = getJwt();
-            if (!jwt) return;
 
             setCheckingAvailability(true);
             setAvailabilityMessage(null);
@@ -124,13 +125,16 @@ function BookingCalendar({
                 const startDateTime = `${start}T10:00:00`;
                 const endDateTime = `${end}T18:00:00`;
 
+                const headers: HeadersInit = {
+                    'Accept': 'application/json'
+                };
+                if(jwt) {
+                    headers['Authorization'] = `Bearer ${jwt}`;
+                }
+
                 const response = await fetch(
                     apiUrl(`/api/tools/${toolId}/check-availability?startDate=${encodeURIComponent(startDateTime)}&endDate=${encodeURIComponent(endDateTime)}`),
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${jwt}`
-                        }
-                    }
+                    { headers }
                 );
 
                 const data = await response.json().catch(() => ({ available: false }));
@@ -181,7 +185,32 @@ function BookingCalendar({
     const jwt = getJwt();
     const isLoggedIn = !!jwt;
 
-    // Extracted paymentSection to avoid nested ternary in JSX
+    // MARK: Issue Fix - Extracted nested ternary operations into independent statements for clarity
+    const getBackgroundColor = (status: BlockedDateRange['status']): string => {
+        switch (status) {
+            case 'PENDING': return '#fef3c7';
+            case 'APPROVED': return '#d1fae5';
+            default: return '#dbeafe';
+        }
+    };
+
+    const getTextColor = (status: BlockedDateRange['status']): string => {
+        switch (status) {
+            case 'PENDING': return '#92400e';
+            case 'APPROVED': return '#065f46';
+            default: return '#1e40af';
+        }
+    };
+
+    const getStatusIcon = (status: BlockedDateRange['status']): string => {
+        switch (status) {
+            case 'PENDING': return '⏳';
+            case 'APPROVED': return '✅';
+            default: return '🚀';
+        }
+    };
+
+    // Extracted paymentSection logic
     let paymentSection: React.ReactNode;
     if (!isLoggedIn) {
         paymentSection = (
@@ -301,24 +330,24 @@ function BookingCalendar({
             )}
 
             <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                <label style={{ color: "#fff" }}>
+                {/* MARK: Issue Fix - Ambiguous spacing fixed by using flexbox for alignment */}
+                <label style={{ color: "#fff", display: 'flex', alignItems: 'center', gap: '8px' }}>
                     Início:
                     <input
                         type="date"
                         value={start}
                         onChange={(e) => setStart(e.target.value)}
-                        style={{ marginLeft: 8 }}
                         disabled={!!success}
                     />
                 </label>
 
-                <label style={{ color: "#fff" }}>
+                {/* MARK: Issue Fix - Ambiguous spacing fixed by using flexbox for alignment */}
+                <label style={{ color: "#fff", display: 'flex', alignItems: 'center', gap: '8px' }}>
                     Fim:
                     <input
                         type="date"
                         value={end}
                         onChange={(e) => setEnd(e.target.value)}
-                        style={{ marginLeft: 8 }}
                         disabled={!!success}
                     />
                 </label>
@@ -343,12 +372,11 @@ function BookingCalendar({
                         📅 Datas Indisponíveis:
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                        {blockedDates.map((range, idx) => (
-                            <span key={idx} style={{
-                                background: range.status === 'PENDING' ? '#fef3c7' : 
-                                           range.status === 'APPROVED' ? '#d1fae5' : '#dbeafe',
-                                color: range.status === 'PENDING' ? '#92400e' : 
-                                       range.status === 'APPROVED' ? '#065f46' : '#1e40af',
+                        {/* MARK: Issue Fix - Do not use Array index in keys */}
+                        {blockedDates.map((range) => (
+                            <span key={`${range.startDate}-${range.endDate}-${range.status}`} style={{
+                                background: getBackgroundColor(range.status),
+                                color: getTextColor(range.status),
                                 padding: "4px 8px",
                                 borderRadius: 4,
                                 fontSize: 12,
@@ -356,7 +384,7 @@ function BookingCalendar({
                             }}>
                                 {new Date(range.startDate).toLocaleDateString('pt-PT')} - {new Date(range.endDate).toLocaleDateString('pt-PT')}
                                 <span style={{ marginLeft: 4, opacity: 0.7 }}>
-                                    ({range.status === 'PENDING' ? '⏳' : range.status === 'APPROVED' ? '✅' : '🚀'})
+                                    ({getStatusIcon(range.status)})
                                 </span>
                             </span>
                         ))}

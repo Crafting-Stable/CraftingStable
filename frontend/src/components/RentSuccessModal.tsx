@@ -8,12 +8,11 @@ interface RentSuccessModalProps {
 }
 
 const RentSuccessModal: React.FC<RentSuccessModalProps> = ({ rentData, toolName, onClose }) => {
-    const overlayButtonRef = useRef<HTMLButtonElement | null>(null);
-    const dialogRef = useRef<HTMLDialogElement | null>(null);
+    const closeButtonRef = useRef<HTMLButtonElement | null>(null);
     const titleId = 'rent-success-title';
 
     useEffect(() => {
-        overlayButtonRef.current?.focus();
+        closeButtonRef.current?.focus();
         const onKey = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
         };
@@ -38,7 +37,6 @@ const RentSuccessModal: React.FC<RentSuccessModalProps> = ({ rentData, toolName,
     return (
         <div style={styles.overlay}>
             <button
-                ref={overlayButtonRef}
                 type="button"
                 aria-label="Fechar modal de reserva"
                 onClick={onClose}
@@ -46,15 +44,10 @@ const RentSuccessModal: React.FC<RentSuccessModalProps> = ({ rentData, toolName,
             />
 
             <dialog
-                ref={dialogRef}
                 open
-                role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
                 style={styles.dialog}
-                onClick={(e) => {
-                    if (e.target === dialogRef.current) onClose();
-                }}
             >
                 {/* HEADER (do 1º modal) */}
                 <div style={styles.header}>
@@ -124,7 +117,7 @@ const RentSuccessModal: React.FC<RentSuccessModalProps> = ({ rentData, toolName,
                 </div>
 
                 <div style={styles.footer}>
-                    <button onClick={onClose} style={styles.closeButton}>
+                    <button ref={closeButtonRef} onClick={onClose} style={styles.closeButton}>
                         Ver Minhas Reservas
                     </button>
                 </div>
@@ -171,6 +164,7 @@ const styles: Record<string, React.CSSProperties> = {
         inset: 0,
         background: 'transparent',
         border: 'none',
+        zIndex: 0,
     },
     dialog: {
         backgroundColor: '#1f2937',
@@ -180,6 +174,7 @@ const styles: Record<string, React.CSSProperties> = {
         border: 'none',
         padding: 0,
         color: '#f3f4f6',
+        zIndex: 1,
     },
     header: {
         padding: 32,

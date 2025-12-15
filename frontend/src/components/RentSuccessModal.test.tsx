@@ -166,11 +166,11 @@ describe('RentSuccessModal', () => {
             expect(mockOnClose).toHaveBeenCalledTimes(1);
         });
 
-        it('should call onClose when clicking directly on dialog element', () => {
+        it('should not call onClose when clicking directly on dialog element', () => {
             renderComponent();
             const dialog = screen.getByRole('dialog');
             fireEvent.click(dialog);
-            expect(mockOnClose).toHaveBeenCalledTimes(1);
+            expect(mockOnClose).not.toHaveBeenCalled();
         });
 
         it('should not close when clicking inside dialog content', () => {
@@ -245,10 +245,10 @@ describe('RentSuccessModal', () => {
     });
 
     describe('Focus Management', () => {
-        it('should focus overlay button on mount', () => {
+        it('should focus close button on mount', () => {
             renderComponent();
-            const overlayButton = screen.getByLabelText('Fechar modal de reserva');
-            expect(document.activeElement).toBe(overlayButton);
+            const closeButton = screen.getByRole('button', { name: 'Ver Minhas Reservas' });
+            expect(document.activeElement).toBe(closeButton);
         });
     });
 

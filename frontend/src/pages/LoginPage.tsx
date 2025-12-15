@@ -76,7 +76,7 @@ export default function LoginPage(): React.ReactElement {
                 console.log('✅ JWT saved:', savedJwt ? 'YES' : 'NO');
                 console.log('✅ User saved:', savedUser);
 
-                window.dispatchEvent(new Event('authChanged'));
+                globalThis.dispatchEvent(new Event('authChanged'));
 
                 setLogin({ ...login, password: '' });
 
@@ -185,13 +185,23 @@ export default function LoginPage(): React.ReactElement {
             </div>
 
             {showRegisterForm && (
-                <button
-                    className="modal-backdrop"
-                    aria-label="Fechar formulário de registo"
-                    onClick={() => setShowRegisterForm(false)}
-                    style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
-                >
-                    <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+                <>
+                    <button
+                        className="modal-backdrop"
+                        aria-label="Fechar formulário de registo"
+                        onClick={() => setShowRegisterForm(false)}
+                        style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
+                    ></button>
+
+                    <dialog
+                        className="modal"
+                        open
+                        role="dialog"
+                        aria-modal="true"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => { if ((e as KeyboardEvent).key === 'Escape') setShowRegisterForm(false); }}
+                        style={{ zIndex: 10000 }}
+                    >
                         <section className="card" style={{ maxWidth: 540, width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                                 <div className="brand">
@@ -205,8 +215,8 @@ export default function LoginPage(): React.ReactElement {
                                 </div>
                             </div>
                         </section>
-                    </div>
-                </button>
+                    </dialog>
+                </>
             )}
 
             <style>{`
@@ -223,7 +233,7 @@ export default function LoginPage(): React.ReactElement {
               input { width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:6px; }
               .error { color:#d32f2f; font-size:13px; margin-top:6px; }
               .muted { color:#6b7280; font-size:14px; }
-              .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index: 9999; }
+              .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index: 9999; border: none; padding: 0; }
               .modal { padding: 18px; max-width: 96vw; box-sizing: border-box; }
               .modal .card { box-shadow: 0 10px 30px rgba(0,0,0,0.18); }
               .modal .card::-webkit-scrollbar { height: 8px; }
