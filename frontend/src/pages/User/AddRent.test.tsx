@@ -240,6 +240,10 @@ describe('AddRent', () => {
             ok: false,
             status: 401,
             text: async () => 'Unauthorized',
+            headers: {
+                get: (key: string) => (key === 'content-type' ? 'text/plain' : null),
+            },
+            clone: function() { return this; },
         });
 
         renderComponent();
@@ -472,6 +476,10 @@ describe('AddRent', () => {
                 ok: false,
                 status: 403,
                 text: async () => 'Forbidden',
+                headers: {
+                    get: (key: string) => (key === 'content-type' ? 'text/plain' : null),
+                },
+                clone: function() { return this; },
             });
 
         renderComponent();
@@ -552,5 +560,87 @@ describe('AddRent', () => {
 
         // Edit button should appear for the user's own tool
         expect(screen.getByText('Editar')).toBeDefined();
+    });
+
+    it('should show validation error for negative price without logging out - SCRUMDEMO-166', async () => {
+        // Bug fix test: Ensure that entering a negative price shows an error
+        // but does NOT force logout (SCRUMDEMO-166: Forced Logout when placing a tool to rent with a negative price)
+
+        mockFetch.mockResolvedValue({ ok: true, json: async () => mockTools });
+
+        renderComponent();
+
+        await waitFor(() => {
+            expect(screen.getByText('Minhas Ferramentas')).toBeDefined();
+        });
+
+        // Fill in the form with a NEGATIVE daily price
+        const nameInput = screen.getByPlaceholderText('Ex: Berbequim Bosch');
+        const typeSelect = screen.getByLabelText(/Categoria/i) as HTMLSelectElement;
+        const priceInput = screen.getByPlaceholderText('10.00');
+        const depositInput = screen.getByPlaceholderText('50.00');
+        const descInput = screen.getByPlaceholderText(/Descreva a ferramenta/i);
+        const locationInput = screen.getByPlaceholderText(/Ex: Lisboa/i);
+
+        fireEvent.change(nameInput, { target: { value: 'Test Tool' } });
+        fireEvent.change(typeSelect, { target: { value: 'Jardinagem' } });
+        fireEvent.change(priceInput, { target: { value: '-10.50' } }); // NEGATIVE PRICE
+        fireEvent.change(depositInput, { target: { value: '20' } });
+        fireEvent.change(descInput, { target: { value: 'Test description' } });
+        fireEvent.change(locationInput, { target: { value: 'Lisboa' } });
+
+        // Click submit
+        const submitBtn = screen.getByText('Criar Anúncio');
+        fireEvent.click(submitBtn);
+
+        // Should show validation error
+        await waitFor(() => {
+            expect(screen.getByText(/preço por dia deve ser um valor positivo/i)).toBeDefined();
+        });
+
+        // Should NOT have called navigate (no logout)
+        expect(mockNavigate).not.toHaveBeenCalled();
+
+        // Should NOT have removed tokens from localStorage (no logout)
+        expect(localStorageMock.removeItem).not.toHaveBeenCalledWith('jwt');
+        expect(localStorageMock.removeItem).not.toHaveBeenCalledWith('user');
+    });
+
+    it('should show validation error for zero price without logging out', async () => {
+        mockFetch.mockResolvedValue({ ok: true, json: async () => mockTools });
+
+        renderComponent();
+
+        await waitFor(() => {
+            expect(screen.getByText('Minhas Ferramentas')).toBeDefined();
+        });
+
+        // Fill in the form with ZERO daily price
+        const nameInput = screen.getByPlaceholderText('Ex: Berbequim Bosch');
+        const typeSelect = screen.getByLabelText(/Categoria/i) as HTMLSelectElement;
+        const priceInput = screen.getByPlaceholderText('10.00');
+        const depositInput = screen.getByPlaceholderText('50.00');
+        const descInput = screen.getByPlaceholderText(/Descreva a ferramenta/i);
+        const locationInput = screen.getByPlaceholderText(/Ex: Lisboa/i);
+
+        fireEvent.change(nameInput, { target: { value: 'Test Tool' } });
+        fireEvent.change(typeSelect, { target: { value: 'Obras' } });
+        fireEvent.change(priceInput, { target: { value: '0' } }); // ZERO PRICE
+        fireEvent.change(depositInput, { target: { value: '20' } });
+        fireEvent.change(descInput, { target: { value: 'Test description' } });
+        fireEvent.change(locationInput, { target: { value: 'Porto' } });
+
+        // Click submit
+        const submitBtn = screen.getByText('Criar Anúncio');
+        fireEvent.click(submitBtn);
+
+        // Should show validation error
+        await waitFor(() => {
+            expect(screen.getByText(/preço por dia deve ser um valor positivo/i)).toBeDefined();
+        });
+
+        // Should NOT have logged out
+        expect(mockNavigate).not.toHaveBeenCalled();
+        expect(localStorageMock.removeItem).not.toHaveBeenCalledWith('jwt');
     });
 });

@@ -145,7 +145,25 @@ export default function AddRent(): React.ReactElement {
             body: hasBody ? JSON.stringify(body) : undefined
         });
 
+        // Only logout on authentication errors, not validation errors
         if (res.status === 401 || res.status === 403) {
+            // Check if it's a validation error by looking at the response
+            const contentType = res.headers.get('content-type');
+            if (contentType?.includes('application/json')) {
+                try {
+                    const errorData = await res.clone().json();
+                    // If the error has validation details, it's not an auth issue
+                    if (errorData.errors || errorData.message?.includes('Daily price') || errorData.message?.includes('validation')) {
+                        throw new Error(errorData.message || res.statusText);
+                    }
+                } catch (e: any) {
+                    // If parsing fails, treat as validation error if message was already set
+                    if (e.message && e.message !== 'auth') {
+                        throw e;
+                    }
+                }
+            }
+            // If we reach here, it's a real authentication error
             signOutAndRedirect();
             throw new Error('auth');
         }
@@ -235,11 +253,25 @@ export default function AddRent(): React.ReactElement {
             return;
         }
 
+        // Validate price values
+        const priceValue = Number(dailyPrice);
+        const depositValue = Number(depositAmount);
+
+        if (isNaN(priceValue) || priceValue <= 0) {
+            setError("O preço por dia deve ser um valor positivo maior que zero.");
+            return;
+        }
+
+        if (isNaN(depositValue) || depositValue < 0) {
+            setError("A caução deve ser um valor positivo ou zero.");
+            return;
+        }
+
         const payload = {
             name,
             type,
-            dailyPrice: Number(dailyPrice),
-            depositAmount: Number(depositAmount),
+            dailyPrice: priceValue,
+            depositAmount: depositValue,
             description,
             location,
             imageUrl: imageUrl || undefined,
@@ -473,6 +505,7 @@ export default function AddRent(): React.ReactElement {
                                     id="dailyPrice-input"
                                     type="number"
                                     step="0.01"
+                                    min="0.01"
                                     placeholder="10.00"
                                     value={dailyPrice}
                                     onChange={(e) => setDailyPrice(e.target.value)}
@@ -486,6 +519,7 @@ export default function AddRent(): React.ReactElement {
                                     id="depositAmount-input"
                                     type="number"
                                     step="0.01"
+                                    min="0"
                                     placeholder="50.00"
                                     value={depositAmount}
                                     onChange={(e) => setDepositAmount(e.target.value)}
