@@ -62,22 +62,24 @@ describe('PaymentSuccess', () => {
             mockSearchParams({});
             renderComponent();
 
-            expect(screen.getByText('Payment Successful!')).toBeDefined();
+            expect(screen.getByText('Pagamento Recebido')).toBeDefined();
         });
 
         it('should render success message', () => {
             mockSearchParams({});
             renderComponent();
 
-            expect(screen.getByText(/Thank you for your payment/i)).toBeDefined();
-            expect(screen.getByText(/Your rental has been confirmed/i)).toBeDefined();
+            const messageEl = screen.getByText(/Obrigado pelo pagamento/i);
+            expect(messageEl).toBeDefined();
+            // Verifica que o próprio parágrafo de mensagem contém "Minhas Reservas"
+            expect(messageEl.textContent).toMatch(/Minhas Reservas/i);
         });
 
         it('should render View My Rentals button', () => {
             mockSearchParams({});
             renderComponent();
 
-            expect(screen.getByRole('button', { name: /View My Rentals/i })).toBeDefined();
+            expect(screen.getByRole('button', { name: /Ver Minhas Reservas/i })).toBeDefined();
         });
 
         it('should render Back to Home button', () => {
@@ -126,7 +128,7 @@ describe('PaymentSuccess', () => {
 
             expect(screen.queryByText('Transaction ID:')).toBeNull();
             // Component should still render without errors
-            expect(screen.getByText('Payment Successful!')).toBeDefined();
+            expect(screen.getByText('Pagamento Recebido')).toBeDefined();
         });
     });
 
@@ -135,7 +137,7 @@ describe('PaymentSuccess', () => {
             mockSearchParams({});
             renderComponent();
 
-            const viewRentalsButton = screen.getByRole('button', { name: /View My Rentals/i });
+            const viewRentalsButton = screen.getByRole('button', { name: /Ver Minhas Reservas/i });
             fireEvent.click(viewRentalsButton);
 
             expect(mockNavigate).toHaveBeenCalledWith('/user');
@@ -157,7 +159,7 @@ describe('PaymentSuccess', () => {
             mockSearchParams({});
             renderComponent();
 
-            const button = screen.getByRole('button', { name: /View My Rentals/i });
+            const button = screen.getByRole('button', { name: /Ver Minhas Reservas/i });
             fireEvent.mouseOver(button);
 
             expect(button.style.transform).toBe('translateY(-2px)');
@@ -168,7 +170,7 @@ describe('PaymentSuccess', () => {
             mockSearchParams({});
             renderComponent();
 
-            const button = screen.getByRole('button', { name: /View My Rentals/i });
+            const button = screen.getByRole('button', { name: /Ver Minhas Reservas/i });
             fireEvent.mouseOver(button);
             fireEvent.mouseOut(button);
 
@@ -180,7 +182,7 @@ describe('PaymentSuccess', () => {
             mockSearchParams({});
             renderComponent();
 
-            const button = screen.getByRole('button', { name: /View My Rentals/i });
+            const button = screen.getByRole('button', { name: /Ver Minhas Reservas/i });
             fireEvent.focus(button);
 
             expect(button.style.transform).toBe('translateY(-2px)');
@@ -191,7 +193,7 @@ describe('PaymentSuccess', () => {
             mockSearchParams({});
             renderComponent();
 
-            const button = screen.getByRole('button', { name: /View My Rentals/i });
+            const button = screen.getByRole('button', { name: /Ver Minhas Reservas/i });
             fireEvent.focus(button);
             fireEvent.blur(button);
 

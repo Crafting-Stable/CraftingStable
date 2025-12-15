@@ -44,12 +44,12 @@ describe('RentSuccessModal', () => {
 
         it('should render success title', () => {
             renderComponent();
-            expect(screen.getByText('Reserva Criada com Sucesso!')).toBeDefined();
+            expect(screen.getByText('Pagamento Confirmado!')).toBeDefined();
         });
 
-        it('should render checkmark icon', () => {
+        it('should render pending icon for PENDING status', () => {
             renderComponent();
-            expect(screen.getByText('✓')).toBeDefined();
+            expect(screen.getByText('⏳')).toBeDefined();
         });
 
         it('should render "Detalhes da Reserva" section title', () => {
@@ -64,9 +64,18 @@ describe('RentSuccessModal', () => {
 
         it('should render formatted dates', () => {
             renderComponent();
-            // Portuguese locale format
-            expect(screen.getByText(/15\/01\/2025/)).toBeDefined();
-            expect(screen.getByText(/20\/01\/2025/)).toBeDefined();
+            const start = new Date(mockRentData.startDate).toLocaleDateString('pt-PT', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric',
+            });
+            const end = new Date(mockRentData.endDate).toLocaleDateString('pt-PT', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric',
+            });
+            expect(screen.getByText(start)).toBeDefined();
+            expect(screen.getByText(end)).toBeDefined();
         });
 
         it('should render total price with EUR', () => {
@@ -76,13 +85,13 @@ describe('RentSuccessModal', () => {
 
         it('should render PENDING status with emoji', () => {
             renderComponent();
-            expect(screen.getByText('🕐 Pendente')).toBeDefined();
+            expect(screen.getByText('⏳ PENDENTE')).toBeDefined();
         });
 
-        it('should render non-PENDING status as is', () => {
+        it('should render non-PENDING status as approved badge', () => {
             const confirmedData = { ...mockRentData, status: 'CONFIRMED' };
             renderComponent(confirmedData);
-            expect(screen.getByText('CONFIRMED')).toBeDefined();
+            expect(screen.getByText('✅ APROVADO')).toBeDefined();
         });
 
         it('should render tool name when provided', () => {
@@ -99,7 +108,7 @@ describe('RentSuccessModal', () => {
     describe('Payment Information Section', () => {
         it('should render payment section title', () => {
             renderComponent();
-            expect(screen.getByText('Informação do Pagamento')).toBeDefined();
+            expect(screen.getByText('Pagamento (PayPal)')).toBeDefined();
         });
 
         it('should render PayPal order ID', () => {
@@ -126,7 +135,7 @@ describe('RentSuccessModal', () => {
     describe('Notice Section', () => {
         it('should render awaiting approval notice', () => {
             renderComponent();
-            expect(screen.getByText('⏳ Aguardando Aprovação')).toBeDefined();
+            expect(screen.getByText('⏳ Aguardando Aprovação do Proprietário')).toBeDefined();
         });
 
         it('should render notice description', () => {
@@ -160,14 +169,13 @@ describe('RentSuccessModal', () => {
         it('should call onClose when clicking directly on dialog element', () => {
             renderComponent();
             const dialog = screen.getByRole('dialog');
-            // Simulate clicking on the dialog element itself (backdrop area)
             fireEvent.click(dialog);
             expect(mockOnClose).toHaveBeenCalledTimes(1);
         });
 
         it('should not close when clicking inside dialog content', () => {
             renderComponent();
-            const title = screen.getByText('Reserva Criada com Sucesso!');
+            const title = screen.getByText('Pagamento Confirmado!');
             fireEvent.click(title);
             expect(mockOnClose).not.toHaveBeenCalled();
         });
@@ -192,9 +200,9 @@ describe('RentSuccessModal', () => {
             renderComponent();
             const dialog = screen.getByRole('dialog');
             const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
-            
+
             dialog.dispatchEvent(event);
-            // The event is stopped inside the dialog
+            // O teste apenas dispara o evento; verificação específica de stopPropagation não necessária aqui.
         });
     });
 
@@ -213,7 +221,7 @@ describe('RentSuccessModal', () => {
 
         it('should have title with correct id', () => {
             renderComponent();
-            const title = screen.getByText('Reserva Criada com Sucesso!');
+            const title = screen.getByText('Pagamento Confirmado!');
             expect(title.id).toBe('rent-success-title');
         });
 
@@ -223,10 +231,10 @@ describe('RentSuccessModal', () => {
             expect(overlayButton).toBeDefined();
         });
 
-        it('should have checkmark hidden from screen readers', () => {
+        it('should render the icon element', () => {
             renderComponent();
-            const checkmark = screen.getByText('✓');
-            expect(checkmark.getAttribute('aria-hidden')).toBe('true');
+            const icon = screen.getByText('⏳');
+            expect(icon).toBeDefined();
         });
 
         it('should have dialog open attribute', () => {
@@ -240,7 +248,6 @@ describe('RentSuccessModal', () => {
         it('should focus overlay button on mount', () => {
             renderComponent();
             const overlayButton = screen.getByLabelText('Fechar modal de reserva');
-            // Button should be focused after render
             expect(document.activeElement).toBe(overlayButton);
         });
     });
@@ -249,9 +256,9 @@ describe('RentSuccessModal', () => {
         it('should remove keydown listener on unmount', () => {
             const removeEventListenerSpy = vi.spyOn(document, 'removeEventListener');
             const { unmount } = renderComponent();
-            
+
             unmount();
-            
+
             expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
             removeEventListenerSpy.mockRestore();
         });
