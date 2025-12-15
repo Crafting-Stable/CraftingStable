@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import craftingstable from '../assets/craftingstable.png';
+import bgImg from '../assets/rust.jpg';
 
 type User = { username: string; email?: string; role?: string; id?: number } | null;
 
@@ -20,6 +21,54 @@ interface Tool {
     ownerId: number;
     status: string;
 }
+
+const styles: { [k: string]: React.CSSProperties } = {
+    root: {
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        backgroundImage: `url(${bgImg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        color: '#a19b9b',
+    },
+    overlay: {
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(0,0,0,0.45)',
+    },
+    content: {
+        position: 'relative',
+        zIndex: 2,
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: 24,
+        boxSizing: 'border-box',
+        flex: 1
+    },
+    container: {
+        width: '100%',
+        maxWidth: 1100,
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+    },
+    footer: {
+        width: '100%',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        padding: '18px 0',
+        color: 'rgba(255,255,255,0.9)',
+        textAlign: 'center',
+        fontSize: 14,
+        boxSizing: 'border-box',
+        background: 'transparent',
+        marginTop: 24
+    }
+};
 
 const API_PORT = '8081';
 
@@ -75,7 +124,7 @@ const Header: React.FC<HeaderProps> = ({ onBack, onLogout }) => (
     <header style={{ width: '100%', maxWidth: 1100, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 12 }}>
             <img src={craftingstable} alt="logo" style={{ width: 48 }} />
-            <div style={{ fontWeight: 700 }}>CraftingStable</div>
+            <div style={{ fontWeight: 700, color: '#fff' }}>CraftingStable</div>
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button onClick={onBack} style={{ marginRight: 12 }}>Voltar</button>
@@ -96,59 +145,19 @@ const RentItem: React.FC<RentItemProps> = ({ rent, tools, userId, onCancel }) =>
     const statusLabel = getStatusLabel(rent.status);
     const canCancel = userId && rent.userId === userId && (rent.status === 'PENDING' || rent.status === 'APPROVED');
 
+    const tool = tools.get(rent.toolId);
+    const toolDisplay = tool ? `${tool.name} (#${tool.id})` : `Ferramenta #${rent.toolId}`;
+
     return (
         <div key={rent.id} style={{ border: '1px solid #e5e5e5', borderRadius: 8, padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                <div style={{ flex: 1 }}>
-                    <h3 style={{ margin: '0 0 8px 0' }}>
-                        {tools.get(rent.toolId)?.name || `Ferramenta #${rent.toolId}`}
-                    </h3>
-                    <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>
-                        📅 {new Date(rent.startDate).toLocaleDateString('pt-PT')} - {new Date(rent.endDate).toLocaleDateString('pt-PT')}
-                    </p>
-                    {rent.message && (
-                        <p style={{ margin: '8px 0 0 0', fontSize: 13, color: '#999', fontStyle: 'italic' }}>
-                            💬 {rent.message}
-                        </p>
-                    )}
+                <div>
+                    <div style={{ fontWeight: 700 }}>{toolDisplay}</div>
+                    <div style={{ fontSize: 13, color: '#6b7280' }}>{rent.startDate} → {rent.endDate}</div>
                 </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-                    <span style={{
-                        padding: '6px 14px',
-                        borderRadius: 16,
-                        fontSize: 13,
-                        fontWeight: 600,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        background,
-                        color
-                    }}>
-                        {statusLabel}
-                    </span>
-
-                    {canCancel && onCancel && (
-                        <button
-                            onClick={() => onCancel(rent.id)}
-                            style={{
-                                padding: '6px 12px',
-                                border: 'none',
-                                borderRadius: 6,
-                                background: '#ef4444',
-                                color: '#fff',
-                                fontSize: 12,
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap',
-                                transition: 'background 0.2s'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = '#dc2626'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = '#ef4444'}
-                        >
-                            🚫 Cancelar
-                        </button>
-                    )}
+                <div style={{ textAlign: 'right' }}>
+                    <div style={{ background, color, padding: '6px 8px', borderRadius: 6 }}>{statusLabel}</div>
+                    {canCancel && <button onClick={() => onCancel?.(rent.id)} style={{ marginTop: 8 }}>Cancelar</button>}
                 </div>
             </div>
         </div>
@@ -172,28 +181,22 @@ const Tabs: React.FC<TabsProps> = ({ activeTab, onTabChange, myRentsCount, pendi
             { key: 'myRents' as const, label: `📦 Minhas Reservas (${myRentsCount})` },
             { key: 'pending' as const, label: `⏳ Pendentes (${pendingRentsCount})` },
             { key: 'myTools' as const, label: `🛠️ Minhas Ferramentas (${myToolsCount})` }
-        ].map((t) => {
-            const active = activeTab === t.key;
-            return (
-                <button
-                    key={t.key}
-                    onClick={() => onTabChange(t.key)}
-                    style={{
-                        flex: 1,
-                        minWidth: 150,
-                        padding: '12px 20px',
-                        border: 'none',
-                        borderRadius: 6,
-                        background: active ? '#f8b749' : 'transparent',
-                        color: active ? '#000' : '#666',
-                        fontWeight: active ? 700 : 400,
-                        cursor: 'pointer'
-                    }}
-                >
-                    {t.label}
-                </button>
-            );
-        })}
+        ].map((t) => (
+            <button
+                key={t.key}
+                onClick={() => onTabChange(t.key)}
+                style={{
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: activeTab === t.key ? '#f8b749' : 'transparent',
+                    fontWeight: activeTab === t.key ? 700 : 500
+                }}
+            >
+                {t.label}
+            </button>
+        ))}
     </div>
 );
 
@@ -212,13 +215,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
         <div style={{ background: '#fff', padding: 28, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
             <h2>Perfil</h2>
             <div style={{ display: 'flex', gap: 18, alignItems: 'center', marginTop: 12 }}>
-                <div style={{ width: 72, height: 72, borderRadius: 36, background: '#fde68a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 28 }}>
-                    {firstLetter}
-                </div>
+                <div style={{ width: 64, height: 64, borderRadius: 64, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>{firstLetter}</div>
                 <div>
-                    <div style={{ fontSize: 24, fontWeight: 700 }}>{user.username}</div>
-                    <div style={{ color: '#666', fontSize: 14 }}>{role}</div>
-                    <div style={{ color: '#999', marginTop: 4 }}>{email}</div>
+                    <div style={{ fontWeight: 700 }}>{user.username}</div>
+                    <div style={{ color: '#6b7280' }}>{email}</div>
+                    <div style={{ marginTop: 8, color: '#6b7280' }}>{role}</div>
                 </div>
             </div>
         </div>
@@ -239,45 +240,18 @@ const MyRentsView: React.FC<MyRentsViewProps> = ({ myRents, tools, loadingRents,
     if (loadingRents) {
         content = <p>A carregar reservas...</p>;
     } else if (myRents.length === 0) {
-        content = (
-            <div style={{
-                background: '#f3f4f6',
-                padding: 20,
-                borderRadius: 8,
-                marginTop: 20,
-                textAlign: 'center',
-                color: '#6b7280'
-            }}>
-                <p style={{ fontSize: 16, margin: 0 }}>📭 Ainda não tem reservas</p>
-                <p style={{ fontSize: 13, marginTop: 8, color: '#9ca3af' }}>
-                    Quando reservar uma ferramenta, ela aparecerá aqui.
-                </p>
-            </div>
-        );
+        content = <p>Nenhuma reserva encontrada.</p>;
     } else {
-        content = (
-            <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
-                {myRents.map(r => (
-                    <RentItem
-                        key={r.id}
-                        rent={r}
-                        tools={tools}
-                        userId={userId}
-                        onCancel={onCancel}
-                    />
-                ))}
-            </div>
-        );
+        content = <div style={{ display: 'grid', gap: 12 }}>{myRents.map(r => <RentItem key={r.id} rent={r} tools={tools} userId={userId} onCancel={onCancel} />)}</div>;
     }
 
     return (
         <div style={{ background: '#fff', padding: 28, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
             <h2>Minhas Reservas</h2>
             <p style={{ color: '#6b7280', fontSize: 14, marginTop: 8 }}>
-                🔔 <strong>Importante:</strong> Reservas ficam <span style={{ color: '#92400e', fontWeight: 600 }}>PENDENTES</span> até
-                o proprietário da ferramenta aprovar. Você será notificado quando houver uma atualização.
+                Gerencie aqui as suas reservas.
             </p>
-            {content}
+            <div style={{ marginTop: 12 }}>{content}</div>
         </div>
     );
 };
@@ -289,52 +263,25 @@ interface PendingItemProps {
     onReject: (rentId: number) => void;
 }
 
-const PendingItem: React.FC<PendingItemProps> = ({ rent, tools, onApprove, onReject }) => (
-    <div key={rent.id} style={{ border: '2px solid #fbbf24', borderRadius: 8, padding: 16, background: '#fffbeb' }}>
-        <div>
-            <h3 style={{ margin: '0 0 8px 0' }}>
-                {tools.get(rent.toolId)?.name || `Ferramenta #${rent.toolId}`}
-            </h3>
-            <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>👤 Utilizador ID: {rent.userId}</p>
-            <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>
-                📅 Período: {new Date(rent.startDate).toLocaleDateString('pt-PT')} até {new Date(rent.endDate).toLocaleDateString('pt-PT')}
-            </p>
-            <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>🔖 ID Reserva: #{rent.id}</p>
+const PendingItem: React.FC<PendingItemProps> = ({ rent, tools, onApprove, onReject }) => {
+    const tool = tools.get(rent.toolId);
+    const toolDisplay = tool ? `${tool.name} (#${tool.id})` : `Ferramenta #${rent.toolId}`;
+
+    return (
+        <div key={rent.id} style={{ border: '2px solid #fbbf24', borderRadius: 8, padding: 16, background: '#fffbeb' }}>
+            <div>
+                <h3 style={{ margin: '0 0 8px 0' }}>Reserva #{rent.id} - {toolDisplay}</h3>
+                <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>👤 Utilizador ID: {rent.userId}</p>
+                <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>Período: {rent.startDate} → {rent.endDate}</p>
+                <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>🔖 ID Reserva: #{rent.id}</p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                <button onClick={() => onApprove(rent.id)} style={{ padding: '8px 12px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff' }}>Aprovar</button>
+                <button onClick={() => onReject(rent.id)} style={{ padding: '8px 12px', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff' }}>Rejeitar</button>
+            </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <button
-                onClick={() => onApprove(rent.id)}
-                style={{
-                    flex: 1,
-                    padding: '10px',
-                    border: 'none',
-                    borderRadius: 6,
-                    background: '#22c55e',
-                    color: '#fff',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                }}
-            >
-                ✓ Aprovar
-            </button>
-            <button
-                onClick={() => onReject(rent.id)}
-                style={{
-                    flex: 1,
-                    padding: '10px',
-                    border: 'none',
-                    borderRadius: 6,
-                    background: '#ef4444',
-                    color: '#fff',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                }}
-            >
-                ✗ Rejeitar
-            </button>
-        </div>
-    </div>
-);
+    );
+};
 
 interface PendingViewProps {
     pendingRents: Rent[];
@@ -350,44 +297,18 @@ const PendingView: React.FC<PendingViewProps> = ({ pendingRents, tools, loadingR
     if (loadingRents) {
         content = <p style={{ color: '#666', marginTop: 20 }}>🔄 A carregar reservas...</p>;
     } else if (pendingRents.length === 0) {
-        content = (
-            <div style={{
-                background: '#f3f4f6',
-                padding: 20,
-                borderRadius: 8,
-                marginTop: 20,
-                textAlign: 'center',
-                color: '#6b7280'
-            }}>
-                <p style={{ fontSize: 16, margin: 0 }}>✅ Não há reservas pendentes no momento</p>
-                <p style={{ fontSize: 13, marginTop: 8, color: '#9ca3af' }}>
-                    Quando alguém reservar uma das suas ferramentas, aparecerá aqui para aprovação.
-                </p>
-            </div>
-        );
+        content = <p style={{ color: '#666', marginTop: 12 }}>Sem reservas pendentes nas suas ferramentas.</p>;
     } else {
-        content = (
-            <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
-                {pendingRents.map(r => (
-                    <PendingItem
-                        key={r.id}
-                        rent={r}
-                        tools={tools}
-                        onApprove={onApprove}
-                        onReject={onReject}
-                    />
-                ))}
-            </div>
-        );
+        content = <div style={{ display: 'grid', gap: 12 }}>{pendingRents.map(r => <PendingItem key={r.id} rent={r} tools={tools} onApprove={onApprove} onReject={onReject} />)}</div>;
     }
 
     return (
         <div style={{ background: '#fff', padding: 28, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
             <h2 style={{ color: '#1f2937' }}>Reservas Pendentes nas Suas Ferramentas</h2>
             <p style={{ color: '#6b7280', fontSize: 14, marginTop: 8 }}>
-                ⚠️ Ao aprovar, a ferramenta será marcada como <strong>ALUGADA</strong> e não poderá aceitar novas reservas até o fim do período.
+                Aprove ou rejeite reservas feitas para as suas ferramentas.
             </p>
-            {content}
+            <div style={{ marginTop: 12 }}>{content}</div>
         </div>
     );
 };
@@ -424,51 +345,16 @@ const ToolItem: React.FC<ToolItemProps> = ({ tool, onUpdateStatus }) => {
     return (
         <div style={{ border: '1px solid #e5e5e5', borderRadius: 8, padding: 16, background: '#fff' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 16 }}>
-                <div style={{ flex: 1 }}>
-                    <h3 style={{ margin: '0 0 8px 0' }}>{tool.name}</h3>
-                    <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>ID: #{tool.id}</p>
+                <div>
+                    <div style={{ fontWeight: 700 }}>{tool.name}</div>
+                    <div style={{ color: '#6b7280', fontSize: 13 }}>{statusInfo.label}</div>
                 </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 200 }}>
-                    <span style={{
-                        padding: '6px 14px',
-                        borderRadius: 16,
-                        fontSize: 13,
-                        fontWeight: 600,
-                        textAlign: 'center',
-                        background: statusInfo.background,
-                        color: statusInfo.color
-                    }}>
-                        {statusInfo.label}
-                    </span>
-
-                    {canChange && (
-                        <select
-                            value={tool.status}
-                            onChange={(e) => handleStatusChange(e.target.value)}
-                            disabled={isChanging}
-                            style={{
-                                padding: '6px 12px',
-                                border: '1px solid #e5e5e5',
-                                borderRadius: 6,
-                                fontSize: 13,
-                                cursor: 'pointer',
-                                background: '#fff'
-                            }}
-                        >
-                            {availableStatuses.map(status => (
-                                <option key={status} value={status}>
-                                    {getToolStatusInfo(status).label}
-                                </option>
-                            ))}
-                        </select>
-                    )}
-
-                    {!canChange && (
-                        <p style={{ fontSize: 11, color: '#999', margin: 0, textAlign: 'center' }}>
-                            🔒 Alugada - não pode alterar
-                        </p>
-                    )}
+                <div style={{ display: 'flex', gap: 8 }}>
+                    {availableStatuses.map(s => (
+                        <button key={s} onClick={() => handleStatusChange(s)} disabled={isChanging} style={{ padding: '6px 10px', borderRadius: 6 }}>
+                            {s}
+                        </button>
+                    ))}
                 </div>
             </div>
         </div>
@@ -487,35 +373,18 @@ const MyToolsView: React.FC<MyToolsViewProps> = ({ myTools, loading, onUpdateSta
     if (loading) {
         content = <p>A carregar ferramentas...</p>;
     } else if (myTools.length === 0) {
-        content = (
-            <div style={{
-                background: '#f3f4f6',
-                padding: 20,
-                borderRadius: 8,
-                marginTop: 20,
-                textAlign: 'center',
-                color: '#6b7280'
-            }}>
-                <p style={{ fontSize: 16, margin: 0 }}>🔧 Ainda não tem ferramentas cadastradas</p>
-            </div>
-        );
+        content = <p>Não tem anúncios activos.</p>;
     } else {
-        content = (
-            <div style={{ display: 'grid', gap: 16, marginTop: 20 }}>
-                {myTools.map(t => (
-                    <ToolItem key={t.id} tool={t} onUpdateStatus={onUpdateStatus} />
-                ))}
-            </div>
-        );
+        content = <div style={{ display: 'grid', gap: 12 }}>{myTools.map(t => <ToolItem key={t.id} tool={t} onUpdateStatus={onUpdateStatus} />)}</div>;
     }
 
     return (
         <div style={{ background: '#fff', padding: 28, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
             <h2>Minhas Ferramentas</h2>
             <p style={{ color: '#6b7280', fontSize: 14, marginTop: 8 }}>
-                Gerencie o status das suas ferramentas. Ferramentas <strong>ALUGADAS</strong> não podem ter o status alterado até o fim da reserva.
+                Gerencie o estado das suas ferramentas.
             </p>
-            {content}
+            <div style={{ marginTop: 12 }}>{content}</div>
         </div>
     );
 };
@@ -540,39 +409,20 @@ export default function UserDetailsPage(): React.ReactElement {
 
             if (token && (!parsed?.email)) {
                 try {
-                    const res = await fetch(apiUrl('/api/auth/me'), {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-
+                    const res = await fetch(apiUrl('/api/auth/me'), { headers: { Authorization: `Bearer ${token}` } });
                     if (res.ok) {
-                        let data: any = null;
-                        try {
-                            data = await res.json();
-                        } catch {
-                            data = null;
-                        }
-                        if (data) {
-                            parsed = {
-                                id: data.id,
-                                username: data.username ?? parsed?.username ?? '',
-                                email: data.email ?? parsed?.email,
-                                role: data.role ?? parsed?.role
-                            };
-                            localStorage.setItem('user', JSON.stringify(parsed));
-                        }
-                    } else if (res.status === 401) {
-                        localStorage.removeItem('jwt');
-                        localStorage.removeItem('user');
-                        parsed = null;
+                        const data = await res.json();
+                        parsed = { id: data.id, username: data.username, email: data.email, role: data.role };
+                        localStorage.setItem('user', JSON.stringify(parsed));
                     }
-                } catch {
-                    // ignore
+                } catch (e) {
+                    console.error('failed to refresh user', e);
                 }
             }
 
             setUser(parsed);
             if (parsed?.id) {
-                await loadRents(parsed.id);
+                await loadRents(Number(parsed.id));
             }
         } catch {
             setUser(null);
@@ -603,15 +453,19 @@ export default function UserDetailsPage(): React.ReactElement {
             let allTools: Tool[] = [];
 
             try {
-                allRents = await rentsResponse.json();
-            } catch {
-                allRents = [];
+                if (rentsResponse.ok) {
+                    allRents = await rentsResponse.json();
+                }
+            } catch (e) {
+                console.error('failed parse rents', e);
             }
 
             try {
-                allTools = await toolsResponse.json();
-            } catch {
-                allTools = [];
+                if (toolsResponse.ok) {
+                    allTools = await toolsResponse.json();
+                }
+            } catch (e) {
+                console.error('failed parse tools', e);
             }
 
             const toolsMap = new Map(allTools.map(t => [t.id, t]));
@@ -637,11 +491,11 @@ export default function UserDetailsPage(): React.ReactElement {
         try {
             const response = await fetch(url, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } });
             if (response.ok) {
-                if (successMsg) alert(successMsg);
+                alert(successMsg);
                 if (refreshOwnerId) await loadRents(refreshOwnerId);
             } else {
-                const error = await response.text();
-                alert(`Erro: ${error}`);
+                const txt = await response.text().catch(() => response.statusText);
+                alert(txt || 'Erro na ação');
             }
         } catch (error) {
             console.error('Action failed:', error);
@@ -683,19 +537,16 @@ export default function UserDetailsPage(): React.ReactElement {
         try {
             const response = await fetch(apiUrl(`/api/tools/${toolId}/status`), {
                 method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ status: newStatus })
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus, ownerId: user.id })
             });
 
             if (response.ok) {
-                alert('✅ Status da ferramenta atualizado com sucesso!');
+                alert('Status atualizado');
                 await loadRents(user.id);
             } else {
-                const error = await response.text();
-                alert(`Erro: ${error}`);
+                const txt = await response.text().catch(() => response.statusText);
+                alert(txt || 'Erro ao atualizar status');
             }
         } catch (error) {
             console.error('Failed to update tool status:', error);
@@ -722,43 +573,57 @@ export default function UserDetailsPage(): React.ReactElement {
     }
 
     return (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 24, background: '#f5f5f5' }}>
-            <Header onBack={() => navigate('/')} onLogout={handleLogout} />
-            <main style={{ width: '100%', maxWidth: 1100 }}>
-                <Tabs
-                    activeTab={activeTab}
-                    onTabChange={setActiveTab}
-                    myRentsCount={myRents.length}
-                    pendingRentsCount={pendingRents.length}
-                    myToolsCount={myTools.length}
-                />
-                {activeTab === 'profile' && <ProfileView user={user} />}
-                {activeTab === 'myRents' && (
-                    <MyRentsView
-                        myRents={myRents}
-                        tools={tools}
-                        loadingRents={loadingRents}
-                        userId={user?.id}
-                        onCancel={handleCancel}
-                    />
-                )}
-                {activeTab === 'pending' && (
-                    <PendingView
-                        pendingRents={pendingRents}
-                        tools={tools}
-                        loadingRents={loadingRents}
-                        onApprove={handleApprove}
-                        onReject={handleReject}
-                    />
-                )}
-                {activeTab === 'myTools' && (
-                    <MyToolsView
-                        myTools={myTools}
-                        loading={loadingRents}
-                        onUpdateStatus={handleUpdateToolStatus}
-                    />
-                )}
-            </main>
+        <div style={styles.root}>
+            <div style={styles.overlay} />
+            <div style={styles.content}>
+                <div style={styles.container}>
+                    {/* Header incluído aqui */}
+                    <Header onBack={() => navigate('/')} onLogout={handleLogout} />
+
+                    <main style={{ flex: 1, overflowY: 'auto', paddingBottom: 24 }}>
+                        <Tabs
+                            activeTab={activeTab}
+                            onTabChange={setActiveTab}
+                            myRentsCount={myRents.length}
+                            pendingRentsCount={pendingRents.length}
+                            myToolsCount={myTools.length}
+                        />
+
+                        <div style={{ display: 'grid', gap: 12 }}>
+                            {activeTab === 'profile' && <ProfileView user={user} />}
+                            {activeTab === 'myRents' && (
+                                <MyRentsView
+                                    myRents={myRents}
+                                    tools={tools}
+                                    loadingRents={loadingRents}
+                                    userId={user.id}
+                                    onCancel={handleCancel}
+                                />
+                            )}
+                            {activeTab === 'pending' && (
+                                <PendingView
+                                    pendingRents={pendingRents}
+                                    tools={tools}
+                                    loadingRents={loadingRents}
+                                    onApprove={handleApprove}
+                                    onReject={handleReject}
+                                />
+                            )}
+                            {activeTab === 'myTools' && (
+                                <MyToolsView
+                                    myTools={myTools}
+                                    loading={loadingRents}
+                                    onUpdateStatus={handleUpdateToolStatus}
+                                />
+                            )}
+                        </div>
+                    </main>
+
+                    <footer style={styles.footer}>
+                        © {new Date().getFullYear()} Crafting Stable — Aluguer de ferramentas.
+                    </footer>
+                </div>
+            </div>
         </div>
     );
 }

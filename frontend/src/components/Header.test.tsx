@@ -126,7 +126,7 @@ describe('Header', () => {
 
     renderHeader();
 
-    expect(screen.getByText('Add Rent')).toBeDefined();
+    expect(screen.getByText('Aluguer')).toBeDefined();
   });
 
   it('should show user avatar initial', () => {

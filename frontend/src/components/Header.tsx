@@ -104,7 +104,7 @@ export default function Header(): React.ReactElement {
                 <nav style={styles.nav}>
                     <Link to="/catalog" style={{ color: 'inherit', textDecoration: 'none' }}>Catálogo</Link>
                     {user && (
-                        <Link to="/user/add-rent" style={{ color: 'inherit', textDecoration: 'none' }}>Add Rent</Link>
+                        <Link to="/user/add-rent" style={{ color: 'inherit', textDecoration: 'none' }}>Aluguer</Link>
                     )}
                     {user?.role === 'ADMIN' && (
                         <Link to="/admin" style={{ color: 'inherit', textDecoration: 'none' }}>Admin</Link>

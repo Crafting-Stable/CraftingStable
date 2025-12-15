@@ -433,7 +433,7 @@ export default function HomePage(): React.ReactElement {
                 </div>
 
                 <footer style={styles.footer}>
-                    © {new Date().getFullYear()} Crafting Stable — Aluguer de ferramentas. Políticas | Contato
+                    © {new Date().getFullYear()} Crafting Stable — Aluguer de ferramentas.
                 </footer>
             </div>
         </div>
