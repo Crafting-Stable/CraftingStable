@@ -164,7 +164,6 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, color }) =>
     </div>
 );
 
-// Mescla adminStyles com estilos do componente
 const styles: { [key: string]: React.CSSProperties } = {
     ...adminStyles,
     grid: {

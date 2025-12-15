@@ -229,7 +229,7 @@ public class UserService {
     @Transactional
     public User updatePayPalEmail(Long id, String paypalEmail) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_MSG_PREFIX + id));
         user.setPaypalEmail(paypalEmail);
         return userRepository.save(user);
     }
