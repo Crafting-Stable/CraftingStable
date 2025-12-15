@@ -145,11 +145,14 @@ const RentItem: React.FC<RentItemProps> = ({ rent, tools, userId, onCancel }) =>
     const statusLabel = getStatusLabel(rent.status);
     const canCancel = userId && rent.userId === userId && (rent.status === 'PENDING' || rent.status === 'APPROVED');
 
+    const tool = tools.get(rent.toolId);
+    const toolDisplay = tool ? `${tool.name} (#${tool.id})` : `Ferramenta #${rent.toolId}`;
+
     return (
         <div key={rent.id} style={{ border: '1px solid #e5e5e5', borderRadius: 8, padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                 <div>
-                    <div style={{ fontWeight: 700 }}>Ferramenta #{rent.toolId}</div>
+                    <div style={{ fontWeight: 700 }}>{toolDisplay}</div>
                     <div style={{ fontSize: 13, color: '#6b7280' }}>{rent.startDate} → {rent.endDate}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -260,20 +263,25 @@ interface PendingItemProps {
     onReject: (rentId: number) => void;
 }
 
-const PendingItem: React.FC<PendingItemProps> = ({ rent, tools, onApprove, onReject }) => (
-    <div key={rent.id} style={{ border: '2px solid #fbbf24', borderRadius: 8, padding: 16, background: '#fffbeb' }}>
-        <div>
-            <h3 style={{ margin: '0 0 8px 0' }}>Reserva #{rent.id} - Ferramenta #{rent.toolId}</h3>
-            <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>👤 Utilizador ID: {rent.userId}</p>
-            <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>Período: {rent.startDate} → {rent.endDate}</p>
-            <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>🔖 ID Reserva: #{rent.id}</p>
+const PendingItem: React.FC<PendingItemProps> = ({ rent, tools, onApprove, onReject }) => {
+    const tool = tools.get(rent.toolId);
+    const toolDisplay = tool ? `${tool.name} (#${tool.id})` : `Ferramenta #${rent.toolId}`;
+
+    return (
+        <div key={rent.id} style={{ border: '2px solid #fbbf24', borderRadius: 8, padding: 16, background: '#fffbeb' }}>
+            <div>
+                <h3 style={{ margin: '0 0 8px 0' }}>Reserva #{rent.id} - {toolDisplay}</h3>
+                <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>👤 Utilizador ID: {rent.userId}</p>
+                <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>Período: {rent.startDate} → {rent.endDate}</p>
+                <p style={{ margin: '4px 0', fontSize: 14, color: '#666' }}>🔖 ID Reserva: #{rent.id}</p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                <button onClick={() => onApprove(rent.id)} style={{ padding: '8px 12px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff' }}>Aprovar</button>
+                <button onClick={() => onReject(rent.id)} style={{ padding: '8px 12px', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff' }}>Rejeitar</button>
+            </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <button onClick={() => onApprove(rent.id)} style={{ padding: '8px 12px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff' }}>Aprovar</button>
-            <button onClick={() => onReject(rent.id)} style={{ padding: '8px 12px', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff' }}>Rejeitar</button>
-        </div>
-    </div>
-);
+    );
+};
 
 interface PendingViewProps {
     pendingRents: Rent[];
