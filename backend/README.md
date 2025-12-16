@@ -1,3 +1,4 @@
+# Helper Commands for Maven with Checkstyle
 # Executa apenas o Google Checks
 mvn validate
 
