@@ -25,8 +25,8 @@ import lombok.RequiredArgsConstructor;
 import ua.tqs.dto.ToolDTO;
 import ua.tqs.enums.ToolStatus;
 import ua.tqs.exception.ResourceNotFoundException;
-import ua.tqs.model.Rent;
 import ua.tqs.model.Tool;
+import ua.tqs.service.AnalyticsService;
 import ua.tqs.service.RentService;
 import ua.tqs.service.ToolService;
 import ua.tqs.service.UserDetailsServiceImpl;
@@ -43,6 +43,7 @@ public class ToolController {
     private final ToolService toolService;
     private final RentService rentService;
     private final UserDetailsServiceImpl userDetailsService;
+    private final AnalyticsService analyticsService;
 
     @PostMapping
     public ResponseEntity<ToolDTO> create(@Valid @RequestBody ToolDTO dto) {
@@ -80,9 +81,24 @@ public class ToolController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ToolDTO> findById(@PathVariable Long id) {
+    public ResponseEntity<ToolDTO> findById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
         Tool f = toolService.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ferramenta não encontrada: " + id));
+
+        // Track tool view event
+        Long userId = null;
+        try {
+            if (userDetails != null) {
+                userId = userDetailsService.getUserId(userDetails);
+            }
+        } catch (Exception e) {
+            // Ignore - anonymous view
+        }
+
+        analyticsService.trackEvent("TOOL_VIEW", userId, id, null, null, null, null);
+
         return ResponseEntity.ok(ToolDTO.fromModel(f));
     }
 

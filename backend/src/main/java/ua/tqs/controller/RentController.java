@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import ua.tqs.dto.RentRequestDTO;
 import ua.tqs.dto.RentResponseDTO;
 import ua.tqs.model.Rent;
+import ua.tqs.service.AnalyticsService;
 import ua.tqs.service.RentService;
 import ua.tqs.service.UserDetailsServiceImpl;
 
@@ -39,6 +40,7 @@ public class RentController {
 
     private final RentService rentService;
     private final UserDetailsServiceImpl userDetailsService;
+    private final AnalyticsService analyticsService;
 
     private Rent toEntity(RentRequestDTO dto) {
         Rent rent = new Rent();
@@ -87,6 +89,10 @@ public class RentController {
         Rent rentEntity = toEntity(rentRequestDTO);
         try {
             Rent created = rentService.create(rentEntity);
+
+            // Track rent created event
+            analyticsService.trackEvent("RENT_CREATED", created.getUserId(), created.getToolId(), created.getId(), null, null, null);
+
             return ResponseEntity.status(HttpStatus.CREATED).body(toDto(created));
         } catch (Exception e) {
             logger.error("❌ erro ao criar rent: {}", e.getMessage(), e);
@@ -126,6 +132,10 @@ public class RentController {
             @RequestParam Long ownerId) {
 
         Rent approved = rentService.approveRent(id, ownerId);
+
+        // Track rent approved event
+        analyticsService.trackEvent("RENT_APPROVED", approved.getUserId(), approved.getToolId(), approved.getId(), null, null, null);
+
         return ResponseEntity.ok(toDto(approved));
     }
 
@@ -136,6 +146,10 @@ public class RentController {
             @RequestParam(required = false) String message) {
 
         Rent rejected = rentService.rejectRent(id, ownerId, message);
+
+        // Track rent rejected event
+        analyticsService.trackEvent("RENT_REJECTED", rejected.getUserId(), rejected.getToolId(), rejected.getId(), message, null, null);
+
         return ResponseEntity.ok(toDto(rejected));
     }
     @PutMapping("/{id}/cancel")

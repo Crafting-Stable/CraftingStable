@@ -52,25 +52,36 @@ public class AnalyticsService {
     @Transactional(readOnly = true)
     public Map<String, Object> getAnalyticsSummary(LocalDateTime since) {
         Map<String, Object> summary = new HashMap<>();
-        
+
         // Event counts by type
         List<Object[]> eventCounts = analyticsRepository.countEventTypesSince(since);
         Map<String, Long> eventMap = new HashMap<>();
+        long totalEvents = 0;
         for (Object[] row : eventCounts) {
-            eventMap.put((String) row[0], (Long) row[1]);
+            Long count = (Long) row[1];
+            eventMap.put((String) row[0], count);
+            totalEvents += count;
         }
-        summary.put("eventCounts", eventMap);
-        
+        summary.put("eventsByType", eventMap);
+        summary.put("totalEvents", totalEvents);
+
         // Unique users
         Long uniqueUsers = analyticsRepository.countUniqueUsersSince(since);
         summary.put("uniqueUsers", uniqueUsers);
-        
-        // Most viewed tools
+
+        // Most viewed tools - convert to format expected by frontend
         List<Object[]> mostViewed = analyticsRepository.findMostViewedToolsSince(since);
-        summary.put("mostViewedTools", mostViewed);
-        
+        List<Map<String, Object>> topTools = new java.util.ArrayList<>();
+        for (Object[] row : mostViewed) {
+            Map<String, Object> tool = new HashMap<>();
+            tool.put("toolId", row[0]);
+            tool.put("views", row[1]);
+            topTools.add(tool);
+        }
+        summary.put("topTools", topTools);
+
         summary.put("period", since.toString());
-        
+
         return summary;
     }
 
