@@ -1,6 +1,3 @@
-// TypeScript
-// File: `frontend/src/pages/User/AddRent.test.tsx`
-
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 import AddRent from './AddRent';

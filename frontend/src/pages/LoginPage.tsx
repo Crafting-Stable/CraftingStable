@@ -358,12 +358,16 @@ export default function LoginPage(): React.ReactElement {
                 .card { width: 100%; margin: 8px 0; }
               }
               .side-by-side { display: flex; gap: 24px; align-items: stretch; }
+              /* Garantir texto escuro dentro dos cartões e modal */
+              .card, .modal .card { color: #111; }
+              /* Inputs e labels dentro dos cartões também devem ter texto escuro */
+              .card input, .card label, .card .muted { color: #111; }
               .card { background: #fff; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); padding: 28px; width: 100%; max-width: 520px; }
               .brand { display:flex; gap:12px; align-items:center; margin-bottom: 18px; }
               .brand-logo { width:44px; height:44px; background:linear-gradient(135deg,#1f8bf5,#4bd3a8); border-radius:8px; display:inline-block; }
               .btn { background:#1f8bf5; color:#fff; border:0; padding:10px 14px; border-radius:6px; cursor:pointer; }
               .btn.secondary { background:#f3f4f6; color:#111; border:1px solid #e5e7eb; }
-              input { width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:6px; }
+              input { width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:6px; color: #111; }
               .error { color:#d32f2f; font-size:13px; margin-top:6px; }
               .muted { color:#6b7280; font-size:14px; }
               .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index: 9999; border: none; padding: 0; }
@@ -372,6 +376,7 @@ export default function LoginPage(): React.ReactElement {
               .modal .card::-webkit-scrollbar { height: 8px; }
               .modal .card { max-height: 80vh; overflow: auto; }
             `}</style>
+
         </div>
     );
 }

@@ -34,8 +34,9 @@ const styles: { [k: string]: React.CSSProperties } = {
     overlay: {
         position: "absolute",
         inset: 0,
-        zIndex: 0,
-        pointerEvents: "none"
+        zIndex: 1,
+        pointerEvents: "none",
+        background: "rgba(0,0,0,0.45)"
     },
     header: {
         width: "100%",
