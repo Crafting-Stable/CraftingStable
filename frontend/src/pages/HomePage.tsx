@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import Header from '../components/Header';
 import LoadingScreen from '../components/LoadingScreen';
@@ -14,6 +14,22 @@ type Tool = {
     image?: string;
     promo?: boolean;
 };
+
+type ApiTool = {
+    id?: string | number;
+    name?: string;
+    type?: string;
+    category?: string;
+    dailyPrice?: number | string;
+    pricePerDay?: number | string;
+    oldPricePerDay?: number | string;
+    imageUrl?: string;
+    image?: string;
+    promo?: boolean | string;
+};
+
+const placeholderFor = (type: string, name?: string) =>
+    `https://placehold.co/600x400?text=${encodeURIComponent((name || type).slice(0, 30))}`;
 
 const styles: { [k: string]: React.CSSProperties } = {
     root: {
@@ -146,24 +162,23 @@ export default function HomePage(): React.ReactElement {
     const [tools, setTools] = useState<Tool[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [error, setError] = useState<string | null>(null);
 
-    const placeholderFor = (type: string, name?: string) =>
-        `https://placehold.co/600x400?text=${encodeURIComponent((name || type).slice(0, 30))}`;
-
-    const mapApiToUi = (apiTool: any): Tool => ({
-        id: String(apiTool.id),
-        name: apiTool.name,
+    const mapApiToUi = useCallback((apiTool: ApiTool): Tool => ({
+        id: String(apiTool.id ?? ""),
+        name: apiTool.name ?? "Sem nome",
         category: apiTool.type || apiTool.category || "Outros",
         pricePerDay: Number(apiTool.dailyPrice ?? apiTool.pricePerDay ?? 0),
         oldPricePerDay: apiTool.oldPricePerDay ? Number(apiTool.oldPricePerDay) : undefined,
-        image: apiTool.imageUrl || apiTool.image || placeholderFor(apiTool.type, apiTool.name),
+        image: apiTool.imageUrl || apiTool.image || placeholderFor(String(apiTool.type ?? apiTool.category ?? "Outros"), apiTool.name),
         promo: Boolean(apiTool.promo) || false
-    });
+    }), []);
 
     useEffect(() => {
         let mounted = true;
         async function loadAndEnrich() {
             setLoading(true);
+            setError(null);
             try {
                 const res = await fetch("/api/tools");
                 if (!res.ok) throw new Error("Erro ao obter ferramentas");
@@ -176,15 +191,18 @@ export default function HomePage(): React.ReactElement {
                     setTools([]);
                 }
             } catch (e) {
-                console.error(e);
-                if (mounted) setTools([]);
+                const msg = e instanceof Error ? e.message : String(e);
+                if (mounted) {
+                    setTools([]);
+                    setError(msg);
+                }
             } finally {
                 if (mounted) setLoading(false);
             }
         }
         loadAndEnrich();
         return () => { mounted = false; };
-    }, []);
+    }, [mapApiToUi]);
 
     const scroll = (dir: "left" | "right") => {
         const el = carouselRef.current;
@@ -226,6 +244,12 @@ export default function HomePage(): React.ReactElement {
                                 </div>
                             </div>
                         </section>
+
+                        {error && (
+                            <div style={{ color: 'salmon', margin: '12px 0' }}>
+                                {error}
+                            </div>
+                        )}
 
                         <section>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>

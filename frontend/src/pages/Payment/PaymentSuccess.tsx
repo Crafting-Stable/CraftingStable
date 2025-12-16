@@ -132,8 +132,8 @@ export default function PaymentSuccess(): React.ReactElement {
                 } else {
                     setRent(null);
                 }
-            } catch (err) {
-                console.error('Erro ao buscar reserva:', err);
+            } catch {
+                setRent(null);
             } finally {
                 if (mounted) setLoading(false);
             }

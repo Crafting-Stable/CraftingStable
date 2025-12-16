@@ -67,44 +67,57 @@ export default function LoginPage(): React.ReactElement {
                 body: JSON.stringify({ email: login.email, password: login.password })
             });
 
-            let data: any = {};
+            let data: unknown = {};
             try {
                 data = await res.json();
-            } catch (error_) {
-                console.error('Failed to parse JSON response for login:', error_);
+            } catch {
+                // resposta não JSON — tratar como vazio
                 data = {};
             }
 
             if (!res.ok) {
-                if (data.errors) setLoginErrors(data.errors);
-                else if (data.message) setLoginErrors({ general: data.message });
-                else setLoginErrors({ general: ERR_LOGIN });
+                if (typeof data === 'object' && data !== null) {
+                    const d = data as Record<string, unknown>;
+                    if (d.errors && typeof d.errors === 'object') {
+                        setLoginErrors(d.errors as Record<string, string>);
+                    } else if (d.message && typeof d.message === 'string') {
+                        setLoginErrors({ general: d.message });
+                    } else {
+                        setLoginErrors({ general: ERR_LOGIN });
+                    }
+                } else {
+                    setLoginErrors({ general: ERR_LOGIN });
+                }
                 return;
             }
 
-            if (data.token) {
-                const userId = data.id || data.user_id || data.userId;
-                localStorage.setItem('jwt', data.token);
-                const userToStore = {
-                    username: data.username || data.name,
-                    email: data.email || login.email,
-                    role: data.role,
-                    id: userId
-                };
-                localStorage.setItem('user', JSON.stringify(userToStore));
-                globalThis.dispatchEvent(new Event('authChanged'));
-                setLogin({ ...login, password: '' });
+            if (typeof data === 'object' && data !== null) {
+                const d = data as Record<string, unknown>;
+                const token = typeof d.token === 'string' ? d.token : undefined;
+                if (token) {
+                    const userId = (d.id as string) ?? (d.user_id as string) ?? (d.userId as string);
+                    localStorage.setItem('jwt', token);
+                    const userToStore = {
+                        username: (d.username as string) || (d.name as string),
+                        email: (d.email as string) || login.email,
+                        role: d.role as string,
+                        id: userId
+                    };
+                    localStorage.setItem('user', JSON.stringify(userToStore));
+                    globalThis.dispatchEvent(new Event('authChanged'));
+                    setLogin({ ...login, password: '' });
 
-                if (data.role === 'ADMIN') {
-                    navigate('/admin');
-                } else {
-                    navigate('/catalog');
+                    if (userToStore.role === 'ADMIN') {
+                        navigate('/admin');
+                    } else {
+                        navigate('/catalog');
+                    }
+                    return;
                 }
-            } else {
-                setLoginErrors({ general: ERR_INVALID_RESPONSE });
             }
-        } catch (e) {
-            console.error('Network/login error:', e);
+
+            setLoginErrors({ general: ERR_INVALID_RESPONSE });
+        } catch {
             setLoginErrors({ general: ERR_NETWORK });
         }
     };
@@ -149,18 +162,27 @@ export default function LoginPage(): React.ReactElement {
                 })
             });
 
-            let data: any = {};
+            let data: unknown = {};
             try {
                 data = await res.json();
-            } catch (error_) {
-                console.error('Failed to parse JSON response for register:', error_);
+            } catch {
+                // resposta não JSON — tratar como vazio
                 data = {};
             }
 
             if (!res.ok) {
-                if (data.errors) setRegisterErrors(data.errors);
-                else if (data.message) setRegisterErrors({ general: data.message });
-                else setRegisterErrors({ general: ERR_REGISTER });
+                if (typeof data === 'object' && data !== null) {
+                    const d = data as Record<string, unknown>;
+                    if (d.errors && typeof d.errors === 'object') {
+                        setRegisterErrors(d.errors as Record<string, string>);
+                    } else if (d.message && typeof d.message === 'string') {
+                        setRegisterErrors({ general: d.message });
+                    } else {
+                        setRegisterErrors({ general: ERR_REGISTER });
+                    }
+                } else {
+                    setRegisterErrors({ general: ERR_REGISTER });
+                }
                 return;
             }
 
@@ -168,8 +190,7 @@ export default function LoginPage(): React.ReactElement {
             setLogin({ ...login, email: register.email, password: '' });
             setRegister({ name: '', email: '', password: '', confirm: '' });
             globalThis.dispatchEvent(new Event('authChanged'));
-        } catch (e) {
-            console.error('Network/register error:', e);
+        } catch {
             setRegisterErrors({ general: ERR_NETWORK });
         }
     };

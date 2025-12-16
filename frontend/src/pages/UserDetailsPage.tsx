@@ -79,6 +79,31 @@ function apiUrl(path: string): string {
     return `${protocol}//${hostname}:${API_PORT}${normalized}`;
 }
 
+/* Helper de logging seguro sem usar `any` */
+function safeError(...args: unknown[]) {
+    try {
+        const msg = args.map(a => {
+            if (typeof a === 'string') return a;
+            if (a === undefined) return 'undefined';
+            if (a === null) return 'null';
+            if (typeof a === 'object') {
+                try {
+                    return JSON.stringify(a);
+                } catch {
+                    return String(a);
+                }
+            }
+            return String(a);
+        }).join(' ');
+        /* eslint-disable-next-line no-console */
+        console.error(msg);
+    } catch (e) {
+        /* eslint-disable-next-line no-console */
+        console.error('Erro (não foi possível serializar argumentos):', e);
+    }
+}
+
+/* Header e componentes locais */
 const STATUS_STYLES: Record<string, { background: string; color: string }> = {
     PENDING: { background: '#fef3c7', color: '#92400e' },
     APPROVED: { background: '#d1fae5', color: '#065f46' },
@@ -400,41 +425,6 @@ export default function UserDetailsPage(): React.ReactElement {
     const [loadingRents, setLoadingRents] = useState(false);
     const [activeTab, setActiveTab] = useState<TabKey>('profile');
 
-    const loadUserAndRents = useCallback(async () => {
-        setLoading(true);
-        try {
-            const raw = localStorage.getItem('user');
-            let parsed: User = raw ? JSON.parse(raw) : null;
-            const token = localStorage.getItem('jwt');
-
-            if (token && (!parsed?.email)) {
-                try {
-                    const res = await fetch(apiUrl('/api/auth/me'), { headers: { Authorization: `Bearer ${token}` } });
-                    if (res.ok) {
-                        const data = await res.json();
-                        parsed = { id: data.id, username: data.username, email: data.email, role: data.role };
-                        localStorage.setItem('user', JSON.stringify(parsed));
-                    }
-                } catch (e) {
-                    console.error('failed to refresh user', e);
-                }
-            }
-
-            setUser(parsed);
-            if (parsed?.id) {
-                await loadRents(Number(parsed.id));
-            }
-        } catch {
-            setUser(null);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        loadUserAndRents();
-    }, [loadUserAndRents]);
-
     const loadRents = useCallback(async (userId: number) => {
         setLoadingRents(true);
         const token = localStorage.getItem('jwt');
@@ -457,7 +447,7 @@ export default function UserDetailsPage(): React.ReactElement {
                     allRents = await rentsResponse.json();
                 }
             } catch (e) {
-                console.error('failed parse rents', e);
+                safeError('failed parse rents', e);
             }
 
             try {
@@ -465,7 +455,7 @@ export default function UserDetailsPage(): React.ReactElement {
                     allTools = await toolsResponse.json();
                 }
             } catch (e) {
-                console.error('failed parse tools', e);
+                safeError('failed parse tools', e);
             }
 
             const toolsMap = new Map(allTools.map(t => [t.id, t]));
@@ -478,11 +468,46 @@ export default function UserDetailsPage(): React.ReactElement {
 
             setMyTools(allTools.filter(t => t.ownerId === userId));
         } catch (error) {
-            console.error('Failed to load rents:', error);
+            safeError('Failed to load rents:', error);
         } finally {
             setLoadingRents(false);
         }
     }, []);
+
+    const loadUserAndRents = useCallback(async () => {
+        setLoading(true);
+        try {
+            const raw = localStorage.getItem('user');
+            let parsed: User = raw ? JSON.parse(raw) : null;
+            const token = localStorage.getItem('jwt');
+
+            if (token && (!parsed?.email)) {
+                try {
+                    const res = await fetch(apiUrl('/api/auth/me'), { headers: { Authorization: `Bearer ${token}` } });
+                    if (res.ok) {
+                        const data = await res.json();
+                        parsed = { id: data.id, username: data.username, email: data.email, role: data.role };
+                        localStorage.setItem('user', JSON.stringify(parsed));
+                    }
+                } catch (e) {
+                    safeError('failed to refresh user', e);
+                }
+            }
+
+            setUser(parsed);
+            if (parsed?.id) {
+                await loadRents(Number(parsed.id));
+            }
+        } catch {
+            setUser(null);
+        } finally {
+            setLoading(false);
+        }
+    }, [loadRents]);
+
+    useEffect(() => {
+        loadUserAndRents();
+    }, [loadUserAndRents]);
 
     const performPutAction = useCallback(async (url: string, successMsg: string, refreshOwnerId?: number) => {
         const token = localStorage.getItem('jwt');
@@ -498,7 +523,7 @@ export default function UserDetailsPage(): React.ReactElement {
                 alert(txt || 'Erro na ação');
             }
         } catch (error) {
-            console.error('Action failed:', error);
+            safeError('Action failed:', error);
             alert('Erro na ação');
         }
     }, [loadRents]);
@@ -549,7 +574,7 @@ export default function UserDetailsPage(): React.ReactElement {
                 alert(txt || 'Erro ao atualizar status');
             }
         } catch (error) {
-            console.error('Failed to update tool status:', error);
+            safeError('Failed to update tool status:', error);
             alert('Erro ao atualizar status da ferramenta');
         }
     }, [user, loadRents]);

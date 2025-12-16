@@ -66,6 +66,53 @@ interface BlockedDateRange {
     status: BlockedDateStatus;
 }
 
+/* Helpers para evitar `any` e controlar logs */
+function asRecord(u: unknown): Record<string, unknown> | null {
+    return typeof u === 'object' && u !== null ? (u as Record<string, unknown>) : null;
+}
+
+function formatArgs(...args: unknown[]): string {
+    try {
+        return args.map(a => {
+            if (typeof a === 'string') return a;
+            if (a === undefined) return 'undefined';
+            if (a === null) return 'null';
+            if (typeof a === 'object') {
+                try {
+                    return JSON.stringify(a);
+                } catch {
+                    return String(a);
+                }
+            }
+            return String(a);
+        }).join(' ');
+    } catch (e) {
+        try {
+            /* eslint-disable-next-line no-console */
+            console.error('Erro ao formatar argumentos para logging:', e);
+        } catch {
+            // ignore
+        }
+        return '';
+    }
+}
+
+function safeWarn(...args: unknown[]) {
+    const msg = formatArgs(...args);
+    /* eslint-disable-next-line no-console */
+    console.warn(msg);
+}
+function safeError(...args: unknown[]) {
+    const msg = formatArgs(...args);
+    /* eslint-disable-next-line no-console */
+    console.error(msg);
+}
+function safeLog(...args: unknown[]) {
+    const msg = formatArgs(...args);
+    /* eslint-disable-next-line no-console */
+    console.log(msg);
+}
+
 function BookingCalendar({
                              toolId,
                              pricePerDay,
@@ -101,18 +148,21 @@ function BookingCalendar({
 
                 const raw = await response.json().catch(() => []);
                 const allowed = ['PENDING', 'APPROVED', 'CANCELLED'] as const;
+
                 const normalized = Array.isArray(raw)
-                    ? raw.map((r: any) => {
-                        const s = String(r?.startDate ?? "");
-                        const e = String(r?.endDate ?? "");
-                        const rs = String(r?.status ?? "").toUpperCase();
+                    ? raw.map((r: unknown) => {
+                        const rec = asRecord(r) ?? {};
+                        const s = String(rec['startDate'] ?? rec['start_date'] ?? "");
+                        const e = String(rec['endDate'] ?? rec['end_date'] ?? "");
+                        const rs = String(rec['status'] ?? "").toUpperCase();
                         const status = (allowed as readonly string[]).includes(rs) ? (rs as BlockedDateStatus) : 'OTHER';
                         return { startDate: s, endDate: e, status };
                     })
                     : [];
+
                 setBlockedDates(normalized);
             } catch (err) {
-                console.error('Error fetching blocked dates:', err);
+                safeError('Error fetching blocked dates:', err);
                 setBlockedDates([]);
             }
         };
@@ -149,14 +199,15 @@ function BookingCalendar({
                 );
 
                 const data = await response.json().catch(() => ({ available: false }));
-                setIsAvailable(Boolean(data.available));
-                if (!data.available && data.reason) {
-                    setAvailabilityMessage(data.reason);
-                } else if (data.available) {
+                setIsAvailable(Boolean((data as Record<string, unknown>)['available']));
+                const reason = (data as Record<string, unknown>)['reason'];
+                if (!(data as Record<string, unknown>)['available'] && reason) {
+                    setAvailabilityMessage(String(reason));
+                } else if ((data as Record<string, unknown>)['available']) {
                     setAvailabilityMessage(null);
                 }
             } catch (err) {
-                console.error('Error checking availability:', err);
+                safeError('Error checking availability:', err);
                 setIsAvailable(false);
                 setAvailabilityMessage('Erro ao verificar disponibilidade');
             } finally {
@@ -168,7 +219,7 @@ function BookingCalendar({
     }, [toolId, start, end, days]);
 
     const handlePaymentSuccess = (data: RentCreatedData) => {
-        console.log("✅ Payment and rent creation successful:", data);
+        safeLog("✅ Payment and rent creation successful:", data);
         setRentData(data);
         setShowModal(true);
         setSuccess("Pagamento processado com sucesso!");
@@ -180,12 +231,12 @@ function BookingCalendar({
     };
 
     const handlePaymentError = (errorMsg: string) => {
-        console.error("❌ Payment error:", errorMsg);
+        safeError("❌ Payment error:", errorMsg);
         setError(errorMsg);
     };
 
     const handlePaymentCancel = () => {
-        console.log("⚠️ Payment cancelled by user");
+        safeLog("⚠️ Payment cancelled by user");
         setError("Pagamento cancelado. Pode tentar novamente quando estiver pronto.");
     };
 
@@ -449,15 +500,21 @@ export default function ToolDetails(): React.ReactElement {
                 const res = await fetch(apiUrl(`/api/users/${ownerId}`), { headers });
                 if (res.ok) {
                     const u = await res.json().catch(() => null);
-                    return u?.username ?? u?.name ?? undefined;
+                    const rec = asRecord(u);
+                    return rec?.username ?? rec?.name ?? undefined;
                 }
                 const listRes = await fetch(apiUrl("/api/users"), { headers });
                 if (!listRes.ok) return undefined;
                 const list = await listRes.json().catch(() => []);
-                const found = Array.isArray(list) ? list.find((x: any) => String(x.id) === String(ownerId)) : null;
-                return found ? (found.username ?? found.name) : undefined;
+                if (!Array.isArray(list)) return undefined;
+                const found = list.find((x: unknown) => {
+                    const r = asRecord(x);
+                    return r ? String(r['id'] ?? r['ID'] ?? '') === String(ownerId) : false;
+                });
+                const recFound = asRecord(found);
+                return recFound ? (String(recFound['username'] ?? recFound['name'] ?? '') || undefined) : undefined;
             } catch (e) {
-                console.warn("Não foi possível obter ownerName:", e);
+                safeWarn("Não foi possível obter ownerName:", e);
                 return undefined;
             }
         }
@@ -471,16 +528,24 @@ export default function ToolDetails(): React.ReactElement {
             };
 
             try {
-                let data: any = null;
+                let data: unknown = null;
 
                 const single = id ? await fetch(apiUrl(`/api/tools/${id}`), { headers }) : null;
                 if (single?.ok) {
-                    data = await single.json();
+                    data = await single.json().catch(() => null);
                 } else {
                     const listResp = await fetch(apiUrl("/api/tools"), { headers });
                     if (!listResp.ok) throw new Error("Erro ao obter ferramentas");
-                    const list = await listResp.json();
-                    data = Array.isArray(list) ? list.find((t: any) => String(t.id) === String(id)) : null;
+                    const list = await listResp.json().catch(() => []);
+                    if (Array.isArray(list)) {
+                        const found = list.find((t: unknown) => {
+                            const r = asRecord(t);
+                            return r ? String(r['id'] ?? r['ID'] ?? '') === String(id) : false;
+                        });
+                        data = found ?? null;
+                    } else {
+                        data = null;
+                    }
                 }
 
                 if (!data) {
@@ -488,16 +553,17 @@ export default function ToolDetails(): React.ReactElement {
                     return;
                 }
 
+                const rec = asRecord(data) ?? {};
                 const mapped: Tool = {
-                    id: String(data.id),
-                    name: data.name,
-                    category: data.type || data.category || "Outros",
-                    pricePerDay: Number(data.dailyPrice ?? data.pricePerDay ?? 0),
-                    depositAmount: Number(data.depositAmount ?? 0),
-                    ownerId: data.ownerId ?? data.owner_id ?? null,
-                    image: data.imageUrl || data.image || undefined,
-                    description: data.description ?? undefined,
-                    location: data.location ?? undefined
+                    id: String(rec['id'] ?? rec['ID'] ?? ''),
+                    name: String(rec['name'] ?? ''),
+                    category: String(rec['type'] ?? rec['category'] ?? "Outros"),
+                    pricePerDay: Number(rec['dailyPrice'] ?? rec['pricePerDay'] ?? 0),
+                    depositAmount: Number(rec['depositAmount'] ?? 0),
+                    ownerId: rec['ownerId'] ?? rec['owner_id'] ?? null ? Number(rec['ownerId'] ?? rec['owner_id']) : null,
+                    image: String(rec['imageUrl'] ?? rec['image'] ?? ''),
+                    description: rec['description'] ? String(rec['description']) : undefined,
+                    location: rec['location'] ? String(rec['location']) : undefined
                 };
 
                 mapped.image = mapped.image ?? placeholderFor(mapped.category, mapped.name);
@@ -510,7 +576,7 @@ export default function ToolDetails(): React.ReactElement {
                     setTool(prev => prev ? { ...prev, ownerName } : prev);
                 }
             } catch (e) {
-                console.error(e);
+                safeError(e);
                 if (mounted) setTool(null);
             } finally {
                 if (mounted) setLoading(false);

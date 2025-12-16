@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from '../../components/Header';
 import bgImg from '../../assets/rust.jpg';
@@ -110,14 +110,14 @@ export default function AddRent(): React.ReactElement {
 
     const contentRef = useRef<HTMLDivElement | null>(null);
 
-    function signOutAndRedirect(msg = "Sessão expirada. Por favor faça login novamente.") {
+    const signOutAndRedirect = useCallback((msg = "Sessão expirada. Por favor faça login novamente.") => {
         localStorage.removeItem('jwt');
         localStorage.removeItem('user');
         setError(msg);
         setTimeout(() => navigate('/loginPage'), 1500);
-    }
+    }, [navigate]);
 
-    async function sendRequest<T = any>(method: string, url: string, body?: any): Promise<T> {
+    const sendRequest = useCallback(async <T = unknown>(method: string, url: string, body?: unknown): Promise<T> => {
         const jwt = getJwt();
         if (!jwt) {
             signOutAndRedirect("Token de autenticação não encontrado. Por favor faça login novamente.");
@@ -151,7 +151,7 @@ export default function AddRent(): React.ReactElement {
         if (res.status === 204) return {} as T;
 
         return await res.json().catch(() => ({} as T));
-    }
+    }, [signOutAndRedirect]);
 
     useEffect(() => {
         const stored = readStoredUser();
@@ -163,25 +163,27 @@ export default function AddRent(): React.ReactElement {
         fetchAndStoreMe(navigate, setError, setCurrentUserId);
     }, [navigate]);
 
-    async function loadTools() {
-        if (!currentUserId) return;
-        setLoading(true);
-        setError(null);
-        try {
-            const url = apiUrl(`/api/tools?owner_id=${currentUserId}`);
-            const data = await sendRequest<Tool[]>('GET', url);
-            const filtered = Array.isArray(data) ? data.filter(t => Number(t.ownerId) === Number(currentUserId)) : [];
-            setTools(filtered);
-        } catch (e: any) {
-            if (e.message !== 'auth') setError(e.message || "Erro ao carregar ferramentas");
-        } finally {
-            setLoading(false);
-        }
-    }
-
     useEffect(() => {
-        if (currentUserId) loadTools();
-    }, [currentUserId]);
+        if (!currentUserId) return;
+
+        const loadTools = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const url = apiUrl(`/api/tools?owner_id=${currentUserId}`);
+                const data = await sendRequest<Tool[]>('GET', url);
+                const filtered = Array.isArray(data) ? data.filter(t => Number(t.ownerId) === Number(currentUserId)) : [];
+                setTools(filtered);
+            } catch (e: unknown) {
+                const msg = e instanceof Error ? e.message : String(e);
+                if (msg !== 'auth') setError(msg || "Erro ao carregar ferramentas");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadTools();
+    }, [currentUserId, sendRequest]);
 
     function clearForm() {
         setEditingId(null);
@@ -199,7 +201,16 @@ export default function AddRent(): React.ReactElement {
         if (Number(created.ownerId) === Number(currentUserId)) {
             setTools(prev => [...prev, created]);
         } else {
-            await loadTools();
+            if (currentUserId) {
+                try {
+                    const url = apiUrl(`/api/tools?owner_id=${currentUserId}`);
+                    const data = await sendRequest<Tool[]>('GET', url);
+                    const filtered = Array.isArray(data) ? data.filter(t => Number(t.ownerId) === Number(currentUserId)) : [];
+                    setTools(filtered);
+                } catch {
+                    // ignore reload errors here
+                }
+            }
         }
         alert("Ferramenta criada com sucesso!");
     }
@@ -208,7 +219,16 @@ export default function AddRent(): React.ReactElement {
         if (Number(updated.ownerId) === Number(currentUserId)) {
             setTools(prev => prev.map(t => (t.id === id ? updated : t)));
         } else {
-            await loadTools();
+            if (currentUserId) {
+                try {
+                    const url = apiUrl(`/api/tools?owner_id=${currentUserId}`);
+                    const data = await sendRequest<Tool[]>('GET', url);
+                    const filtered = Array.isArray(data) ? data.filter(t => Number(t.ownerId) === Number(currentUserId)) : [];
+                    setTools(filtered);
+                } catch {
+                    // ignore reload errors here
+                }
+            }
         }
         alert("Ferramenta atualizada com sucesso!");
     }
@@ -252,10 +272,10 @@ export default function AddRent(): React.ReactElement {
                 await handleCreated(created);
             }
             clearForm();
-            // rola para o topo do conteúdo após submit bem sucedido
             contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-        } catch (e: any) {
-            if (e.message !== 'auth') setError(e.message || "Erro ao submeter");
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            if (msg !== 'auth') setError(msg || "Erro ao submeter");
         } finally {
             setLoading(false);
         }
@@ -274,7 +294,6 @@ export default function AddRent(): React.ReactElement {
         setDescription(tool.description);
         setLocation(tool.location);
         setImageUrl(tool.imageUrl || "");
-        // rola o container de conteúdo para o topo (form)
         contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     }
 
@@ -294,8 +313,9 @@ export default function AddRent(): React.ReactElement {
             await sendRequest('DELETE', url);
             setTools(prev => prev.filter(t => t.id !== id));
             alert("Ferramenta apagada com sucesso!");
-        } catch (e: any) {
-            if (e.message !== 'auth') setError(e.message || "Erro ao apagar");
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            if (msg !== 'auth') setError(msg || "Erro ao apagar");
         } finally {
             setLoading(false);
         }

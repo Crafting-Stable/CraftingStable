@@ -19,9 +19,8 @@ describe('LoginPage', () => {
   });
 
   afterEach(() => {
-    // Remove stubbed globals
-    // @ts-ignore
-    if (vi.unstubAllGlobals) vi.unstubAllGlobals();
+    // Remove stubbed globals se disponível no objecto vi
+    (vi as any).unstubAllGlobals?.();
   });
 
   it('should render login form', () => {

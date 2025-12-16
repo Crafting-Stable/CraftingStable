@@ -16,6 +16,20 @@ type Tool = {
     status?: ToolStatus;
 };
 
+interface ApiTool {
+    id?: string | number;
+    name?: string;
+    type?: string;
+    category?: string;
+    dailyPrice?: number;
+    pricePerDay?: number;
+    imageUrl?: string;
+    image?: string;
+    location?: string;
+    locationName?: string;
+    status?: string | number;
+}
+
 const styles: { [k: string]: React.CSSProperties } = {
     root: {
         height: "100vh",
@@ -78,24 +92,27 @@ export default function CatalogPage(): React.ReactElement {
     const [sort, setSort] = useState<"relevance" | "price-asc" | "price-desc">("relevance");
     const [tools, setTools] = useState<Tool[]>([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null); // CORREÇÃO: declarar estado de erro
 
     const placeholderFor = (type: string, name?: string) =>
         `https://placehold.co/600x400?text=${encodeURIComponent((name || type).slice(0, 30))}`;
 
-    const mapApiToUi = (apiTool: any): Tool => ({
-        id: String(apiTool.id),
-        name: apiTool.name,
-        category: apiTool.type || apiTool.category || "Outros",
-        pricePerDay: Number(apiTool.dailyPrice ?? apiTool.pricePerDay ?? 0),
-        image: apiTool.imageUrl || apiTool.image || placeholderFor(apiTool.type, apiTool.name),
-        location: apiTool.location ?? apiTool.locationName ?? undefined,
-        status: (apiTool.status ? String(apiTool.status) : undefined) as ToolStatus | undefined
-    });
-
     useEffect(() => {
         let mounted = true;
+
+        const mapApiToUi = (apiTool: ApiTool): Tool => ({
+            id: String(apiTool.id ?? ""),
+            name: apiTool.name ?? "Sem nome",
+            category: apiTool.type || apiTool.category || "Outros",
+            pricePerDay: Number(apiTool.dailyPrice ?? apiTool.pricePerDay ?? 0),
+            image: apiTool.imageUrl || apiTool.image || placeholderFor((apiTool.type ?? apiTool.category ?? "Outros") as string, apiTool.name),
+            location: apiTool.location ?? apiTool.locationName ?? undefined,
+            status: apiTool.status ? String(apiTool.status) as ToolStatus : undefined
+        });
+
         async function loadAndEnrich() {
             setLoading(true);
+            setError(null);
             try {
                 const res = await fetch("/api/tools");
                 if (!res.ok) throw new Error("Erro ao obter ferramentas");
@@ -104,7 +121,7 @@ export default function CatalogPage(): React.ReactElement {
                     if (mounted) setTools([]);
                     return;
                 }
-                const mapped = data.map(mapApiToUi);
+                const mapped = data.map((d: unknown) => mapApiToUi(d as ApiTool));
 
                 const enriched = mapped.map(t => {
                     const hasRealImage = !!t.image && !t.image.includes("placehold.co");
@@ -113,8 +130,10 @@ export default function CatalogPage(): React.ReactElement {
 
                 if (mounted) setTools(enriched);
             } catch (e) {
-                console.error(e);
-                if (mounted) setTools([]);
+                if (mounted) {
+                    setError(String(e));
+                    setTools([]);
+                }
             } finally {
                 if (mounted) setLoading(false);
             }
@@ -169,11 +188,19 @@ export default function CatalogPage(): React.ReactElement {
                                 {locations.map(l => <option key={l} value={l}>{l === "all" ? "Todas as localizações" : l}</option>)}
                             </select>
 
-                            <select value={String(status)} onChange={(e) => setStatus(e.target.value as any)} style={{ padding: "10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "#fff" }}>
+                            <select
+                                value={String(status)}
+                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setStatus(e.target.value as "all" | ToolStatus)}
+                                style={{ padding: "10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "#fff" }}
+                            >
                                 {statuses.map(s => <option key={String(s)} value={String(s)}>{String(s) === "all" ? "Todos os estados" : String(s)}</option>)}
                             </select>
 
-                            <select value={sort} onChange={(e) => setSort(e.target.value as any)} style={{ padding: "10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "#fff" }}>
+                            <select
+                                value={sort}
+                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSort(e.target.value as "relevance" | "price-asc" | "price-desc")}
+                                style={{ padding: "10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "#fff" }}
+                            >
                                 <option value="relevance">Relevância</option>
                                 <option value="price-asc">Preço ↑</option>
                                 <option value="price-desc">Preço ↓</option>

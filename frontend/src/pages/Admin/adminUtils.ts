@@ -1,7 +1,7 @@
 export const API_PORT = "8081";
 
 export function apiUrl(path: string): string {
-    const loc = (globalThis as any).location;
+    const loc = (globalThis as unknown as { location?: Location }).location;
     const protocol = loc?.protocol ?? "http:";
     const hostname = loc?.hostname ?? "localhost";
     const normalized = path.startsWith("/") ? path : `/${path}`;
@@ -10,9 +10,10 @@ export function apiUrl(path: string): string {
 
 export function getJwt(): string | null {
     try {
-        const ls = (globalThis as any).localStorage;
+        const ls = (globalThis as unknown as { localStorage?: Storage }).localStorage;
         return ls?.getItem?.("jwt") ?? null;
-    } catch {
+    } catch (e) {
+        void e;
         return null;
     }
 }
@@ -31,7 +32,9 @@ export function handleAuthError(
         try {
             globalThis.localStorage.removeItem("jwt");
             globalThis.localStorage.removeItem("user");
-        } catch {}
+        } catch (e) {
+            void e;
+        }
         if (setError) setError("Sessão expirada. Por favor faça login novamente.");
         if (navigate) {
             // pequeno atraso para mostrar mensagem
