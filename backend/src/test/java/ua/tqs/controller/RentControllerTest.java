@@ -76,7 +76,7 @@ class RentControllerTest {
         LocalDateTime start = LocalDateTime.parse("2025-02-01T09:00:00");
         LocalDateTime end = LocalDateTime.parse("2025-02-03T17:00:00");
 
-        Map<String,Object> requestMap = Map.of(
+        Map<String, Object> requestMap = Map.of(
                 "toolId", 2,
                 "userId", 3,
                 "startDate", start.toString(),

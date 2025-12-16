@@ -184,7 +184,9 @@ public class PayPalService {
     }
 
     private void populatePayerInfo(JsonNode payer, PayPalCaptureDTO dto) {
-        if (payer == null) return;
+        if (payer == null) {
+            return;
+        }
         if (payer.has("payer_id")) {
             dto.setPayerId(payer.get("payer_id").asText());
         }
@@ -195,10 +197,14 @@ public class PayPalService {
 
     private void populateCaptureInfo(JsonNode responseBody, PayPalCaptureDTO dto) {
         JsonNode purchaseUnits = responseBody.path(FIELD_PURCHASE_UNITS);
-        if (!purchaseUnits.isArray() || purchaseUnits.size() == 0) return;
+        if (!purchaseUnits.isArray() || purchaseUnits.size() == 0) {
+            return;
+        }
 
         JsonNode captures = purchaseUnits.get(0).path("payments").path("captures");
-        if (!captures.isArray() || captures.size() == 0) return;
+        if (!captures.isArray() || captures.size() == 0) {
+            return;
+        }
 
         JsonNode capture = captures.get(0);
         if (capture.has("id")) {

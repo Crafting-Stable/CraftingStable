@@ -17,7 +17,7 @@ public class RentResponseDTO {
     private LocalDateTime endDate;
     private String message;
 
-    public RentResponseDTO() {}
+    public RentResponseDTO() { }
 
     public RentResponseDTO(Long id, Long toolId, Long userId, String status,
                            LocalDateTime startDate, LocalDateTime endDate, String message) {

@@ -156,7 +156,9 @@ public class UserService {
                         return BigDecimal.ZERO;
                     }
                     double days = Duration.between(r.getStartDate(), r.getEndDate()).toSeconds() / 86400.0;
-                    if (days < 0) days = 0;
+                    if (days < 0) {
+                        days = 0;
+                    }
                     return toolOpt.get().getDailyPrice().multiply(BigDecimal.valueOf(days));
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -189,10 +191,18 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        if (updates.getName() != null) user.setName(updates.getName());
-        if (updates.getEmail() != null) user.setEmail(updates.getEmail());
-        if (updates.getPassword() != null) user.setPassword(updates.getPassword());
-        if (updates.getType() != null) user.setType(updates.getType());
+        if (updates.getName() != null) {
+            user.setName(updates.getName());
+        }
+        if (updates.getEmail() != null) {
+            user.setEmail(updates.getEmail());
+        }
+        if (updates.getPassword() != null) {
+            user.setPassword(updates.getPassword());
+        }
+        if (updates.getType() != null) {
+            user.setType(updates.getType());
+        }
 
         return userRepository.save(user);
     }
