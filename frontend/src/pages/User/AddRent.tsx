@@ -1,7 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from '../../components/Header';
-import bgImg from '../../assets/rust.jpg';
 
 type Tool = {
     id?: number;
@@ -17,7 +16,16 @@ type Tool = {
     status?: string;
 };
 
+const pageStyle: React.CSSProperties = {
+    minHeight: "100vh",
+    padding: 20,
+    fontFamily: "Inter, Arial, sans-serif",
+    color: "#fff",
+    background: "linear-gradient(180deg, rgba(10,10,10,0.6), rgba(0,0,0,0.8))"
+};
+
 const API_PORT = '8081';
+
 function apiUrl(path: string) {
     const protocol = globalThis.location.protocol;
     const hostname = globalThis.location.hostname;
@@ -25,6 +33,7 @@ function apiUrl(path: string) {
     return `${protocol}//${hostname}:${API_PORT}${normalized}`;
 }
 
+/* Helpers moved to module scope to avoid deep nesting inside the component */
 function readStoredUser() {
     try {
         const userStr = localStorage.getItem('user');
@@ -108,8 +117,6 @@ export default function AddRent(): React.ReactElement {
     const [location, setLocation] = useState("");
     const [imageUrl, setImageUrl] = useState("");
 
-    const contentRef = useRef<HTMLDivElement | null>(null);
-
     function signOutAndRedirect(msg = "Sessão expirada. Por favor faça login novamente.") {
         localStorage.removeItem('jwt');
         localStorage.removeItem('user');
@@ -138,7 +145,25 @@ export default function AddRent(): React.ReactElement {
             body: hasBody ? JSON.stringify(body) : undefined
         });
 
+        // Only logout on authentication errors, not validation errors
         if (res.status === 401 || res.status === 403) {
+            // Check if it's a validation error by looking at the response
+            const contentType = res.headers.get('content-type');
+            if (contentType?.includes('application/json')) {
+                try {
+                    const errorData = await res.clone().json();
+                    // If the error has validation details, it's not an auth issue
+                    if (errorData.errors || errorData.message?.includes('Daily price') || errorData.message?.includes('validation')) {
+                        throw new Error(errorData.message || res.statusText);
+                    }
+                } catch (e: any) {
+                    // If parsing fails, treat as validation error if message was already set
+                    if (e.message && e.message !== 'auth') {
+                        throw e;
+                    }
+                }
+            }
+            // If we reach here, it's a real authentication error
             signOutAndRedirect();
             throw new Error('auth');
         }
@@ -160,6 +185,7 @@ export default function AddRent(): React.ReactElement {
             setCurrentUserId(Number(id));
             return;
         }
+        // chama a função movida para o escopo do módulo
         fetchAndStoreMe(navigate, setError, setCurrentUserId);
     }, [navigate]);
 
@@ -227,11 +253,25 @@ export default function AddRent(): React.ReactElement {
             return;
         }
 
+        // Validate price values
+        const priceValue = Number(dailyPrice);
+        const depositValue = Number(depositAmount);
+
+        if (isNaN(priceValue) || priceValue <= 0) {
+            setError("O preço por dia deve ser um valor positivo maior que zero.");
+            return;
+        }
+
+        if (isNaN(depositValue) || depositValue < 0) {
+            setError("A caução deve ser um valor positivo ou zero.");
+            return;
+        }
+
         const payload = {
             name,
             type,
-            dailyPrice: Number(dailyPrice),
-            depositAmount: Number(depositAmount),
+            dailyPrice: priceValue,
+            depositAmount: depositValue,
             description,
             location,
             imageUrl: imageUrl || undefined,
@@ -252,8 +292,6 @@ export default function AddRent(): React.ReactElement {
                 await handleCreated(created);
             }
             clearForm();
-            // rola para o topo do conteúdo após submit bem sucedido
-            contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
         } catch (e: any) {
             if (e.message !== 'auth') setError(e.message || "Erro ao submeter");
         } finally {
@@ -274,8 +312,7 @@ export default function AddRent(): React.ReactElement {
         setDescription(tool.description);
         setLocation(tool.location);
         setImageUrl(tool.imageUrl || "");
-        // rola o container de conteúdo para o topo (form)
-        contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+        globalThis.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     async function onDelete(id?: number) {
@@ -301,6 +338,7 @@ export default function AddRent(): React.ReactElement {
         }
     }
 
+    /* pequenas funções auxiliares para reduzir arrow functions inline */
     function handleImageError(e: React.SyntheticEvent<HTMLImageElement>) {
         e.currentTarget.style.display = 'none';
     }
@@ -371,45 +409,6 @@ export default function AddRent(): React.ReactElement {
         );
     }
 
-    const containerStyle: React.CSSProperties = {
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        fontFamily: "Inter, Arial, sans-serif",
-        color: "#fff",
-        backgroundImage: `url(${bgImg})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        position: "relative",
-        overflow: "hidden"
-    };
-
-    const overlayStyle: React.CSSProperties = {
-        position: "absolute",
-        inset: 0,
-        background: "rgba(0,0,0,0.6)",
-        pointerEvents: "none",
-        zIndex: 0
-    };
-
-    const contentAreaStyle: React.CSSProperties = {
-        position: "relative",
-        zIndex: 2,
-        display: "flex",
-        flexDirection: "column",
-        flex: 1,
-        overflowY: "auto",
-        WebkitOverflowScrolling: "touch"
-    };
-
-    const mainStyle: React.CSSProperties = {
-        maxWidth: 1100,
-        margin: "0 auto",
-        padding: "20px 16px 80px",
-        width: "100%",
-    };
-
     const inputStyle: React.CSSProperties = {
         padding: "10px 12px",
         borderRadius: 6,
@@ -443,145 +442,154 @@ export default function AddRent(): React.ReactElement {
             );
         }
         return (
-            <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+            <div style={{ display: "grid", gap: 16 }}>
                 {tools.map(renderTool)}
             </div>
         );
     })();
 
     return (
-        <div style={containerStyle}>
-            <div style={overlayStyle} />
+        <div style={pageStyle}>
             <Header />
-            <div ref={contentRef} style={contentAreaStyle}>
-                <main style={mainStyle}>
-                    <section style={{ marginBottom: 24, background: "rgba(0,0,0,0.6)", padding: 24, borderRadius: 10 }}>
-                        <h2 style={{ margin: "0 0 16px 0", fontSize: 20 }}>
-                            {editingId ? "Editar Ferramenta" : "Criar Novo Anúncio"}
-                        </h2>
 
-                        <div>
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 16 }}>
-                                <div>
-                                    <label htmlFor="name-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Nome da Ferramenta *</label>
-                                    <input
-                                        id="name-input"
-                                        placeholder="Ex: Berbequim Bosch"
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        style={inputStyle}
-                                    />
-                                </div>
+            <header style={{ padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.1)", marginBottom: 20 }}>
+                <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h1 style={{ margin: 0, fontSize: 24 }}>Minhas Ferramentas</h1>
+                    <button
+                        onClick={() => navigate('/catalog')}
+                        style={{ background: "transparent", border: "1px solid #f8b749", color: "#f8b749", padding: "8px 16px", borderRadius: 6, cursor: "pointer" }}
+                    >
+                        Ver Catálogo
+                    </button>
+                </div>
+            </header>
 
-                                <div>
-                                    <label htmlFor="type-select" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Categoria *</label>
-                                    <select
-                                        id="type-select"
-                                        value={type}
-                                        onChange={(e) => setType(e.target.value)}
-                                        style={{ ...inputStyle, cursor: "pointer" }}
-                                    >
-                                        <option value="">Selecione uma categoria</option>
-                                        <option value="Jardinagem">Jardinagem</option>
-                                        <option value="Obras">Obras</option>
-                                        <option value="Carpintaria">Carpintaria</option>
-                                        <option value="Elétricas">Elétricas</option>
-                                    </select>
-                                </div>
+            <main style={{ maxWidth: 1100, margin: "0 auto" }}>
+                <section style={{ marginBottom: 24, background: "rgba(0,0,0,0.6)", padding: 24, borderRadius: 10 }}>
+                    <h2 style={{ margin: "0 0 16px 0", fontSize: 20 }}>
+                        {editingId ? "Editar Ferramenta" : "Criar Novo Anúncio"}
+                    </h2>
 
-                                <div>
-                                    <label htmlFor="dailyPrice-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Preço por Dia (€) *</label>
-                                    <input
-                                        id="dailyPrice-input"
-                                        type="number"
-                                        step="0.01"
-                                        placeholder="10.00"
-                                        value={dailyPrice}
-                                        onChange={(e) => setDailyPrice(e.target.value)}
-                                        style={inputStyle}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label htmlFor="depositAmount-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Caução (€) *</label>
-                                    <input
-                                        id="depositAmount-input"
-                                        type="number"
-                                        step="0.01"
-                                        placeholder="50.00"
-                                        value={depositAmount}
-                                        onChange={(e) => setDepositAmount(e.target.value)}
-                                        style={inputStyle}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label htmlFor="location-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Localização *</label>
-                                    <input
-                                        id="location-input"
-                                        placeholder="Ex: Lisboa, Coimbra"
-                                        value={location}
-                                        onChange={(e) => setLocation(e.target.value)}
-                                        style={inputStyle}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label htmlFor="imageUrl-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>URL da Imagem</label>
-                                    <input
-                                        id="imageUrl-input"
-                                        placeholder="https://exemplo.com/imagem.jpg"
-                                        value={imageUrl}
-                                        onChange={(e) => setImageUrl(e.target.value)}
-                                        style={inputStyle}
-                                    />
-                                </div>
-                            </div>
-
-                            <div style={{ marginBottom: 16 }}>
-                                <label htmlFor="description-textarea" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Descrição *</label>
-                                <textarea
-                                    id="description-textarea"
-                                    placeholder="Descreva a ferramenta, estado, características..."
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    rows={4}
-                                    style={{ ...inputStyle, resize: "vertical" }}
+                    <div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 16 }}>
+                            <div>
+                                <label htmlFor="name-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Nome da Ferramenta *</label>
+                                <input
+                                    id="name-input"
+                                    placeholder="Ex: Berbequim Bosch"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    style={inputStyle}
                                 />
                             </div>
 
-                            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
-                                <button
-                                    type="button"
-                                    onClick={clearForm}
-                                    style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", padding: "10px 20px", borderRadius: 6, cursor: "pointer" }}
+                            <div>
+                                <label htmlFor="type-select" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Categoria *</label>
+                                <select
+                                    id="type-select"
+                                    value={type}
+                                    onChange={(e) => setType(e.target.value)}
+                                    style={{ ...inputStyle, cursor: "pointer" }}
                                 >
-                                    Limpar
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleSubmit}
-                                    disabled={loading}
-                                    style={{ background: "#f8b749", color: "#111", padding: "10px 24px", borderRadius: 6, fontWeight: 700, border: "none", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1 }}
-                                >
-                                    {submitLabel}
-                                </button>
+                                    <option value="">Selecione uma categoria</option>
+                                    <option value="Jardinagem">Jardinagem</option>
+                                    <option value="Obras">Obras</option>
+                                    <option value="Carpintaria">Carpintaria</option>
+                                    <option value="Elétricas">Elétricas</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label htmlFor="dailyPrice-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Preço por Dia (€) *</label>
+                                <input
+                                    id="dailyPrice-input"
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    placeholder="10.00"
+                                    value={dailyPrice}
+                                    onChange={(e) => setDailyPrice(e.target.value)}
+                                    style={inputStyle}
+                                />
+                            </div>
+
+                            <div>
+                                <label htmlFor="depositAmount-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Caução (€) *</label>
+                                <input
+                                    id="depositAmount-input"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    placeholder="50.00"
+                                    value={depositAmount}
+                                    onChange={(e) => setDepositAmount(e.target.value)}
+                                    style={inputStyle}
+                                />
+                            </div>
+
+                            <div>
+                                <label htmlFor="location-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Localização *</label>
+                                <input
+                                    id="location-input"
+                                    placeholder="Ex: Lisboa, Coimbra"
+                                    value={location}
+                                    onChange={(e) => setLocation(e.target.value)}
+                                    style={inputStyle}
+                                />
+                            </div>
+
+                            <div>
+                                <label htmlFor="imageUrl-input" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>URL da Imagem</label>
+                                <input
+                                    id="imageUrl-input"
+                                    placeholder="https://exemplo.com/imagem.jpg"
+                                    value={imageUrl}
+                                    onChange={(e) => setImageUrl(e.target.value)}
+                                    style={inputStyle}
+                                />
                             </div>
                         </div>
 
-                        {error && <div style={{ marginTop: 12, padding: 12, background: "rgba(255,0,0,0.1)", border: "1px solid rgba(255,0,0,0.3)", borderRadius: 6, color: "#ffb4b4" }}>{error}</div>}
-                    </section>
+                        <div style={{ marginBottom: 16 }}>
+                            <label htmlFor="description-textarea" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>Descrição *</label>
+                            <textarea
+                                id="description-textarea"
+                                placeholder="Descreva a ferramenta, estado, características..."
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                rows={4}
+                                style={{ ...inputStyle, resize: "vertical" }}
+                            />
+                        </div>
 
-                    <section style={{ background: "rgba(0,0,0,0.6)", padding: 24, borderRadius: 10 }}>
-                        <h3 style={{ margin: "0 0 16px 0" }}>Meus Anúncios ({tools.length})</h3>
+                        <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+                            <button
+                                type="button"
+                                onClick={clearForm}
+                                style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", padding: "10px 20px", borderRadius: 6, cursor: "pointer" }}
+                            >
+                                Limpar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSubmit}
+                                disabled={loading}
+                                style={{ background: "#f8b749", color: "#111", padding: "10px 24px", borderRadius: 6, fontWeight: 700, border: "none", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1 }}
+                            >
+                                {submitLabel}
+                            </button>
+                        </div>
+                    </div>
 
-                        {toolsContent}
-                    </section>
-                </main>
-                <footer style={{ marginTop: 22, color: "rgba(255,255,255,0.8)", textAlign: "center" }}>
-                    © {new Date().getFullYear()} Crafting Stable — Aluguer de ferramentas.
-                </footer>
-            </div>
+                    {error && <div style={{ marginTop: 12, padding: 12, background: "rgba(255,0,0,0.1)", border: "1px solid rgba(255,0,0,0.3)", borderRadius: 6, color: "#ffb4b4" }}>{error}</div>}
+                </section>
+
+                <section style={{ background: "rgba(0,0,0,0.6)", padding: 24, borderRadius: 10 }}>
+                    <h3 style={{ margin: "0 0 16px 0" }}>Meus Anúncios ({tools.length})</h3>
+
+                    {toolsContent}
+                </section>
+            </main>
         </div>
     );
 }
