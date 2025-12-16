@@ -92,7 +92,7 @@ export default function CatalogPage(): React.ReactElement {
     const [sort, setSort] = useState<"relevance" | "price-asc" | "price-desc">("relevance");
     const [tools, setTools] = useState<Tool[]>([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null); // CORREÇÃO: declarar estado de erro
+    const [, setError] = useState<string | null>(null); // CORREÇÃO: declarar estado de erro
 
     const placeholderFor = (type: string, name?: string) =>
         `https://placehold.co/600x400?text=${encodeURIComponent((name || type).slice(0, 30))}`;

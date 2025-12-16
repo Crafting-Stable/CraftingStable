@@ -197,16 +197,14 @@ export default function AddRent(): React.ReactElement {
     async function handleCreated(created: Tool) {
         if (Number(created.ownerId) === Number(currentUserId)) {
             setTools(prev => [...prev, created]);
-        } else {
-            if (currentUserId) {
-                try {
-                    const url = apiUrl(`/tools?owner_id=${currentUserId}`);
-                    const data = await sendRequest<Tool[]>('GET', url);
-                    const filtered = Array.isArray(data) ? data.filter(t => Number(t.ownerId) === Number(currentUserId)) : [];
-                    setTools(filtered);
-                } catch {
-                    // ignore reload errors here
-                }
+        } else if (currentUserId) {
+            try {
+                const url = apiUrl(`/tools?owner_id=${currentUserId}`);
+                const data = await sendRequest<Tool[]>('GET', url);
+                const filtered = Array.isArray(data) ? data.filter(t => Number(t.ownerId) === Number(currentUserId)) : [];
+                setTools(filtered);
+            } catch {
+                // ignore reload errors here
             }
         }
         alert("Ferramenta criada com sucesso!");
@@ -215,16 +213,14 @@ export default function AddRent(): React.ReactElement {
     async function handleUpdated(updated: Tool, id: number | null) {
         if (Number(updated.ownerId) === Number(currentUserId)) {
             setTools(prev => prev.map(t => (t.id === id ? updated : t)));
-        } else {
-            if (currentUserId) {
-                try {
-                    const url = apiUrl(`/tools?owner_id=${currentUserId}`);
-                    const data = await sendRequest<Tool[]>('GET', url);
-                    const filtered = Array.isArray(data) ? data.filter(t => Number(t.ownerId) === Number(currentUserId)) : [];
-                    setTools(filtered);
-                } catch {
-                    // ignore reload errors here
-                }
+        } else if (currentUserId) {
+            try {
+                const url = apiUrl(`/tools?owner_id=${currentUserId}`);
+                const data = await sendRequest<Tool[]>('GET', url);
+                const filtered = Array.isArray(data) ? data.filter(t => Number(t.ownerId) === Number(currentUserId)) : [];
+                setTools(filtered);
+            } catch {
+                // ignore reload errors here
             }
         }
         alert("Ferramenta atualizada com sucesso!");
@@ -233,22 +229,31 @@ export default function AddRent(): React.ReactElement {
     async function handleSubmit(e?: React.FormEvent) {
         e?.preventDefault();
         setError(null);
-
         if (!name || !type || !dailyPrice || !depositAmount || !description || !location) {
             setError("Preencha todos os campos obrigatórios");
             return;
         }
-
         if (!currentUserId) {
             setError("Utilizador não identificado. Por favor faça login novamente.");
             return;
         }
+        const dp = Number(dailyPrice);
+        const dep = Number(depositAmount);
 
+        if (Number.isNaN(dp) || Number.isNaN(dep)) {
+            setError("Preço por dia e caução têm de ser números válidos.");
+            return;
+        }
+
+        if (dp < 0 || dep < 0) {
+            setError("Os valores não podem ser negativos.");
+            return;
+        }
         const payload = {
             name,
             type,
-            dailyPrice: Number(dailyPrice),
-            depositAmount: Number(depositAmount),
+            dailyPrice: dp,
+            depositAmount: dep,
             description,
             location,
             imageUrl: imageUrl || undefined,
@@ -260,12 +265,10 @@ export default function AddRent(): React.ReactElement {
         setLoading(true);
         try {
             if (editingId) {
-                // Usa o novo apiUrl, que agora deve ser /api/tools/:id
                 const url = apiUrl(`/tools/${editingId}`);
                 const updated = await sendRequest<Tool>('PUT', url, payload);
                 await handleUpdated(updated, editingId);
             } else {
-                // Usa o novo apiUrl, que agora deve ser /api/tools
                 const url = apiUrl('/tools');
                 const created = await sendRequest<Tool>('POST', url, payload);
                 await handleCreated(created);
@@ -279,7 +282,6 @@ export default function AddRent(): React.ReactElement {
             setLoading(false);
         }
     }
-
     function onEdit(tool: Tool) {
         if (Number(tool.ownerId) !== Number(currentUserId)) {
             setError("Não tem permissão para editar esta ferramenta.");

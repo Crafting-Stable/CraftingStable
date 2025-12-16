@@ -63,9 +63,26 @@ interface BlockedDateRange {
     status: BlockedDateStatus;
 }
 
-/* Helpers para evitar `any` e controlar logs */
 function asRecord(u: unknown): Record<string, unknown> | null {
     return typeof u === 'object' && u !== null ? (u as Record<string, unknown>) : null;
+}
+
+function safeString(value: unknown): string {
+    try {
+        if (typeof value === 'string') return value;
+        if (value === undefined) return 'undefined';
+        if (value === null) return 'null';
+        if (typeof value === 'object' || typeof value === 'function') {
+            try {
+                return JSON.stringify(value);
+            } catch {
+                return Object.prototype.toString.call(value);
+            }
+        }
+        return String(value);
+    } catch {
+        return '';
+    }
 }
 
 function formatArgs(...args: unknown[]): string {
@@ -74,41 +91,24 @@ function formatArgs(...args: unknown[]): string {
             if (typeof a === 'string') return a;
             if (a === undefined) return 'undefined';
             if (a === null) return 'null';
-            if (typeof a === 'object') {
+            if (typeof a === 'object' || typeof a === 'function') {
                 try {
                     return JSON.stringify(a);
                 } catch {
-                    return String(a);
+                    return Object.prototype.toString.call(a);
                 }
             }
             return String(a);
         }).join(' ');
     } catch (e) {
-        try {
-            /* eslint-disable-next-line no-console */
-            console.error('Erro ao formatar argumentos para logging:', e);
-        } catch {
-            // ignore
-        }
+        try { console.error('Erro ao formatar argumentos para logging:', e); } catch {}
         return '';
     }
 }
 
-function safeWarn(...args: unknown[]) {
-    const msg = formatArgs(...args);
-    /* eslint-disable-next-line no-console */
-    console.warn(msg);
-}
-function safeError(...args: unknown[]) {
-    const msg = formatArgs(...args);
-    /* eslint-disable-next-line no-console */
-    console.error(msg);
-}
-function safeLog(...args: unknown[]) {
-    const msg = formatArgs(...args);
-    /* eslint-disable-next-line no-console */
-    console.log(msg);
-}
+function safeWarn(...args: unknown[]) { console.warn(formatArgs(...args)); }
+function safeError(...args: unknown[]) { console.error(formatArgs(...args)); }
+function safeLog(...args: unknown[]) { console.log(formatArgs(...args)); }
 
 function BookingCalendar({
                              toolId,
@@ -118,8 +118,12 @@ function BookingCalendar({
                          }: BookingCalendarProps): React.ReactElement {
     const navigate = useNavigate();
     const today = useMemo(() => new Date(), []);
-    const [start, setStart] = useState<string>(toIsoDateString(today));
-    const [end, setEnd] = useState<string>(toIsoDateString(new Date(today.getTime() + 24 * 60 * 60 * 1000)));
+    const minStart = useMemo(() => toIsoDateString(new Date(today.getTime() + 24 * 60 * 60 * 1000)), [today]); // amanhã
+    const defaultStart = minStart;
+    const defaultEnd = useMemo(() => toIsoDateString(new Date(new Date(defaultStart).getTime() + 24 * 60 * 60 * 1000)), [defaultStart]);
+
+    const [start, setStart] = useState<string>(defaultStart);
+    const [end, setEnd] = useState<string>(defaultEnd);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [rentData, setRentData] = useState<RentCreatedData | null>(null);
@@ -131,32 +135,39 @@ function BookingCalendar({
 
     const days = useMemo(() => daysBetween(start, end, inclusive), [start, end, inclusive]);
     const total = useMemo(() => Number((days * pricePerDay).toFixed(2)), [days, pricePerDay]);
-
     const fmt = new Intl.NumberFormat("pt-PT", { style: "currency", currency });
+
+    // verifica se dois intervalos de datas (YYYY-MM-DD) se sobrepõem (inclusivo)
+    const rangesOverlap = (aStart: string, aEnd: string, bStart: string, bEnd: string) => {
+        try {
+            const Astart = new Date(aStart);
+            const Aend = new Date(aEnd);
+            const Bstart = new Date(bStart);
+            const Bend = new Date(bEnd);
+            const utc = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+            return Math.max(utc(Astart), utc(Bstart)) <= Math.min(utc(Aend), utc(Bend));
+        } catch {
+            return false;
+        }
+    };
 
     useEffect(() => {
         const fetchBlockedDates = async () => {
             try {
-                const response = await fetch(apiUrl(`/tools/${toolId}/blocked-dates`));
-                if (!response.ok) {
-                    setBlockedDates([]);
-                    return;
-                }
-
-                const raw = await response.json().catch(() => []);
+                const res = await fetch(apiUrl(`/tools/${toolId}/blocked-dates`));
+                if (!res.ok) { setBlockedDates([]); return; }
+                const raw = await res.json().catch(() => []);
                 const allowed = ['PENDING', 'APPROVED', 'CANCELLED'] as const;
-
                 const normalized = Array.isArray(raw)
                     ? raw.map((r: unknown) => {
                         const rec = asRecord(r) ?? {};
-                        const s = String(rec['startDate'] ?? rec['start_date'] ?? "");
-                        const e = String(rec['endDate'] ?? rec['end_date'] ?? "");
-                        const rs = String(rec['status'] ?? "").toUpperCase();
+                        const s = safeString(rec['startDate'] ?? rec['start_date'] ?? "");
+                        const e = safeString(rec['endDate'] ?? rec['end_date'] ?? "");
+                        const rs = safeString(rec['status'] ?? "").toUpperCase();
                         const status = (allowed as readonly string[]).includes(rs) ? (rs as BlockedDateStatus) : 'OTHER';
                         return { startDate: s, endDate: e, status };
                     })
                     : [];
-
                 setBlockedDates(normalized);
             } catch (err) {
                 safeError('Error fetching blocked dates:', err);
@@ -174,21 +185,33 @@ function BookingCalendar({
                 return;
             }
 
-            const jwt = getJwt();
+            if (start < minStart) {
+                setIsAvailable(false);
+                setAvailabilityMessage('A data de início não pode ser hoje. Selecione uma data a partir de amanhã.');
+                return;
+            }
 
+            // primeiro verificar conflitos locais (bloqueios já aplicados)
+            const localConflict = blockedDates.find(b => {
+                if (b.status !== 'PENDING' && b.status !== 'APPROVED') return false;
+                return rangesOverlap(start, end, b.startDate, b.endDate);
+            });
+
+            if (localConflict) {
+                setIsAvailable(false);
+                setAvailabilityMessage('Datas já reservadas localmente.');
+                return;
+            }
+
+            const jwt = getJwt();
             setCheckingAvailability(true);
             setAvailabilityMessage(null);
 
             try {
                 const startDateTime = `${start}T10:00:00`;
                 const endDateTime = `${end}T18:00:00`;
-
-                const headers: HeadersInit = {
-                    'Accept': 'application/json'
-                };
-                if (jwt) {
-                    headers['Authorization'] = `Bearer ${jwt}`;
-                }
+                const headers: HeadersInit = { 'Accept': 'application/json' };
+                if (jwt) headers['Authorization'] = `Bearer ${jwt}`;
 
                 const response = await fetch(
                     apiUrl(`/tools/${toolId}/check-availability?startDate=${encodeURIComponent(startDateTime)}&endDate=${encodeURIComponent(endDateTime)}`),
@@ -196,12 +219,26 @@ function BookingCalendar({
                 );
 
                 const data = await response.json().catch(() => ({ available: false }));
-                setIsAvailable(Boolean((data as Record<string, unknown>)['available']));
-                const reason = (data as Record<string, unknown>)['reason'];
-                if (!(data as Record<string, unknown>)['available'] && reason) {
-                    setAvailabilityMessage(String(reason));
-                } else if ((data as Record<string, unknown>)['available']) {
-                    setAvailabilityMessage(null);
+                const serverAvailable = Boolean((data as Record<string, unknown>)['available']);
+                const reasonRaw = (data as Record<string, unknown>)['reason'];
+                const reasonStr = safeString(reasonRaw);
+
+                if (!serverAvailable) {
+                    setIsAvailable(false);
+                    setAvailabilityMessage(reasonStr || 'Indisponível pelo servidor');
+                } else {
+                    // revalidar conflitos locais (podem ter aparecido entretanto)
+                    const localConflictAfter = blockedDates.find(b => {
+                        if (b.status !== 'PENDING' && b.status !== 'APPROVED') return false;
+                        return rangesOverlap(start, end, b.startDate, b.endDate);
+                    });
+                    if (localConflictAfter) {
+                        setIsAvailable(false);
+                        setAvailabilityMessage('Datas reservadas localmente.');
+                    } else {
+                        setIsAvailable(true);
+                        setAvailabilityMessage(null);
+                    }
                 }
             } catch (err) {
                 safeError('Error checking availability:', err);
@@ -213,13 +250,21 @@ function BookingCalendar({
         };
 
         checkAvailability();
-    }, [toolId, start, end, days]);
+    }, [toolId, start, end, days, minStart, blockedDates]);
 
     const handlePaymentSuccess = (data: RentCreatedData) => {
         safeLog("✅ Payment and rent creation successful:", data);
         setRentData(data);
         setShowModal(true);
         setSuccess("Pagamento processado com sucesso!");
+
+        // bloquear localmente o intervalo reservado
+        setBlockedDates(prev => {
+            const newRange: BlockedDateRange = { startDate: start, endDate: end, status: 'APPROVED' };
+            return [...prev, newRange];
+        });
+        setIsAvailable(false);
+        setAvailabilityMessage('Reservado');
     };
 
     const handleCloseModal = () => {
@@ -243,35 +288,36 @@ function BookingCalendar({
     const getBackgroundColor = (status: BlockedDateStatus): string => {
         switch (status) {
             case 'PENDING': return '#fef3c7';
-            case 'APPROVED': return '#d1fae5';
-            case 'CANCELLED': return '#fee2e2';
-            default: return '#dbeafe';
+            case 'APPROVED': return '#fee2e2'; // reservado efetivo: vermelho claro
+            case 'CANCELLED': return '#dbeafe';
+            default: return '#e5e7eb';
         }
     };
 
     const getTextColor = (status: BlockedDateStatus): string => {
         switch (status) {
             case 'PENDING': return '#92400e';
-            case 'APPROVED': return '#065f46';
-            case 'CANCELLED': return '#7f1d1d';
-            default: return '#1e40af';
+            case 'APPROVED': return '#7f1d1d'; // texto vermelho escuro
+            case 'CANCELLED': return '#1e40af';
+            default: return '#111827';
         }
     };
 
     const getStatusIcon = (status: BlockedDateStatus): string => {
         switch (status) {
             case 'PENDING': return '⏳';
-            case 'APPROVED': return '✅';
+            case 'APPROVED': return '🔴';
             case 'CANCELLED': return '❌';
             default: return '🚫';
         }
     };
 
+    // mensagem/controls de pagamento
     let paymentSection: React.ReactNode;
     if (!isLoggedIn) {
         paymentSection = (
             <div style={{
-                background: "rgba(239, 68, 68, 0.2)",
+                background: "rgba(239, 68, 68, 0.12)",
                 border: "1px solid #ef4444",
                 color: "#fca5a5",
                 padding: "10px 14px",
@@ -281,10 +327,23 @@ function BookingCalendar({
                 <p>Por favor <Link to="/loginPage" style={{ color: "#f8b749", textDecoration: "underline" }}>faça login</Link> para reservar esta ferramenta.</p>
             </div>
         );
+    } else if (start < minStart) {
+        paymentSection = (
+            <div style={{
+                background: "rgba(251, 191, 36, 0.12)",
+                border: "1px solid #fbbf24",
+                color: "#fcd34d",
+                padding: "10px 14px",
+                borderRadius: 6,
+                textAlign: "center"
+            }}>
+                <p>Não é possível reservar a partir do dia de hoje. Selecione uma data a partir de amanhã.</p>
+            </div>
+        );
     } else if (days <= 0) {
         paymentSection = (
             <div style={{
-                background: "rgba(251, 191, 36, 0.2)",
+                background: "rgba(251, 191, 36, 0.12)",
                 border: "1px solid #fbbf24",
                 color: "#fcd34d",
                 padding: "10px 14px",
@@ -297,7 +356,7 @@ function BookingCalendar({
     } else if (checkingAvailability) {
         paymentSection = (
             <div style={{
-                background: "rgba(59, 130, 246, 0.2)",
+                background: "rgba(59, 130, 246, 0.12)",
                 border: "1px solid #3b82f6",
                 color: "#93c5fd",
                 padding: "10px 14px",
@@ -310,7 +369,7 @@ function BookingCalendar({
     } else if (!isAvailable) {
         paymentSection = (
             <div style={{
-                background: "rgba(239, 68, 68, 0.2)",
+                background: "rgba(239, 68, 68, 0.12)",
                 border: "1px solid #ef4444",
                 color: "#fca5a5",
                 padding: "10px 14px",
@@ -323,7 +382,7 @@ function BookingCalendar({
     } else if (success) {
         paymentSection = (
             <div style={{
-                background: "rgba(34, 197, 94, 0.2)",
+                background: "rgba(34, 197, 94, 0.12)",
                 border: "1px solid #22c55e",
                 color: "#86efac",
                 padding: "10px 14px",
@@ -359,7 +418,7 @@ function BookingCalendar({
         <div style={{ marginTop: 16, background: "rgba(0,0,0,0.45)", padding: 12, borderRadius: 8 }}>
             {error && (
                 <div style={{
-                    background: "rgba(239, 68, 68, 0.2)",
+                    background: "rgba(239, 68, 68, 0.12)",
                     border: "1px solid #ef4444",
                     color: "#fca5a5",
                     padding: "10px 14px",
@@ -373,7 +432,7 @@ function BookingCalendar({
 
             {success && (
                 <div style={{
-                    background: "rgba(34, 197, 94, 0.2)",
+                    background: "rgba(34, 197, 94, 0.12)",
                     border: "1px solid #22c55e",
                     color: "#86efac",
                     padding: "10px 14px",
@@ -391,7 +450,14 @@ function BookingCalendar({
                     <input
                         type="date"
                         value={start}
-                        onChange={(e) => setStart(e.target.value)}
+                        min={minStart}
+                        onChange={(e) => {
+                            const value = e.target.value;
+                            const clamped = value < minStart ? minStart : value;
+                            setStart(clamped);
+                            const minEndForClamped = toIsoDateString(new Date(new Date(clamped).getTime() + 24 * 60 * 60 * 1000));
+                            if (end <= clamped) setEnd(minEndForClamped);
+                        }}
                         disabled={!!success}
                         aria-label="Data de início"
                     />
@@ -402,7 +468,13 @@ function BookingCalendar({
                     <input
                         type="date"
                         value={end}
-                        onChange={(e) => setEnd(e.target.value)}
+                        min={toIsoDateString(new Date(new Date(start).getTime() + 24 * 60 * 60 * 1000))}
+                        onChange={(e) => {
+                            const value = e.target.value;
+                            const minEnd = toIsoDateString(new Date(new Date(start).getTime() + 24 * 60 * 60 * 1000));
+                            const clamped = value <= start ? minEnd : value;
+                            setEnd(clamped);
+                        }}
                         disabled={!!success}
                         aria-label="Data de fim"
                     />
@@ -419,7 +491,7 @@ function BookingCalendar({
                 <div style={{
                     marginTop: 12,
                     padding: 10,
-                    background: "rgba(251, 191, 36, 0.15)",
+                    background: "rgba(251, 191, 36, 0.08)",
                     border: "1px solid #fbbf24",
                     borderRadius: 6
                 }}>
@@ -437,8 +509,8 @@ function BookingCalendar({
                                 fontWeight: 500
                             }}>
                                 {new Date(range.startDate).toLocaleDateString('pt-PT')} - {new Date(range.endDate).toLocaleDateString('pt-PT')}
-                                <span style={{ marginLeft: 4, opacity: 0.7 }}>
-                                    ({getStatusIcon(range.status)})
+                                <span style={{ marginLeft: 6, opacity: 0.85 }}>
+                                    {getStatusIcon(range.status)}
                                 </span>
                             </span>
                         ))}
@@ -485,31 +557,37 @@ export default function ToolDetails(): React.ReactElement {
     useEffect(() => {
         let mounted = true;
 
-        async function fetchOwnerName(ownerId: number | null | undefined) {
-            if (!ownerId) return undefined;
+        async function fetchOwnerName(ownerId: number | null | undefined): Promise<string | undefined> {
+            if (ownerId == null) return undefined;
             const jwt = getJwt();
-            const headers: HeadersInit = {
-                'Accept': 'application/json',
-                ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
-            };
+            const headers: HeadersInit = { 'Accept': 'application/json', ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {}) };
 
             try {
                 const res = await fetch(apiUrl(`/users/${ownerId}`), { headers });
                 if (res.ok) {
                     const u = await res.json().catch(() => null);
                     const rec = asRecord(u);
-                    return rec?.username ?? rec?.name ?? undefined;
+                    if (rec) {
+                        const uname = rec['username'] ?? rec['name'] ?? '';
+                        return uname ? safeString(uname) : undefined;
+                    }
+                    return undefined;
                 }
+
                 const listRes = await fetch(apiUrl("/users"), { headers });
                 if (!listRes.ok) return undefined;
                 const list = await listRes.json().catch(() => []);
                 if (!Array.isArray(list)) return undefined;
                 const found = list.find((x: unknown) => {
                     const r = asRecord(x);
-                    return r ? String(r['id'] ?? r['ID'] ?? '') === String(ownerId) : false;
+                    return r ? safeString(r['id'] ?? r['ID'] ?? '') === String(ownerId) : false;
                 });
                 const recFound = asRecord(found);
-                return recFound ? (String(recFound['username'] ?? recFound['name'] ?? '') || undefined) : undefined;
+                if (recFound) {
+                    const uname2 = recFound['username'] ?? recFound['name'] ?? '';
+                    return uname2 ? safeString(uname2) : undefined;
+                }
+                return undefined;
             } catch (e) {
                 safeWarn("Não foi possível obter ownerName:", e);
                 return undefined;
@@ -519,14 +597,10 @@ export default function ToolDetails(): React.ReactElement {
         async function load() {
             setLoading(true);
             const jwt = getJwt();
-            const headers: HeadersInit = {
-                'Accept': 'application/json',
-                ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
-            };
+            const headers: HeadersInit = { 'Accept': 'application/json', ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {}) };
 
             try {
                 let data: unknown = null;
-
                 const single = id ? await fetch(apiUrl(`/tools/${id}`), { headers }) : null;
                 if (single?.ok) {
                     data = await single.json().catch(() => null);
@@ -537,7 +611,7 @@ export default function ToolDetails(): React.ReactElement {
                     if (Array.isArray(list)) {
                         const found = list.find((t: unknown) => {
                             const r = asRecord(t);
-                            return r ? String(r['id'] ?? r['ID'] ?? '') === String(id) : false;
+                            return r ? safeString(r['id'] ?? r['ID'] ?? '') === String(id) : false;
                         });
                         data = found ?? null;
                     } else {
@@ -551,24 +625,26 @@ export default function ToolDetails(): React.ReactElement {
                 }
 
                 const rec = asRecord(data) ?? {};
+                const rawOwner = rec['ownerId'] ?? rec['owner_id'];
+                const ownerId = rawOwner !== undefined && rawOwner !== null && rawOwner !== '' ? Number(rawOwner) : null;
+
                 const mapped: Tool = {
-                    id: String(rec['id'] ?? rec['ID'] ?? ''),
-                    name: String(rec['name'] ?? ''),
-                    category: String(rec['type'] ?? rec['category'] ?? "Outros"),
+                    id: safeString(rec['id'] ?? rec['ID'] ?? ''),
+                    name: safeString(rec['name'] ?? ''),
+                    category: safeString(rec['type'] ?? rec['category'] ?? "Outros"),
                     pricePerDay: Number(rec['dailyPrice'] ?? rec['pricePerDay'] ?? 0),
-                    depositAmount: Number(rec['depositAmount'] ?? 0),
-                    ownerId: rec['ownerId'] ?? rec['owner_id'] ?? null ? Number(rec['ownerId'] ?? rec['owner_id']) : null,
-                    image: String(rec['imageUrl'] ?? rec['image'] ?? ''),
-                    description: rec['description'] ? String(rec['description']) : undefined,
-                    location: rec['location'] ? String(rec['location']) : undefined
+                    depositAmount: rec['depositAmount'] != null && rec['depositAmount'] !== '' ? Number(rec['depositAmount']) : undefined,
+                    ownerId,
+                    image: safeString(rec['imageUrl'] ?? rec['image'] ?? ''),
+                    description: rec['description'] ? safeString(rec['description']) : undefined,
+                    location: rec['location'] ? safeString(rec['location']) : undefined
                 };
 
-                mapped.image = mapped.image ?? placeholderFor(mapped.category, mapped.name);
+                mapped.image = mapped.image || placeholderFor(mapped.category, mapped.name);
 
-                if (mounted) {
-                    setTool(mapped);
-                }
-                const ownerName = await fetchOwnerName(mapped.ownerId);
+                if (mounted) setTool(mapped);
+
+                const ownerName: string | undefined = await fetchOwnerName(mapped.ownerId);
                 if (mounted && ownerName) {
                     setTool(prev => prev ? { ...prev, ownerName } : prev);
                 }
@@ -581,9 +657,7 @@ export default function ToolDetails(): React.ReactElement {
         }
 
         load();
-        return () => {
-            mounted = false;
-        };
+        return () => { mounted = false; };
     }, [id]);
 
     if (loading) {
