@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="3761645e-d66a-4eee-82ae-ae932294e4b1" name="Changes" comment="merge:hotfix" />
+    <list default="true" id="3761645e-d66a-4eee-82ae-ae932294e4b1" name="Changes" comment="merge:hotfix">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -20,7 +22,7 @@
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="hotfix2" />
+        <entry key="$PROJECT_DIR$" value="dev" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -39,15 +41,17 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "SONARLINT_PRECOMMIT_ANALYSIS": "true",
+    "git-widget-placeholder": "SCRUMDEMO-200-NGINX",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/home/ervinhaverde/Documentos/TomaLaDaCa/frontend/src/assets",
+    "last_opened_file_path": "/home/ervinhaverde/Documentos/CraftingStable/frontend",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "ts.external.directory.path": "/home/ervinhaverde/.local/share/JetBrains/Toolbox/apps/intellij-idea-ultimate/plugins/javascript-plugin/jsLanguageServicesImpl/external",
+    "ts.external.directory.path": "/home/ervinhaverde/Documentos/CraftingStable/frontend/node_modules/typescript/lib",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -81,8 +85,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-jdk-9823dce3aa75-bf35d07a577b-intellij.indexing.shared.core-IU-252.28238.7" />
-        <option value="bundled-js-predefined-d6986cc7102b-a71380e98a7c-JavaScript-IU-252.28238.7" />
+        <option value="bundled-jdk-30f59d01ecdd-cffe25b9f5b3-intellij.indexing.shared.core-IU-253.28294.334" />
+        <option value="bundled-js-predefined-d6986cc7102b-c7e53b3be11b-JavaScript-IU-253.28294.334" />
       </set>
     </attachedChunks>
   </component>
@@ -109,6 +113,8 @@
       <workItem from="1764431517550" duration="1541000" />
       <workItem from="1764433076089" duration="1145000" />
       <workItem from="1764434592905" duration="1044000" />
+      <workItem from="1765882531073" duration="294000" />
+      <workItem from="1765913594190" duration="599000" />
     </task>
     <task id="LOCAL-00001" summary="renomear branch">
       <option name="closed" value="true" />
