@@ -1,13 +1,9 @@
-export const API_PORT = "8081";
 
 export function apiUrl(path: string): string {
-    const loc = (globalThis as unknown as { location?: Location }).location;
-    const protocol = loc?.protocol ?? "http:";
-    const hostname = loc?.hostname ?? "localhost";
     const normalized = path.startsWith("/") ? path : `/${path}`;
-    return `${protocol}//${hostname}:${API_PORT}${normalized}`;
+    const apiPrefix = normalized.startsWith('/api') ? '' : '/api';
+    return `${apiPrefix}${normalized}`;
 }
-
 export function getJwt(): string | null {
     try {
         const ls = (globalThis as unknown as { localStorage?: Storage }).localStorage;

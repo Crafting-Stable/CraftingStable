@@ -70,16 +70,11 @@ const styles: { [k: string]: React.CSSProperties } = {
     }
 };
 
-const API_PORT = '8081';
-
-function apiUrl(path: string): string {
-    const protocol = globalThis.location.protocol;
-    const hostname = globalThis.location.hostname;
+export function apiUrl(path: string): string {
     const normalized = path.startsWith('/') ? path : `/${path}`;
-    return `${protocol}//${hostname}:${API_PORT}${normalized}`;
+    return `/api${normalized}`;
 }
 
-/* Helper de logging seguro sem usar `any` */
 function safeError(...args: unknown[]) {
     try {
         const msg = args.map(a => {
@@ -103,7 +98,7 @@ function safeError(...args: unknown[]) {
     }
 }
 
-/* Header e componentes locais */
+/* Estilos e componentes locais (mantidos) */
 const STATUS_STYLES: Record<string, { background: string; color: string }> = {
     PENDING: { background: '#fef3c7', color: '#92400e' },
     APPROVED: { background: '#d1fae5', color: '#065f46' },
@@ -435,8 +430,8 @@ export default function UserDetailsPage(): React.ReactElement {
 
         try {
             const [rentsResponse, toolsResponse] = await Promise.all([
-                fetch(apiUrl('/api/rents'), { headers: { Authorization: `Bearer ${token}` } }),
-                fetch(apiUrl('/api/tools'), { headers: { Authorization: `Bearer ${token}` } })
+                fetch(apiUrl('/rents'), { headers: { Authorization: `Bearer ${token}` } }),
+                fetch(apiUrl('/tools'), { headers: { Authorization: `Bearer ${token}` } })
             ]);
 
             let allRents: Rent[] = [];
@@ -483,7 +478,7 @@ export default function UserDetailsPage(): React.ReactElement {
 
             if (token && (!parsed?.email)) {
                 try {
-                    const res = await fetch(apiUrl('/api/auth/me'), { headers: { Authorization: `Bearer ${token}` } });
+                    const res = await fetch(apiUrl('/auth/me'), { headers: { Authorization: `Bearer ${token}` } });
                     if (res.ok) {
                         const data = await res.json();
                         parsed = { id: data.id, username: data.username, email: data.email, role: data.role };
@@ -530,7 +525,7 @@ export default function UserDetailsPage(): React.ReactElement {
 
     const handleApprove = useCallback((rentId: number) => {
         if (!user?.id) return;
-        const url = apiUrl(`/api/rents/${rentId}/approve?ownerId=${user.id}`);
+        const url = apiUrl(`/rents/${rentId}/approve?ownerId=${user.id}`);
         performPutAction(url, '✅ Reserva aprovada! A ferramenta foi marcada como ALUGADA.', user.id);
     }, [user, performPutAction]);
 
@@ -538,7 +533,7 @@ export default function UserDetailsPage(): React.ReactElement {
         if (!user?.id) return;
         const reason = globalThis.prompt('Motivo da rejeição (opcional):') ?? '';
         const messageParam = reason ? `&message=${encodeURIComponent(reason)}` : '';
-        const url = apiUrl(`/api/rents/${rentId}/reject?ownerId=${user.id}${messageParam}`);
+        const url = apiUrl(`/rents/${rentId}/reject?ownerId=${user.id}${messageParam}`);
         performPutAction(url, 'Reserva rejeitada', user.id);
     }, [user, performPutAction]);
 
@@ -551,7 +546,7 @@ export default function UserDetailsPage(): React.ReactElement {
 
         if (!confirmCancel) return;
 
-        const url = apiUrl(`/api/rents/${rentId}/cancel?userId=${user.id}`);
+        const url = apiUrl(`/rents/${rentId}/cancel?userId=${user.id}`);
         performPutAction(url, 'Reserva cancelada com sucesso!', user.id);
     }, [user, performPutAction]);
 
@@ -560,7 +555,7 @@ export default function UserDetailsPage(): React.ReactElement {
         if (!token || !user?.id) return;
 
         try {
-            const response = await fetch(apiUrl(`/api/tools/${toolId}/status`), {
+            const response = await fetch(apiUrl(`/tools/${toolId}/status`), {
                 method: 'PUT',
                 headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: newStatus, ownerId: user.id })
@@ -602,7 +597,6 @@ export default function UserDetailsPage(): React.ReactElement {
             <div style={styles.overlay} />
             <div style={styles.content}>
                 <div style={styles.container}>
-                    {/* Header incluído aqui */}
                     <Header onBack={() => navigate('/')} onLogout={handleLogout} />
 
                     <main style={{ flex: 1, overflowY: 'auto', paddingBottom: 24 }}>

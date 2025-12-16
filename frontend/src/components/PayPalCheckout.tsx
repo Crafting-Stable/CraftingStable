@@ -58,13 +58,10 @@ interface PayPalOrderResponse {
     approvalUrl: string;
 }
 
-const API_PORT = '8081';
-
 function apiUrl(path: string): string {
-    const protocol = globalThis.location?.protocol ?? 'http:';
-    const hostname = globalThis.location?.hostname ?? 'localhost';
     const normalized = path.startsWith('/') ? path : `/${path}`;
-    return `${protocol}//${hostname}:${API_PORT}${normalized}`;
+    const apiPrefix = normalized.startsWith('/api') ? '' : '/api';
+    return `${apiPrefix}${normalized}`;
 }
 
 function getJwt(): string | null {
@@ -80,6 +77,7 @@ function getErrorMessage(error: unknown): string {
     if (error instanceof Error) return error.message;
     if (typeof error === 'string') return error;
     try {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         return JSON.stringify(error);
     } catch {
         return 'Erro desconhecido';
@@ -141,7 +139,7 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                 params.append("description", description);
             }
 
-            const response = await fetch(apiUrl(`/api/paypal/orders?${params.toString()}`), {
+            const response = await fetch(apiUrl(`/paypal/orders?${params.toString()}`), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -176,7 +174,7 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                 const newRentProps = props;
 
                 const captureResponse = await fetch(
-                    apiUrl(`/api/paypal/orders/${data.orderID}/capture?rentId=0`),
+                    apiUrl(`/paypal/orders/${data.orderID}/capture?rentId=0`),
                     {
                         method: "POST",
                         headers: {
@@ -213,7 +211,8 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
 
                 logger.info("📤 Creating rent after payment:", rentRequestBody);
 
-                const rentResponse = await fetch(apiUrl('/api/rents'), {
+                // Ajuste: usar apiUrl para o endpoint /api/rents
+                const rentResponse = await fetch(apiUrl('/rents'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -249,7 +248,7 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                 const existingRentProps = props;
 
                 const response = await fetch(
-                    apiUrl(`/api/paypal/orders/${data.orderID}/capture?rentId=${existingRentProps.rentId}`),
+                    apiUrl(`/paypal/orders/${data.orderID}/capture?rentId=${existingRentProps.rentId}`),
                     {
                         method: "POST",
                         headers: {

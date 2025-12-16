@@ -27,13 +27,10 @@ type BookingCalendarProps = {
     readonly currency?: string;
 };
 
-const API_PORT = '8081';
-
 function apiUrl(path: string): string {
-    const protocol = globalThis.location.protocol;
-    const hostname = globalThis.location.hostname;
     const normalized = path.startsWith('/') ? path : `/${path}`;
-    return `${protocol}//${hostname}:${API_PORT}${normalized}`;
+    const apiPrefix = normalized.startsWith('/api') ? '' : '/api';
+    return `${apiPrefix}${normalized}`;
 }
 
 function getJwt(): string | null {
@@ -140,7 +137,7 @@ function BookingCalendar({
     useEffect(() => {
         const fetchBlockedDates = async () => {
             try {
-                const response = await fetch(apiUrl(`/api/tools/${toolId}/blocked-dates`));
+                const response = await fetch(apiUrl(`/tools/${toolId}/blocked-dates`));
                 if (!response.ok) {
                     setBlockedDates([]);
                     return;
@@ -194,7 +191,7 @@ function BookingCalendar({
                 }
 
                 const response = await fetch(
-                    apiUrl(`/api/tools/${toolId}/check-availability?startDate=${encodeURIComponent(startDateTime)}&endDate=${encodeURIComponent(endDateTime)}`),
+                    apiUrl(`/tools/${toolId}/check-availability?startDate=${encodeURIComponent(startDateTime)}&endDate=${encodeURIComponent(endDateTime)}`),
                     { headers }
                 );
 
@@ -497,13 +494,13 @@ export default function ToolDetails(): React.ReactElement {
             };
 
             try {
-                const res = await fetch(apiUrl(`/api/users/${ownerId}`), { headers });
+                const res = await fetch(apiUrl(`/users/${ownerId}`), { headers });
                 if (res.ok) {
                     const u = await res.json().catch(() => null);
                     const rec = asRecord(u);
                     return rec?.username ?? rec?.name ?? undefined;
                 }
-                const listRes = await fetch(apiUrl("/api/users"), { headers });
+                const listRes = await fetch(apiUrl("/users"), { headers });
                 if (!listRes.ok) return undefined;
                 const list = await listRes.json().catch(() => []);
                 if (!Array.isArray(list)) return undefined;
@@ -530,11 +527,11 @@ export default function ToolDetails(): React.ReactElement {
             try {
                 let data: unknown = null;
 
-                const single = id ? await fetch(apiUrl(`/api/tools/${id}`), { headers }) : null;
+                const single = id ? await fetch(apiUrl(`/tools/${id}`), { headers }) : null;
                 if (single?.ok) {
                     data = await single.json().catch(() => null);
                 } else {
-                    const listResp = await fetch(apiUrl("/api/tools"), { headers });
+                    const listResp = await fetch(apiUrl("/tools"), { headers });
                     if (!listResp.ok) throw new Error("Erro ao obter ferramentas");
                     const list = await listResp.json().catch(() => []);
                     if (Array.isArray(list)) {

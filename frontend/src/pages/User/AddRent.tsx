@@ -17,12 +17,9 @@ type Tool = {
     status?: string;
 };
 
-const API_PORT = '8081';
 function apiUrl(path: string) {
-    const protocol = globalThis.location.protocol;
-    const hostname = globalThis.location.hostname;
     const normalized = path.startsWith('/') ? path : `/${path}`;
-    return `${protocol}//${hostname}:${API_PORT}${normalized}`;
+    return `/api${normalized}`;
 }
 
 function readStoredUser() {
@@ -52,7 +49,7 @@ async function fetchAndStoreMe(
     }
 
     try {
-        const res = await fetch(apiUrl('/api/auth/me'), {
+        const res = await fetch(apiUrl('/auth/me'), {
             headers: {
                 'Accept': 'application/json',
                 'Authorization': `Bearer ${jwt}`
@@ -170,7 +167,7 @@ export default function AddRent(): React.ReactElement {
             setLoading(true);
             setError(null);
             try {
-                const url = apiUrl(`/api/tools?owner_id=${currentUserId}`);
+                const url = apiUrl(`/tools?owner_id=${currentUserId}`);
                 const data = await sendRequest<Tool[]>('GET', url);
                 const filtered = Array.isArray(data) ? data.filter(t => Number(t.ownerId) === Number(currentUserId)) : [];
                 setTools(filtered);
@@ -203,7 +200,7 @@ export default function AddRent(): React.ReactElement {
         } else {
             if (currentUserId) {
                 try {
-                    const url = apiUrl(`/api/tools?owner_id=${currentUserId}`);
+                    const url = apiUrl(`/tools?owner_id=${currentUserId}`);
                     const data = await sendRequest<Tool[]>('GET', url);
                     const filtered = Array.isArray(data) ? data.filter(t => Number(t.ownerId) === Number(currentUserId)) : [];
                     setTools(filtered);
@@ -221,7 +218,7 @@ export default function AddRent(): React.ReactElement {
         } else {
             if (currentUserId) {
                 try {
-                    const url = apiUrl(`/api/tools?owner_id=${currentUserId}`);
+                    const url = apiUrl(`/tools?owner_id=${currentUserId}`);
                     const data = await sendRequest<Tool[]>('GET', url);
                     const filtered = Array.isArray(data) ? data.filter(t => Number(t.ownerId) === Number(currentUserId)) : [];
                     setTools(filtered);
@@ -263,11 +260,13 @@ export default function AddRent(): React.ReactElement {
         setLoading(true);
         try {
             if (editingId) {
-                const url = apiUrl(`/api/tools/${editingId}`);
+                // Usa o novo apiUrl, que agora deve ser /api/tools/:id
+                const url = apiUrl(`/tools/${editingId}`);
                 const updated = await sendRequest<Tool>('PUT', url, payload);
                 await handleUpdated(updated, editingId);
             } else {
-                const url = apiUrl('/api/tools');
+                // Usa o novo apiUrl, que agora deve ser /api/tools
+                const url = apiUrl('/tools');
                 const created = await sendRequest<Tool>('POST', url, payload);
                 await handleCreated(created);
             }
@@ -309,7 +308,8 @@ export default function AddRent(): React.ReactElement {
 
         setLoading(true);
         try {
-            const url = apiUrl(`/api/tools/${id}`);
+            // Usa o novo apiUrl, que agora deve ser /api/tools/:id
+            const url = apiUrl(`/tools/${id}`);
             await sendRequest('DELETE', url);
             setTools(prev => prev.filter(t => t.id !== id));
             alert("Ferramenta apagada com sucesso!");

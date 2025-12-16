@@ -9,7 +9,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.5.7</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath/>
     </parent>
 
     <groupId>pt.ua.TomaLaDaCA</groupId>
@@ -24,6 +24,10 @@
         <sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.coverage.exclusions>**/test/**/*,**/integration/**/*</sonar.coverage.exclusions>
         <sonar.exclusions>**/test/**/*,**/integration/**/*</sonar.exclusions>
+
+        <!-- Controle do Checkstyle via propriedades (padrões podem ser sobrescritos com -D) -->
+        <checkstyle.skip>false</checkstyle.skip>
+        <checkstyle.failOnViolation>true</checkstyle.failOnViolation>
     </properties>
 
     <dependencies>
@@ -246,12 +250,15 @@
                 <configuration>
                     <consoleOutput>true</consoleOutput>
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>
-                    <failOnViolation>true</failOnViolation>
+
+                    <!-- Lê valores das propriedades para permitir override via -D -->
+                    <skip>${checkstyle.skip}</skip>
+                    <failOnViolation>${checkstyle.failOnViolation}</failOnViolation>
+
                     <linkXRef>false</linkXRef>
                 </configuration>
 
                 <executions>
-                    <!-- Execução 1: Google Checks (embutido) na fase validate -->
                     <execution>
                         <id>google-checks</id>
                         <phase>validate</phase>
@@ -263,7 +270,6 @@
                         </configuration>
                     </execution>
 
-                    <!-- Execução 2: Seu checkstyle personalizado na fase verify -->
                     <execution>
                         <id>project-checks</id>
                         <phase>verify</phase>
