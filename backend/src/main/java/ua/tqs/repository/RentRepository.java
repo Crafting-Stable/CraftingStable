@@ -12,13 +12,21 @@ import java.util.List;
 
 @Repository
 public interface RentRepository extends JpaRepository<Rent, Long> {
+
     List<Rent> findByStartDateBetween(LocalDateTime from, LocalDateTime to);
+
     List<Rent> findByToolIdAndStatusIn(Long toolId, List<RentStatus> statuses);
+
     List<Rent> findByStatus(RentStatus status);
+
     List<Rent> findByStatusAndStartDateBefore(RentStatus status, LocalDateTime date);
+
     List<Rent> findByStatusAndEndDateBefore(RentStatus status, LocalDateTime date);
-    @Query("SELECT r FROM Rent r WHERE r.toolId = :toolId AND r.status IN :statuses " +
-            "AND ((r.startDate <= :endDate AND r.endDate >= :startDate))")
+
+    @Query("SELECT r FROM Rent r " +
+            "WHERE r.toolId = :toolId " +
+            "AND r.status IN :statuses " +
+            "AND (r.startDate < :endDate AND r.endDate > :startDate)")
     List<Rent> findOverlappingRents(
             @Param("toolId") Long toolId,
             @Param("startDate") LocalDateTime startDate,

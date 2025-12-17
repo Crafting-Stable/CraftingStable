@@ -77,7 +77,7 @@ export function apiUrl(path: string): string {
 
 function safeError(...args: unknown[]) {
     try {
-        const msg = args.map(a => {
+        const parts: unknown[] = args.map(a => {
             if (typeof a === 'string') return a;
             if (a === undefined) return 'undefined';
             if (a === null) return 'null';
@@ -85,13 +85,13 @@ function safeError(...args: unknown[]) {
                 try {
                     return JSON.stringify(a);
                 } catch {
-                    return String(a);
+                    return a;
                 }
             }
             return String(a);
-        }).join(' ');
+        });
         /* eslint-disable-next-line no-console */
-        console.error(msg);
+        console.error(...(parts as any[]));
     } catch (e) {
         /* eslint-disable-next-line no-console */
         console.error('Erro (não foi possível serializar argumentos):', e);
@@ -335,7 +335,7 @@ const PendingView: React.FC<PendingViewProps> = ({ pendingRents, tools, loadingR
 
 interface ToolItemProps {
     tool: Tool;
-    onUpdateStatus: (toolId: number, newStatus: string) => void;
+    onUpdateStatus: (toolId: number, newStatus: string) => Promise<void>;
 }
 
 const ToolItem: React.FC<ToolItemProps> = ({ tool, onUpdateStatus }) => {
@@ -384,7 +384,7 @@ const ToolItem: React.FC<ToolItemProps> = ({ tool, onUpdateStatus }) => {
 interface MyToolsViewProps {
     myTools: Tool[];
     loading: boolean;
-    onUpdateStatus: (toolId: number, newStatus: string) => void;
+    onUpdateStatus: (toolId: number, newStatus: string) => Promise<void>;
 }
 
 const MyToolsView: React.FC<MyToolsViewProps> = ({ myTools, loading, onUpdateStatus }) => {
@@ -550,7 +550,7 @@ export default function UserDetailsPage(): React.ReactElement {
         performPutAction(url, 'Reserva cancelada com sucesso!', user.id);
     }, [user, performPutAction]);
 
-    const handleUpdateToolStatus = useCallback(async (toolId: number, newStatus: string) => {
+    const handleUpdateToolStatus = useCallback(async (toolId: number, newStatus: string): Promise<void> => {
         const token = localStorage.getItem('jwt');
         if (!token || !user?.id) return;
 

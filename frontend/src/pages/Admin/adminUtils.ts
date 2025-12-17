@@ -1,15 +1,15 @@
-
 export function apiUrl(path: string): string {
     const normalized = path.startsWith("/") ? path : `/${path}`;
     const apiPrefix = normalized.startsWith('/api') ? '' : '/api';
     return `${apiPrefix}${normalized}`;
 }
+
 export function getJwt(): string | null {
     try {
         const ls = (globalThis as unknown as { localStorage?: Storage }).localStorage;
         return ls?.getItem?.("jwt") ?? null;
     } catch (e) {
-        void e;
+        console.debug('getJwt error:', e);
         return null;
     }
 }
@@ -29,7 +29,7 @@ export function handleAuthError(
             globalThis.localStorage.removeItem("jwt");
             globalThis.localStorage.removeItem("user");
         } catch (e) {
-            void e;
+            console.debug('handleAuthError localStorage remove error:', e);
         }
         if (setError) setError("Sessão expirada. Por favor faça login novamente.");
         if (navigate) {
