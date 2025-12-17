@@ -13,6 +13,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Create .env file
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          cat > .env <<EOF
+          POSTGRES_DB=craftingstable
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=postgres
+
+          PAYPAL_CLIENT_ID=ARrD61lhyeuxzt0c1VMdRiqEG-lYRi-SlF2LF_iiEEvu1FvdftQEJf5tcMOjrFLOdCU4-RNpBpIN226h
+          PAYPAL_CLIENT_SECRET=EAzBxs6oU9N2WMImTdetNUaeMRXd9CqkNA_yytla-F5UMDtMli-LAyBQhg_dIomG6-c_v9A-p3PZIPIj
+
+          VITE_PAYPAL_CLIENT_ID=ARrD61lhyeuxzt0c1VMdRiqEG-lYRi-SlF2LF_iiEEvu1FvdftQEJf5tcMOjrFLOdCU4-RNpBpIN226h
+
+          GF_SECURITY_ADMIN_PASSWORD=admin
+          EOF
+
       - name: Deploy stack with Docker Compose
         run: |
           cd "$GITHUB_WORKSPACE"
