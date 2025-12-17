@@ -23,7 +23,9 @@ public class RentService {
     private final RentRepository rentRepository;
     private final ToolRepository toolRepository;
 
-    private static final List<RentStatus> BLOCKING_STATUSES = Arrays.asList(RentStatus.APPROVED, RentStatus.ACTIVE);
+    // Estados que BLOQUEIAM datas (calendário + checkAvailability)
+    private static final List<RentStatus> BLOCKING_STATUSES =
+            Arrays.asList(RentStatus.APPROVED, RentStatus.ACTIVE);
 
     @Transactional
     public Rent create(Rent rent) {
@@ -36,8 +38,8 @@ public class RentService {
             throw new IllegalArgumentException("You cannot rent your own tool");
         }
 
-        if (tool.getStatus() == ToolStatus.RENTED ||
-                tool.getStatus() == ToolStatus.UNDER_MAINTENANCE ||
+        // Não bloquear por ToolStatus.RENTED – o bloqueio é por intervalo
+        if (tool.getStatus() == ToolStatus.UNDER_MAINTENANCE ||
                 tool.getStatus() == ToolStatus.INACTIVE) {
             throw new IllegalArgumentException("Tool is not available for booking");
         }
@@ -46,7 +48,7 @@ public class RentService {
             throw new IllegalArgumentException("This tool is already booked for the selected dates");
         }
 
-        // Forçar estado inicial PENDING e ignorar qualquer estado/mensagem vindo do cliente
+        // Forçar estado inicial PENDING
         rent.setStatus(RentStatus.PENDING);
         rent.setMessage(null);
 
@@ -75,10 +77,13 @@ public class RentService {
             throw new IllegalArgumentException("Only pending rents can be approved");
         }
 
-        if (tool.getStatus() != ToolStatus.AVAILABLE) {
+        // Só bloquear aprovação se a ferramenta estiver realmente indisponível globalmente
+        if (tool.getStatus() == ToolStatus.UNDER_MAINTENANCE ||
+                tool.getStatus() == ToolStatus.INACTIVE) {
             throw new IllegalStateException("Tool is not available for approval");
         }
 
+        // Garante que não há nenhum APPROVED/ACTIVE a sobrepor
         List<Rent> conflicts = rentRepository.findOverlappingRents(
                 rent.getToolId(), rent.getStartDate(), rent.getEndDate(), BLOCKING_STATUSES
         );
@@ -89,9 +94,10 @@ public class RentService {
         rent.setStatus(RentStatus.APPROVED);
         rent.setMessage("Reserva aprovada pelo proprietário");
 
-        tool.setStatus(ToolStatus.RENTED);
-        toolRepository.save(tool);
+        // NÃO mudar o ToolStatus aqui.
+        // O estado RENTED passa a ser responsabilidade de activateRent/processScheduledRents.
 
+        // Rejeitar automaticamente outros pendentes sobrepostos
         List<Rent> pendingConflicts = rentRepository.findOverlappingRents(
                 rent.getToolId(), rent.getStartDate(), rent.getEndDate(), Arrays.asList(RentStatus.PENDING)
         );
@@ -120,7 +126,11 @@ public class RentService {
         }
 
         rent.setStatus(RentStatus.REJECTED);
-        rent.setMessage((message != null && !message.isEmpty()) ? "Rejeitado: " + message : "Reserva rejeitada pelo proprietário");
+        rent.setMessage(
+                (message != null && !message.isEmpty())
+                        ? "Rejeitado: " + message
+                        : "Reserva rejeitada pelo proprietário"
+        );
 
         return rentRepository.save(rent);
     }
@@ -181,6 +191,7 @@ public class RentService {
         }
 
         if (rent.getStatus() == RentStatus.APPROVED) {
+            // se estava aprovado e ainda não ativo, libertar o tool
             Tool tool = findToolOrThrow(rent.getToolId());
             tool.setStatus(ToolStatus.AVAILABLE);
             toolRepository.save(tool);
@@ -233,7 +244,8 @@ public class RentService {
     public void processScheduledRents() {
         LocalDateTime now = LocalDateTime.now();
 
-        List<Rent> toActivate = rentRepository.findByStatusAndStartDateBefore(RentStatus.APPROVED, now);
+        List<Rent> toActivate =
+                rentRepository.findByStatusAndStartDateBefore(RentStatus.APPROVED, now);
         for (Rent rent : toActivate) {
             rent.setStatus(RentStatus.ACTIVE);
             Tool tool = findToolOrThrow(rent.getToolId());
@@ -242,17 +254,25 @@ public class RentService {
             rentRepository.save(rent);
         }
 
-        List<Rent> toFinish = rentRepository.findByStatusAndEndDateBefore(RentStatus.ACTIVE, now);
+        List<Rent> toFinish =
+                rentRepository.findByStatusAndEndDateBefore(RentStatus.ACTIVE, now);
         for (Rent rent : toFinish) {
             finishRent(rent.getId());
         }
     }
 
+    @Transactional(readOnly = true)
+    public List<Rent> findBlockingRentsForTool(Long toolId) {
+        return rentRepository.findByToolIdAndStatusIn(toolId, BLOCKING_STATUSES);
+    }
+
     private Rent findRentOrThrow(Long id) {
-        return rentRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Rent not found"));
+        return rentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Rent not found"));
     }
 
     private Tool findToolOrThrow(Long id) {
-        return toolRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Tool not found"));
+        return toolRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Tool not found"));
     }
 }
