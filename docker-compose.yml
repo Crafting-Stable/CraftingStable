@@ -38,13 +38,12 @@ services:
     networks:
       - app-network
     restart: unless-stopped
-    healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
+      # healthcheck:
+      #   test: [ "CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1" ]
+      #   interval: 10s
+      #   timeout: 5s
+    #   retries: 5
+    #   start_period: 30s
   frontend:
     build:
       context: ./frontend
