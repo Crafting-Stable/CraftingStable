@@ -25,7 +25,7 @@ import ua.tqs.service.UserDetailsServiceImpl;
 
 @RestController
 @RequestMapping("/api/tools")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = { "http://localhost:5173", "http://deti-tqs-21.ua.pt" })
 @RequiredArgsConstructor
 public class ToolController {
 

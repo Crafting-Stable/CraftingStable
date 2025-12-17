@@ -30,7 +30,7 @@ import ua.tqs.service.RentService;
 import ua.tqs.service.UserDetailsServiceImpl;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = { "http://localhost:5173", "http://deti-tqs-21.ua.pt" })
 @RequestMapping("/api/rents")
 @RequiredArgsConstructor
 public class RentController {
