@@ -3,7 +3,7 @@ name: Deploy
 on:
   push:
     branches:
-      - main   # troca para master se a tua branch principal for master
+      - main
 
 jobs:
   deploy:
@@ -15,13 +15,11 @@ jobs:
 
       - name: Deploy stack with Docker Compose
         run: |
-          # já estamos no diretório do repo na VM
-
           # Garantir volumes de monitoring / db
           docker volume create postgres_data || true
           docker volume create prometheus_data || true
           docker volume create grafana_data || true
 
-          # Subir TODOS os serviços do docker-compose.yml
-          docker compose pull || docker-compose pull
-          docker compose up -d --build || docker-compose up -d --build
+          # Só docker-compose (v1)
+          docker-compose pull
+          docker-compose up -d --build
