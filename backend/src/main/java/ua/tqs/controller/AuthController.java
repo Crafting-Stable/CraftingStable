@@ -27,7 +27,7 @@ import ua.tqs.service.UserDetailsServiceImpl;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = { "http://localhost:5173", "http://deti-tqs-21.ua.pt" })
 public class AuthController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);

@@ -42,7 +42,12 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> {
-                    auth.requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**", "/actuator/health", "/actuator/info").permitAll();
+                    auth.requestMatchers("/api/auth/**",
+                            "/swagger-ui/**",
+                            "/v3/api-docs/**",
+                            "/actuator/health",
+                            "/actuator/info").permitAll();
+
                     auth.requestMatchers(HttpMethod.GET, "/api/slots/**").permitAll();
                     auth.requestMatchers(HttpMethod.POST, "/api/slots/dto").permitAll();
 
@@ -63,6 +68,7 @@ public class SecurityConfig {
                     auth.requestMatchers(HttpMethod.PUT, API_RENTS_WILDCARD).authenticated();
                     auth.requestMatchers(HttpMethod.DELETE, API_RENTS_WILDCARD).hasRole(ROLE_ADMIN);
                     auth.requestMatchers(HttpMethod.GET, API_RENTS_WILDCARD).authenticated();
+
                     auth.requestMatchers(HttpMethod.POST, API_RESERVATIONS_WILDCARD).authenticated();
                     auth.requestMatchers(HttpMethod.GET, "/api/reservations/all").authenticated();
                     auth.requestMatchers("/api/reservations/admin/**").hasRole(ROLE_ADMIN);
@@ -71,11 +77,9 @@ public class SecurityConfig {
 
                     auth.requestMatchers("/api/users/stats/admin").hasRole(ROLE_ADMIN);
                     auth.requestMatchers("/api/users/*/stats").authenticated();
-                    auth.requestMatchers(HttpMethod.PUT, "/api/users/*/paypal-email").authenticated(); 
-                    // Permitir que utilizadores autenticados vejam um único utilizador por id
+                    auth.requestMatchers(HttpMethod.PUT, "/api/users/*/paypal-email").authenticated();
                     auth.requestMatchers(HttpMethod.GET, "/api/users/*").authenticated();
 
-                    // Manter listagem geral e operações sensíveis apenas para ADMIN
                     auth.requestMatchers(HttpMethod.GET, "/api/users").hasRole(ROLE_ADMIN);
                     auth.requestMatchers(API_USERS_WILDCARD).hasRole(ROLE_ADMIN);
 
@@ -92,7 +96,16 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("http://localhost:5173", "http://localhost:*"));
+
+        configuration.setAllowedOriginPatterns(List.of(
+                "http://localhost:5173",
+                "http://localhost:*",
+                "http://deti-tqs-21.ua.pt",
+                "http://deti-tqs-21.ua.pt:*"
+                // se tiveres HTTPS mais tarde:
+                // "https://deti-tqs-21.ua.pt"
+        ));
+
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of(
                 AUTHORIZATION_HEADER,
