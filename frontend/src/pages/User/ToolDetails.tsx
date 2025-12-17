@@ -36,18 +36,16 @@ type BlockedDateStatus =
     | "OTHER";
 
 interface BlockedDateRange {
-    id?: string | number;
-    startDate: string; // yyyy-MM-dd
-    endDate: string;   // yyyy-MM-dd
-    status: BlockedDateStatus;
+    readonly id?: string | number;
+    readonly startDate: string; // yyyy-MM-dd
+    readonly endDate: string;   // yyyy-MM-dd
+    readonly status: BlockedDateStatus;
 }
 
-// estados realmente bloqueantes (como no backend: APPROVED + ACTIVE)
-const BLOCKING_STATUSES: BlockedDateStatus[] = ["APPROVED", "ACTIVE"];
-
+const BLOCKING_STATUSES = new Set<BlockedDateStatus>(["APPROVED", "ACTIVE"]);
 const LOCAL_BLOCKED_KEY = "local_blocked_ranges_v3";
 
-// ---------------- helpers gerais ----------------
+// ---------- helpers ----------
 function apiUrl(path: string): string {
     const normalized = path.startsWith("/") ? path : `/${path}`;
     const apiPrefix = normalized.startsWith("/api") ? "" : "/api";
@@ -58,21 +56,21 @@ function getJwt(): string | null {
     return localStorage.getItem("jwt");
 }
 
-function toIsoDateString(d: Date) {
+function toIsoDateString(d: Date): string {
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
 }
 
-function daysBetween(startStr: string, endStr: string, inclusive: boolean) {
+function daysBetween(startStr: string, endStr: string, inclusive: boolean): number {
     if (!startStr || !endStr) return 0;
     const s = new Date(startStr);
     const e = new Date(endStr);
     const utcStart = Date.UTC(s.getFullYear(), s.getMonth(), s.getDate());
     const utcEnd = Date.UTC(e.getFullYear(), e.getMonth(), e.getDate());
     let diff = Math.floor((utcEnd - utcStart) / (24 * 60 * 60 * 1000));
-    if (inclusive) diff = diff + 1;
+    if (inclusive) diff += 1;
     return Math.max(0, diff);
 }
 
@@ -97,18 +95,22 @@ function safeString(value: unknown): string {
     }
 }
 
-function safeWarn(...args: unknown[]) {
-    // podes trocar por console.warn normal se quiseres
+function safeWarn(...args: unknown[]): void {
+    // eslint-disable-next-line no-console
     console.warn(...args);
 }
-function safeError(...args: unknown[]) {
+
+function safeError(...args: unknown[]): void {
+    // eslint-disable-next-line no-console
     console.error(...args);
 }
-function safeLog(...args: unknown[]) {
+
+function safeLog(...args: unknown[]): void {
+    // eslint-disable-next-line no-console
     console.log(...args);
 }
 
-// ---------------- persistência local defensiva ----------------
+// ---------- localStorage ----------
 function loadLocalBlockedRanges(): Record<string, BlockedDateRange[]> {
     try {
         const raw = localStorage.getItem(LOCAL_BLOCKED_KEY);
@@ -121,7 +123,7 @@ function loadLocalBlockedRanges(): Record<string, BlockedDateRange[]> {
     }
 }
 
-function saveLocalBlockedRange(toolId: string, range: BlockedDateRange) {
+function saveLocalBlockedRange(toolId: string, range: BlockedDateRange): void {
     try {
         const map = loadLocalBlockedRanges();
         map[toolId] = map[toolId] || [];
@@ -138,7 +140,7 @@ function saveLocalBlockedRange(toolId: string, range: BlockedDateRange) {
     }
 }
 
-// ---------------- normalização de estados (igual ao backend) ----------------
+// ---------- estados ----------
 function normalizeBlockedStatus(raw: string): BlockedDateStatus {
     const s = String(raw || "").trim().toUpperCase();
     if (!s) return "OTHER";
@@ -151,7 +153,207 @@ function normalizeBlockedStatus(raw: string): BlockedDateStatus {
     return "OTHER";
 }
 
-// ---------------- BookingCalendar ----------------
+// ---------- ranges ----------
+function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
+    try {
+        const Astart = new Date(aStart);
+        const Aend = new Date(aEnd);
+        const Bstart = new Date(bStart);
+        const Bend = new Date(bEnd);
+        const utc = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+        return Math.max(utc(Astart), utc(Bstart)) <= Math.min(utc(Aend), utc(Bend));
+    } catch {
+        return false;
+    }
+}
+
+function isRangeBlocked(
+    start: string,
+    end: string,
+    blocked: readonly BlockedDateRange[]
+): boolean {
+    if (!start || !end) return false;
+    return blocked.some(
+        (b) => BLOCKING_STATUSES.has(b.status) && rangesOverlap(start, end, b.startDate, b.endDate)
+    );
+}
+
+function validateRange(
+    start: string,
+    end: string,
+    days: number,
+    minStart: string
+): string | null {
+    if (!start || !end || days <= 0) return null;
+    if (start < minStart) {
+        return "A data de início não pode ser hoje. Selecione uma data a partir de amanhã.";
+    }
+    return null;
+}
+
+function computeNewRangeOnClick(
+    iso: string,
+    start: string,
+    end: string,
+    minStart: string,
+    blocked: readonly BlockedDateRange[]
+): { start: string; end: string } | null {
+    if (iso < minStart) return null;
+
+    if (iso <= start) {
+        const newStart = iso;
+        const minEnd = toIsoDateString(
+            new Date(new Date(newStart).getTime() + 24 * 60 * 60 * 1000)
+        );
+        let newEnd = end;
+        if (newEnd <= newStart || isRangeBlocked(newStart, newEnd, blocked)) {
+            newEnd = minEnd;
+        }
+        return { start: newStart, end: newEnd };
+    }
+
+    const minEnd = toIsoDateString(
+        new Date(new Date(start).getTime() + 24 * 60 * 60 * 1000)
+    );
+    const candidate = iso <= start ? minEnd : iso;
+    if (isRangeBlocked(start, candidate, blocked)) return null;
+    return { start, end: candidate };
+}
+
+// ---------- MiniCalendar ----------
+type MiniCalendarProps = {
+    readonly today: Date;
+    readonly minStart: string;
+    readonly start: string;
+    readonly end: string;
+    readonly success: string | null;
+    readonly blockedDates: readonly BlockedDateRange[];
+    readonly onChangeRange: (start: string, end: string) => void;
+};
+
+const MiniCalendar: React.FC<MiniCalendarProps> = ({
+                                                       today,
+                                                       minStart,
+                                                       start,
+                                                       end,
+                                                       success,
+                                                       blockedDates,
+                                                       onChangeRange,
+                                                   }) => {
+    const startDate = useMemo(
+        () => new Date(today.getTime() + 24 * 60 * 60 * 1000),
+        [today]
+    );
+    const dates = useMemo(() => {
+        const arr: { iso: string; label: string; dateObj: Date }[] = [];
+        for (let i = 0; i < 60; i += 1) {
+            const d = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+            arr.push({ iso: toIsoDateString(d), label: d.getDate().toString(), dateObj: d });
+        }
+        return arr;
+    }, [startDate]);
+
+    const isBlockedDay = (iso: string): boolean =>
+        blockedDates.some(
+            (b) =>
+                BLOCKING_STATUSES.has(b.status) &&
+                rangesOverlap(iso, iso, b.startDate, b.endDate)
+        );
+
+    return (
+        <div style={{ marginTop: 12 }}>
+            <div
+                style={{
+                    color: "#fcd34d",
+                    fontWeight: 600,
+                    marginBottom: 8,
+                    fontSize: 13,
+                }}
+            >
+                📆 Calendário (dias alugados em vermelho)
+            </div>
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(7, 1fr)",
+                    gap: 6,
+                }}
+            >
+                {dates.map((d) => {
+                    const blocked = isBlockedDay(d.iso);
+                    const selected = d.iso === start || d.iso === end;
+                    const disabled = blocked || !!success || d.iso < minStart;
+
+                    let background = "rgba(255,255,255,0.03)";
+                    let border = "1px solid rgba(255,255,255,0.06)";
+                    let color = "#e6eef8";
+
+                    if (blocked) {
+                        background = "#7f1d1d";
+                        color = "#fff";
+                    } else if (selected) {
+                        background = "#064e3b";
+                        border = "2px solid #10b981";
+                        color = "#fff";
+                    }
+
+                    const handleClick = (): void => {
+                        if (success || disabled) return;
+                        const next = computeNewRangeOnClick(
+                            d.iso,
+                            start,
+                            end,
+                            minStart,
+                            blockedDates
+                        );
+                        if (!next) return;
+                        onChangeRange(next.start, next.end);
+                    };
+
+                    return (
+                        <button
+                            key={d.iso}
+                            type="button"
+                            disabled={disabled}
+                            onClick={handleClick}
+                            title={
+                                blocked
+                                    ? "Dia indisponível"
+                                    : d.dateObj.toLocaleDateString("pt-PT")
+                            }
+                            style={{
+                                padding: "8px 6px",
+                                textAlign: "center",
+                                borderRadius: 6,
+                                cursor: disabled ? "not-allowed" : "pointer",
+                                userSelect: "none",
+                                fontSize: 13,
+                                border,
+                                background,
+                                color,
+                                opacity: disabled && !blocked ? 0.5 : 1,
+                            }}
+                        >
+                            <div style={{ fontWeight: 700 }}>{d.label}</div>
+                            <div
+                                style={{
+                                    fontSize: 11,
+                                    opacity: 0.8,
+                                }}
+                            >
+                                {d.dateObj.toLocaleDateString("pt-PT", {
+                                    weekday: "short",
+                                })}
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+// ---------- BookingCalendar ----------
 function BookingCalendar({
                              toolId,
                              pricePerDay,
@@ -193,155 +395,17 @@ function BookingCalendar({
     );
     const fmt = new Intl.NumberFormat("pt-PT", { style: "currency", currency });
 
-    const rangesOverlap = (aStart: string, aEnd: string, bStart: string, bEnd: string) => {
-        try {
-            const Astart = new Date(aStart);
-            const Aend = new Date(aEnd);
-            const Bstart = new Date(bStart);
-            const Bend = new Date(bEnd);
-            const utc = (d: Date) =>
-                Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
-            return Math.max(utc(Astart), utc(Bstart)) <= Math.min(utc(Aend), utc(Bend));
-        } catch {
-            return false;
-        }
+    const handleRangeChange = (newStart: string, newEnd: string): void => {
+        setStart(newStart);
+        setEnd(newEnd);
     };
 
-    const isRangeBlocked = (s: string, e: string) => {
-        if (!s || !e) return false;
-        return blockedDates.some(
-            (b) =>
-                BLOCKING_STATUSES.includes(b.status) &&
-                rangesOverlap(s, e, b.startDate, b.endDate)
-        );
-    };
-
-    // ---------- MiniCalendar ----------
-    function MiniCalendar({ daysToShow = 60 }: { daysToShow?: number }) {
-        const startDate = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-        const dates: { iso: string; label: string; dateObj: Date }[] = [];
-
-        for (let i = 0; i < daysToShow; i++) {
-            const d = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
-            dates.push({ iso: toIsoDateString(d), label: d.getDate().toString(), dateObj: d });
-        }
-
-        const isBlockedDay = (iso: string) =>
-            blockedDates.some(
-                (b) =>
-                    BLOCKING_STATUSES.includes(b.status) &&
-                    rangesOverlap(iso, iso, b.startDate, b.endDate)
-            );
-
-        const isSelected = (iso: string) => iso === start || iso === end;
-
-        const handleClick = (iso: string) => {
-            if (success) return;
-            if (iso < minStart) return;
-            if (isBlockedDay(iso)) return; // não deixa clicar num dia bloqueado
-
-            if (iso <= start) {
-                const newStart = iso;
-                const minEndForClamped = toIsoDateString(
-                    new Date(new Date(newStart).getTime() + 24 * 60 * 60 * 1000)
-                );
-                let newEnd = end;
-                if (newEnd <= newStart || isRangeBlocked(newStart, newEnd)) {
-                    newEnd = minEndForClamped;
-                }
-                setStart(newStart);
-                setEnd(newEnd);
-            } else {
-                const minEnd = toIsoDateString(
-                    new Date(new Date(start).getTime() + 24 * 60 * 60 * 1000)
-                );
-                const candidate = iso <= start ? minEnd : iso;
-                if (isRangeBlocked(start, candidate)) return;
-                setEnd(candidate);
-            }
-        };
-
-        return (
-            <div style={{ marginTop: 12 }}>
-                <div
-                    style={{
-                        color: "#fcd34d",
-                        fontWeight: 600,
-                        marginBottom: 8,
-                        fontSize: 13,
-                    }}
-                >
-                    📆 Calendário (dias alugados em vermelho)
-                </div>
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(7, 1fr)",
-                        gap: 6,
-                    }}
-                >
-                    {dates.map((d) => {
-                        const blocked = isBlockedDay(d.iso);
-                        const selected = isSelected(d.iso);
-                        const disabled = blocked || !!success || d.iso < minStart;
-                        const baseStyle: React.CSSProperties = {
-                            padding: "8px 6px",
-                            textAlign: "center",
-                            borderRadius: 6,
-                            cursor: disabled ? "not-allowed" : "pointer",
-                            userSelect: "none",
-                            fontSize: 13,
-                            border: selected
-                                ? "2px solid #10b981"
-                                : "1px solid rgba(255,255,255,0.06)",
-                            background: blocked
-                                ? "#7f1d1d"
-                                : selected
-                                    ? "#064e3b"
-                                    : "rgba(255,255,255,0.03)",
-                            color: blocked ? "#fff" : selected ? "#fff" : "#e6eef8",
-                            opacity: disabled && !blocked ? 0.5 : 1,
-                        };
-                        return (
-                            <div
-                                key={d.iso}
-                                style={baseStyle}
-                                onClick={() => {
-                                    if (!disabled) handleClick(d.iso);
-                                }}
-                                title={
-                                    blocked
-                                        ? "Dia indisponível"
-                                        : d.dateObj.toLocaleDateString("pt-PT")
-                                }
-                                aria-disabled={disabled}
-                            >
-                                <div style={{ fontWeight: 700 }}>{d.label}</div>
-                                <div
-                                    style={{
-                                        fontSize: 11,
-                                        opacity: 0.8,
-                                    }}
-                                >
-                                    {d.dateObj.toLocaleDateString("pt-PT", {
-                                        weekday: "short",
-                                    })}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-        );
-    }
-
-    // ---------- fetch dos bloqueios a partir do backend ----------
+    // fetch bloqueios
     useEffect(() => {
         let cancelled = false;
 
         const fetchBlockedDates = async () => {
             try {
-                // Ajusta este path se o teu endpoint for diferente
                 const res = await fetch(apiUrl(`/tools/${toolId}/blocked-dates`));
                 let normalized: BlockedDateRange[] = [];
 
@@ -351,9 +415,10 @@ function BookingCalendar({
                         normalized = raw
                             .map((r: unknown) => {
                                 const rec = asRecord(r) ?? {};
-                                const status = normalizeBlockedStatus(safeString(rec["status"]));
-                                if (!BLOCKING_STATUSES.includes(status)) {
-                                    // não bloqueia se for PENDING, REJECTED, CANCELED, FINISHED, OTHER
+                                const status = normalizeBlockedStatus(
+                                    safeString(rec["status"])
+                                );
+                                if (!BLOCKING_STATUSES.has(status)) {
                                     return null;
                                 }
                                 const s = safeString(rec["startDate"]);
@@ -367,14 +432,15 @@ function BookingCalendar({
                                     status,
                                 } as BlockedDateRange;
                             })
-                            .filter(Boolean) as BlockedDateRange[];
+                            .filter(
+                                (x): x is BlockedDateRange => x !== null
+                            );
                     }
                 }
 
-                // Opcional: mesclar com cache local (apenas bloqueantes)
                 const localMap = loadLocalBlockedRanges();
                 const localForTool = (localMap[toolId] ?? []).filter((r) =>
-                    BLOCKING_STATUSES.includes(r.status)
+                    BLOCKING_STATUSES.has(r.status)
                 );
 
                 const merged: BlockedDateRange[] = [...normalized];
@@ -393,7 +459,7 @@ function BookingCalendar({
                 safeError("Error fetching blocked dates:", err);
                 if (!cancelled) {
                     const localOnly = (loadLocalBlockedRanges()[toolId] ?? []).filter(
-                        (r) => BLOCKING_STATUSES.includes(r.status)
+                        (r) => BLOCKING_STATUSES.has(r.status)
                     );
                     setBlockedDates(localOnly);
                 }
@@ -406,26 +472,19 @@ function BookingCalendar({
         };
     }, [toolId]);
 
-    // ---------- verificação de disponibilidade ----------
+    // disponibilidade
     useEffect(() => {
         let cancelled = false;
 
         const checkAvailability = async () => {
-            if (!start || !end || days <= 0) {
+            const message = validateRange(start, end, days, minStart);
+            if (message) {
                 setIsAvailable(false);
-                setAvailabilityMessage(null);
+                setAvailabilityMessage(message);
                 return;
             }
 
-            if (start < minStart) {
-                setIsAvailable(false);
-                setAvailabilityMessage(
-                    "A data de início não pode ser hoje. Selecione uma data a partir de amanhã."
-                );
-                return;
-            }
-
-            if (isRangeBlocked(start, end)) {
+            if (isRangeBlocked(start, end, blockedDates)) {
                 setIsAvailable(false);
                 setAvailabilityMessage(
                     "As datas selecionadas sobrepõem-se a uma reserva já aprovada/ativa."
@@ -441,7 +500,7 @@ function BookingCalendar({
                 const startDateTime = `${start}T10:00:00`;
                 const endDateTime = `${end}T18:00:00`;
                 const headers: HeadersInit = { Accept: "application/json" };
-                if (jwt) headers["Authorization"] = `Bearer ${jwt}`;
+                if (jwt) headers.Authorization = `Bearer ${jwt}`;
 
                 const response = await fetch(
                     apiUrl(
@@ -487,15 +546,12 @@ function BookingCalendar({
         };
     }, [toolId, start, end, days, minStart, blockedDates]);
 
-    // ---------- handlers de pagamento ----------
-    const handlePaymentSuccess = (data: RentCreatedData) => {
+    const handlePaymentSuccess = (data: RentCreatedData): void => {
         safeLog("✅ Payment and rent creation successful:", data);
         setRentData(data);
         setShowModal(true);
         setSuccess("Pagamento processado com sucesso!");
 
-        // o backend vai começar em PENDING; o bloqueio real só acontece quando o owner aprova.
-        // aqui podemos adicionar como PENDING para feedback visual, mas não conta como bloqueio.
         const newRange: BlockedDateRange = {
             id: data.rentId ?? undefined,
             startDate: data.startDate.slice(0, 10),
@@ -509,17 +565,17 @@ function BookingCalendar({
         setAvailabilityMessage("Pedido de reserva criado. Aguarda aprovação.");
     };
 
-    const handleCloseModal = () => {
+    const handleCloseModal = (): void => {
         setShowModal(false);
         navigate("/user");
     };
 
-    const handlePaymentError = (errorMsg: string) => {
+    const handlePaymentError = (errorMsg: string): void => {
         safeError("❌ Payment error:", errorMsg);
         setError(errorMsg);
     };
 
-    const handlePaymentCancel = () => {
+    const handlePaymentCancel = (): void => {
         safeLog("⚠️ Payment cancelled by user");
         setError(
             "Pagamento cancelado. Pode tentar novamente quando estiver pronto."
@@ -788,11 +844,13 @@ function BookingCalendar({
                                     new Date(newStart).getTime() + 24 * 60 * 60 * 1000
                                 )
                             );
-                            if (newEnd <= newStart || isRangeBlocked(newStart, newEnd)) {
+                            if (
+                                newEnd <= newStart ||
+                                isRangeBlocked(newStart, newEnd, blockedDates)
+                            ) {
                                 newEnd = minEndForClamped;
                             }
-                            setStart(newStart);
-                            setEnd(newEnd);
+                            handleRangeChange(newStart, newEnd);
                         }}
                         disabled={!!success}
                         aria-label="Data de início"
@@ -822,10 +880,10 @@ function BookingCalendar({
                                 )
                             );
                             const candidate = value <= start ? minEnd : value;
-                            if (isRangeBlocked(start, candidate)) {
-                                return; // não deixar escolher fim que atravesse bloqueios
+                            if (isRangeBlocked(start, candidate, blockedDates)) {
+                                return;
                             }
-                            setEnd(candidate);
+                            handleRangeChange(start, candidate);
                         }}
                         disabled={!!success}
                         aria-label="Data de fim"
@@ -856,7 +914,15 @@ function BookingCalendar({
                 </div>
             </div>
 
-            <MiniCalendar daysToShow={60} />
+            <MiniCalendar
+                today={today}
+                minStart={minStart}
+                start={start}
+                end={end}
+                success={success}
+                blockedDates={blockedDates}
+                onChangeRange={handleRangeChange}
+            />
 
             {blockedDates.length > 0 && (
                 <div
@@ -917,7 +983,7 @@ function BookingCalendar({
     );
 }
 
-// ---------------- ToolDetails ----------------
+// ---------- ToolDetails ----------
 const containerStyle: React.CSSProperties = {
     minHeight: "100vh",
     backgroundImage: `url(${bgImg})`,
@@ -926,6 +992,7 @@ const containerStyle: React.CSSProperties = {
     color: "#fff",
     fontFamily: "Inter, Arial, sans-serif",
     padding: 20,
+    overflowY: "auto",
 };
 
 export default function ToolDetails(): React.ReactElement {
@@ -994,7 +1061,7 @@ export default function ToolDetails(): React.ReactElement {
             }
         }
 
-        async function load() {
+        async function load(): Promise<void> {
             setLoading(true);
             const jwt = getJwt();
             const headers: HeadersInit = {
@@ -1011,8 +1078,9 @@ export default function ToolDetails(): React.ReactElement {
                     data = await single.json().catch(() => null);
                 } else {
                     const listResp = await fetch(apiUrl("/tools"), { headers });
-                    if (!listResp.ok)
+                    if (!listResp.ok) {
                         throw new Error("Erro ao obter ferramentas");
+                    }
                     const list = await listResp.json().catch(() => []);
                     if (Array.isArray(list)) {
                         const found = list.find((t: unknown) => {
@@ -1022,8 +1090,6 @@ export default function ToolDetails(): React.ReactElement {
                                 : false;
                         });
                         data = found ?? null;
-                    } else {
-                        data = null;
                     }
                 }
 
@@ -1088,7 +1154,7 @@ export default function ToolDetails(): React.ReactElement {
 
     if (loading) {
         return (
-            <div style={{ ...containerStyle }}>
+            <div style={containerStyle}>
                 <Header />
                 <div
                     style={{

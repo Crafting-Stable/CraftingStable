@@ -1,3 +1,4 @@
+// language: typescript
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -48,151 +49,123 @@ export default function LoginPage(): React.ReactElement {
         return () => globalThis.removeEventListener('keydown', handleKey);
     }, [showRegisterForm]);
 
-    const handleLoginSubmit = async (ev?: React.FormEvent) => {
-        ev?.preventDefault();
-        const errs: Record<string, string> = {};
-
-        if (!login.email) errs.email = ERR_EMAIL_REQUIRED;
-        else if (!emailValid(login.email)) errs.email = ERR_EMAIL_INVALID;
-
-        if (!login.password) errs.password = ERR_PASSWORD_REQUIRED;
-
-        setLoginErrors(errs);
-        if (Object.keys(errs).length > 0) return;
-
+    // --- Helpers extraídos para reduzir complexidade ---
+    const postJson = async (path: string, payload: unknown) => {
         try {
-            const res = await fetch('/api/auth/login', {
+            const res = await fetch(path, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: login.email, password: login.password })
+                body: JSON.stringify(payload)
             });
-
             let data: unknown = {};
             try {
                 data = await res.json();
             } catch {
-                // resposta não JSON — tratar como vazio
                 data = {};
             }
+            return { ok: res.ok, data };
+        } catch {
+            return { ok: false, data: ERR_NETWORK };
+        }
+    };
 
-            if (!res.ok) {
-                if (typeof data === 'object' && data !== null) {
-                    const d = data as Record<string, unknown>;
-                    if (d.errors && typeof d.errors === 'object') {
-                        setLoginErrors(d.errors as Record<string, string>);
-                    } else if (d.message && typeof d.message === 'string') {
-                        setLoginErrors({ general: d.message });
-                    } else {
-                        setLoginErrors({ general: ERR_LOGIN });
-                    }
-                } else {
-                    setLoginErrors({ general: ERR_LOGIN });
-                }
+    const applyApiErrors = (data: unknown, setErrors: (e: Record<string, string>) => void, fallback: string) => {
+        if (typeof data === 'object' && data !== null) {
+            const d = data as Record<string, unknown>;
+            if (d.errors && typeof d.errors === 'object') {
+                setErrors(d.errors as Record<string, string>);
                 return;
             }
-
-            if (typeof data === 'object' && data !== null) {
-                const d = data as Record<string, unknown>;
-                const token = typeof d.token === 'string' ? d.token : undefined;
-                if (token) {
-                    const userId = (d.id as string) ?? (d.user_id as string) ?? (d.userId as string);
-                    localStorage.setItem('jwt', token);
-                    const userToStore = {
-                        username: (d.username as string) || (d.name as string),
-                        email: (d.email as string) || login.email,
-                        role: d.role as string,
-                        id: userId
-                    };
-                    localStorage.setItem('user', JSON.stringify(userToStore));
-                    globalThis.dispatchEvent(new Event('authChanged'));
-                    setLogin({ ...login, password: '' });
-
-                    if (userToStore.role === 'ADMIN') {
-                        navigate('/admin');
-                    } else {
-                        navigate('/catalog');
-                    }
-                    return;
-                }
+            if (d.message && typeof d.message === 'string') {
+                setErrors({ general: d.message });
+                return;
             }
-
-            setLoginErrors({ general: ERR_INVALID_RESPONSE });
-        } catch {
-            setLoginErrors({ general: ERR_NETWORK });
         }
+        setErrors({ general: fallback });
+    };
+
+    const validateLogin = (form: LoginForm) => {
+        const errs: Record<string, string> = {};
+        if (!form.email) errs.email = ERR_EMAIL_REQUIRED;
+        else if (!emailValid(form.email)) errs.email = ERR_EMAIL_INVALID;
+        if (!form.password) errs.password = ERR_PASSWORD_REQUIRED;
+        return errs;
+    };
+
+    const validateRegister = (form: RegisterForm) => {
+        const errs: Record<string, string> = {};
+        if (!form.name) errs.name = ERR_NAME_REQUIRED;
+        if (!form.email) errs.email = ERR_EMAIL_REQUIRED;
+        else if (!emailValid(form.email)) errs.email = ERR_EMAIL_INVALID;
+        if (!form.password) errs.password = ERR_PASSWORD_REQUIRED;
+        else if (form.password.length < MIN_PASSWORD_LENGTH) errs.password = ERR_PASSWORD_TOO_SHORT;
+        if (form.password !== form.confirm) errs.confirm = ERR_CONFIRM_MISMATCH;
+        return errs;
+    };
+
+    // --- Submits simplificados usando os helpers ---
+    const handleLoginSubmit = async (ev?: React.FormEvent) => {
+        ev?.preventDefault();
+        const errs = validateLogin(login);
+        setLoginErrors(errs);
+        if (Object.keys(errs).length > 0) return;
+
+        const { ok, data } = await postJson('/api/auth/login', { email: login.email, password: login.password });
+        if (!ok) {
+            if (data === ERR_NETWORK) setLoginErrors({ general: ERR_NETWORK });
+            else applyApiErrors(data, setLoginErrors, ERR_LOGIN);
+            return;
+        }
+
+        if (typeof data === 'object' && data !== null) {
+            const d = data as Record<string, unknown>;
+            const token = typeof d.token === 'string' ? d.token : undefined;
+            if (token) {
+                const userId = (d.id as string) ?? (d.user_id as string) ?? (d.userId as string);
+                localStorage.setItem('jwt', token);
+                const userToStore = {
+                    username: (d.username as string) || (d.name as string),
+                    email: (d.email as string) || login.email,
+                    role: d.role as string,
+                    id: userId
+                };
+                localStorage.setItem('user', JSON.stringify(userToStore));
+                globalThis.dispatchEvent(new Event('authChanged'));
+                setLogin({ ...login, password: '' });
+
+                if (userToStore.role === 'ADMIN') navigate('/admin');
+                else navigate('/catalog');
+                return;
+            }
+        }
+        setLoginErrors({ general: ERR_INVALID_RESPONSE });
     };
 
     const handleRegisterSubmit = async (ev?: React.FormEvent) => {
         ev?.preventDefault();
-        const errs: Record<string, string> = {};
-
-        if (!register.name) {
-            errs.name = ERR_NAME_REQUIRED;
-        }
-
-        if (!register.email) {
-            errs.email = ERR_EMAIL_REQUIRED;
-        } else if (!emailValid(register.email)) {
-            errs.email = ERR_EMAIL_INVALID;
-        }
-
-        if (!register.password) {
-            errs.password = ERR_PASSWORD_REQUIRED;
-        } else if (register.password.length < MIN_PASSWORD_LENGTH) {
-            errs.password = ERR_PASSWORD_TOO_SHORT;
-        }
-
-        if (register.password !== register.confirm) {
-            errs.confirm = ERR_CONFIRM_MISMATCH;
-        }
-
+        const errs = validateRegister(register);
         setRegisterErrors(errs);
         if (Object.keys(errs).length > 0) return;
 
-        try {
-            const res = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: register.name,
-                    email: register.email,
-                    password: register.password,
-                    passwordConfirm: register.confirm,
-                    role: 'CUSTOMER'
-                })
-            });
+        const payload = {
+            name: register.name,
+            email: register.email,
+            password: register.password,
+            passwordConfirm: register.confirm,
+            role: 'CUSTOMER'
+        };
 
-            let data: unknown = {};
-            try {
-                data = await res.json();
-            } catch {
-                // resposta não JSON — tratar como vazio
-                data = {};
-            }
-
-            if (!res.ok) {
-                if (typeof data === 'object' && data !== null) {
-                    const d = data as Record<string, unknown>;
-                    if (d.errors && typeof d.errors === 'object') {
-                        setRegisterErrors(d.errors as Record<string, string>);
-                    } else if (d.message && typeof d.message === 'string') {
-                        setRegisterErrors({ general: d.message });
-                    } else {
-                        setRegisterErrors({ general: ERR_REGISTER });
-                    }
-                } else {
-                    setRegisterErrors({ general: ERR_REGISTER });
-                }
-                return;
-            }
-
-            setShowRegisterForm(false);
-            setLogin({ ...login, email: register.email, password: '' });
-            setRegister({ name: '', email: '', password: '', confirm: '' });
-            globalThis.dispatchEvent(new Event('authChanged'));
-        } catch {
-            setRegisterErrors({ general: ERR_NETWORK });
+        const { ok, data } = await postJson('/api/auth/register', payload);
+        if (!ok) {
+            if (data === ERR_NETWORK) setRegisterErrors({ general: ERR_NETWORK });
+            else applyApiErrors(data, setRegisterErrors, ERR_REGISTER);
+            return;
         }
+
+        setShowRegisterForm(false);
+        setLogin({ ...login, email: register.email, password: '' });
+        setRegister({ name: '', email: '', password: '', confirm: '' });
+        globalThis.dispatchEvent(new Event('authChanged'));
     };
 
     return (
@@ -284,15 +257,12 @@ export default function LoginPage(): React.ReactElement {
                         className="modal"
                         open
                         aria-modal="true"
-                        tabIndex={-1}
                         style={{ zIndex: 10000 }}
                     >
                         <section
                             className="card"
                             style={{ maxWidth: 540, width: '100%', maxHeight: '80vh', overflow: 'auto' }}
                             onClick={(e) => e.stopPropagation()}
-                            onKeyDown={(e) => e.stopPropagation()}
-                            tabIndex={0}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                                 <div className="brand">
@@ -383,7 +353,7 @@ export default function LoginPage(): React.ReactElement {
                       .card, .modal .card { color: #111; }
                       /* Inputs e labels dentro dos cartões também devem ter texto escuro */
                       .card input, .card label, .card .muted { color: #111; }
-                    
+
                       /* Forçar fundo e cor dos inputs para evitar ser pretos em temas do navegador */
                       .card input,
                       .modal .card input {
@@ -393,7 +363,7 @@ export default function LoginPage(): React.ReactElement {
                         -webkit-text-fill-color: #111; /* Safari / iOS */
                         border: 1px solid #e5e7eb;
                       }
-                    
+
                       input {
                         width:100%;
                         padding:10px 12px;
@@ -402,12 +372,12 @@ export default function LoginPage(): React.ReactElement {
                         background: #fff;
                         color: #111;
                       }
-                    
+
                       input::placeholder {
                         color: #9ca3af;
                         opacity: 1;
                       }
-                    
+
                       .error { color:#d32f2f; font-size:13px; margin-top:6px; }
                       .muted { color:#6b7280; font-size:14px; }
                       .card { background: #fff; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); padding: 28px; width: 100%; max-width: 520px; }
