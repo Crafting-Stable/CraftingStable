@@ -126,7 +126,15 @@ const RentSuccessModal: React.FC<RentSuccessModalProps> = ({ rentData, toolName,
     );
 };
 
-const InfoRow = ({ label, value, badge, pending, mono }: any) => (
+interface InfoRowProps {
+    label: string;
+    value: React.ReactNode;
+    badge?: boolean;
+    pending?: boolean;
+    mono?: boolean;
+}
+
+const InfoRow: React.FC<InfoRowProps> = ({ label, value, badge = false, pending = false, mono = false }) => (
     <div style={styles.infoRow}>
         <span style={styles.label}>{label}:</span>
         <span

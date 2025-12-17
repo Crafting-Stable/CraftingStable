@@ -1,83 +1,32 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { apiUrl, getJwt, handleAuthError, API_PORT } from './adminUtils';
+import { apiUrl, getJwt, handleAuthError } from './adminUtils';
 
 describe('adminUtils', () => {
-    describe('API_PORT', () => {
-        it('should be defined as string 8081', () => {
-            expect(API_PORT).toBe('8081');
-        });
-    });
 
-    describe('apiUrl', () => {
-        const originalLocation = globalThis.location;
-
-        beforeEach(() => {
-            // Mock window.location
-            Object.defineProperty(globalThis, 'location', {
-                value: {
-                    protocol: 'http:',
-                    hostname: 'localhost',
-                },
-                writable: true,
-            });
+    describe('apiUrl (Relative Path)', () => {
+        it('should return /api/path when path starts with /', () => {
+            const result = apiUrl('/test');
+            expect(result).toBe('/api/test');
         });
 
-        afterEach(() => {
-            Object.defineProperty(globalThis, 'location', {
-                value: originalLocation,
-                writable: true,
-            });
+        it('should return /api/path when path does not start with /', () => {
+            const result = apiUrl('test');
+            expect(result).toBe('/api/test');
         });
 
-        it('should construct URL with path starting with /', () => {
-            const result = apiUrl('/api/test');
-            expect(result).toBe('http://localhost:8081/api/test');
+        it('should handle nested paths', () => {
+            const result = apiUrl('/rents/123/details');
+            expect(result).toBe('/api/rents/123/details');
         });
 
-        it('should add leading / to path without it', () => {
-            const result = apiUrl('api/test');
-            expect(result).toBe('http://localhost:8081/api/test');
-        });
-
-        it('should use https protocol when location uses https', () => {
-            Object.defineProperty(globalThis, 'location', {
-                value: {
-                    protocol: 'https:',
-                    hostname: 'example.com',
-                },
-                writable: true,
-            });
-
-            const result = apiUrl('/api/test');
-            expect(result).toBe('https://example.com:8081/api/test');
-        });
-
-        it('should handle different hostnames', () => {
-            Object.defineProperty(globalThis, 'location', {
-                value: {
-                    protocol: 'http:',
-                    hostname: '192.168.1.100',
-                },
-                writable: true,
-            });
-
-            const result = apiUrl('/api/rents');
-            expect(result).toBe('http://192.168.1.100:8081/api/rents');
+        it('should not add /api if path already starts with /api', () => {
+            const result = apiUrl('/api/tools');
+            expect(result).toBe('/api/tools');
         });
 
         it('should handle empty path', () => {
             const result = apiUrl('');
-            expect(result).toBe('http://localhost:8081/');
-        });
-
-        it('should fallback to http and localhost when location is undefined', () => {
-            Object.defineProperty(globalThis, 'location', {
-                value: undefined,
-                writable: true,
-            });
-
-            const result = apiUrl('/api/test');
-            expect(result).toBe('http://localhost:8081/api/test');
+            expect(result).toBe('/api/');
         });
     });
 
@@ -113,18 +62,18 @@ describe('adminUtils', () => {
 
         it('should return jwt from localStorage', () => {
             (globalThis.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue('test-jwt-token');
-            
+
             const result = getJwt();
-            
+
             expect(result).toBe('test-jwt-token');
             expect(globalThis.localStorage.getItem).toHaveBeenCalledWith('jwt');
         });
 
         it('should return null when jwt is not in localStorage', () => {
             (globalThis.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(null);
-            
+
             const result = getJwt();
-            
+
             expect(result).toBeNull();
         });
 

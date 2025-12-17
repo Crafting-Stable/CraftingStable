@@ -21,7 +21,7 @@ public class RentRequestDTO {
     @NotNull
     private LocalDateTime endDate;
 
-    public RentRequestDTO() {}
+    public RentRequestDTO() { }
 
     public RentRequestDTO(Long toolId, Long userId,
                           LocalDateTime startDate, LocalDateTime endDate) {

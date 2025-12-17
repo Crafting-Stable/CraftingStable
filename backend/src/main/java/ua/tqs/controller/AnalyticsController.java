@@ -20,6 +20,8 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class AnalyticsController {
 
+    private static final String UNKNOWN = "unknown";
+
     private final AnalyticsService analyticsService;
 
     /**
@@ -33,12 +35,12 @@ public class AnalyticsController {
             @RequestParam(required = false) Long rentId,
             @RequestParam(required = false) String metadata,
             HttpServletRequest request) {
-        
+
         String ipAddress = getClientIp(request);
         String userAgent = request.getHeader("User-Agent");
-        
+
         analyticsService.trackEvent(eventType, userId, toolId, rentId, metadata, ipAddress, userAgent);
-        
+
         return ResponseEntity.ok().build();
     }
 
@@ -48,12 +50,12 @@ public class AnalyticsController {
     @GetMapping("/summary")
     public ResponseEntity<Map<String, Object>> getSummary(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime since) {
-        
+
         if (since == null) {
             // Default to last 30 days
             since = LocalDateTime.now().minusDays(30);
         }
-        
+
         Map<String, Object> summary = analyticsService.getAnalyticsSummary(since);
         return ResponseEntity.ok(summary);
     }
@@ -66,7 +68,7 @@ public class AnalyticsController {
             @PathVariable String eventType,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
-        
+
         List<Analytics> events = analyticsService.getEventsByType(eventType, start, end);
         return ResponseEntity.ok(events);
     }
@@ -94,13 +96,13 @@ public class AnalyticsController {
      */
     private String getClientIp(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+        if (ip == null || ip.isEmpty() || UNKNOWN.equalsIgnoreCase(ip)) {
             ip = request.getHeader("Proxy-Client-IP");
         }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+        if (ip == null || ip.isEmpty() || UNKNOWN.equalsIgnoreCase(ip)) {
             ip = request.getHeader("WL-Proxy-Client-IP");
         }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+        if (ip == null || ip.isEmpty() || UNKNOWN.equalsIgnoreCase(ip)) {
             ip = request.getRemoteAddr();
         }
         // Take first IP if multiple are present (X-Forwarded-For can be a list)

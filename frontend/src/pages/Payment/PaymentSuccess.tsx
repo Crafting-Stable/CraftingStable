@@ -2,13 +2,13 @@ import React, { useMemo, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../../components/Header";
 
-const API_PORT = '8081';
+// --- ALTERAÇÃO AQUI: Função apiUrl refatorada ---
 function apiUrl(path: string) {
-    const protocol = globalThis.location.protocol;
-    const hostname = globalThis.location.hostname;
     const normalized = path.startsWith('/') ? path : `/${path}`;
-    return `${protocol}//${hostname}:${API_PORT}${normalized}`;
+    const apiPrefix = normalized.startsWith('/api') ? '' : '/api';
+    return `${apiPrefix}${normalized}`;
 }
+// ------------------------------------------------
 
 type Rent = {
     id: number;
@@ -113,7 +113,7 @@ export default function PaymentSuccess(): React.ReactElement {
             setLoading(true);
             const token = localStorage.getItem('jwt');
             try {
-                const res = await fetch(apiUrl(`/api/rents/${paymentDetails.rentId}`), {
+                const res = await fetch(apiUrl(`/rents/${paymentDetails.rentId}`), {
                     headers: token ? { Authorization: `Bearer ${token}` } : {}
                 });
                 if (!mounted) return;
@@ -121,7 +121,7 @@ export default function PaymentSuccess(): React.ReactElement {
                     const data: Rent = await res.json().catch(() => null);
                     setRent(data);
                     if (data?.toolId) {
-                        const tRes = await fetch(apiUrl(`/api/tools/${data.toolId}`), {
+                        const tRes = await fetch(apiUrl(`/tools/${data.toolId}`), {
                             headers: token ? { Authorization: `Bearer ${token}` } : {}
                         });
                         if (tRes.ok) {
@@ -132,8 +132,8 @@ export default function PaymentSuccess(): React.ReactElement {
                 } else {
                     setRent(null);
                 }
-            } catch (err) {
-                console.error('Erro ao buscar reserva:', err);
+            } catch {
+                setRent(null);
             } finally {
                 if (mounted) setLoading(false);
             }

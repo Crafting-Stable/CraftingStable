@@ -83,7 +83,6 @@ const AdminDashboard: React.FC = () => {
                 <nav style={styles.nav}>
                     <Link to="/admin/users" style={styles.navLink}>Users</Link>
                     <Link to="/admin/tools" style={styles.navLink}>Tools</Link>
-                    <Link to="/admin/analytics" style={styles.navLink}>Analytics</Link>
                     <Link to="/" style={styles.navLink}>Home</Link>
                 </nav>
             </header>
@@ -138,10 +137,6 @@ const AdminDashboard: React.FC = () => {
                             <span style={styles.actionIcon}>🔧</span>
                             <span>Manage Tools</span>
                         </Link>
-                        <Link to="/admin/analytics" style={styles.actionButton}>
-                            <span style={styles.actionIcon}>📊</span>
-                            <span>View Analytics</span>
-                        </Link>
                     </div>
                 </div>
             </div>
@@ -164,7 +159,6 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, color }) =>
     </div>
 );
 
-// Mescla adminStyles com estilos do componente
 const styles: { [key: string]: React.CSSProperties } = {
     ...adminStyles,
     grid: {

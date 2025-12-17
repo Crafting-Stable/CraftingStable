@@ -44,11 +44,17 @@ class AnalyticsControllerIT {
         // aguarda de forma reativa até que o resumo contenha ao menos 2 eventos do tipo
         await().atMost(Duration.ofSeconds(5)).pollInterval(Duration.ofMillis(100)).until(() -> {
             ResponseEntity<Map> summaryResp = restTemplate.getForEntity("/api/analytics/summary", Map.class);
-            if (!summaryResp.getStatusCode().is2xxSuccessful()) return false;
+            if (!summaryResp.getStatusCode().is2xxSuccessful()) {
+                return false;
+            }
             Map<?, ?> body = summaryResp.getBody();
-            if (body == null) return false;
+            if (body == null) {
+                return false;
+            }
             Object eventCountsObj = body.get("eventCounts");
-            if (!(eventCountsObj instanceof Map)) return false;
+            if (!(eventCountsObj instanceof Map)) {
+                return false;
+            }
             @SuppressWarnings("unchecked")
             Map<String, Number> eventCounts = (Map<String, Number>) eventCountsObj;
             Number count = eventCounts.get(eventType);

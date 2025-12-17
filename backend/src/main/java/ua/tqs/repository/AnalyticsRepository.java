@@ -22,9 +22,9 @@ public interface AnalyticsRepository extends JpaRepository<Analytics, Long> {
 
     @Query("SELECT a FROM Analytics a WHERE a.eventType = :eventType AND a.timestamp BETWEEN :start AND :end")
     List<Analytics> findByEventTypeAndTimestampBetween(
-        @Param("eventType") String eventType,
-        @Param("start") LocalDateTime start,
-        @Param("end") LocalDateTime end
+            @Param("eventType") String eventType,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
     );
 
     @Query("SELECT a.eventType, COUNT(a) FROM Analytics a WHERE a.timestamp >= :since GROUP BY a.eventType")
@@ -33,6 +33,10 @@ public interface AnalyticsRepository extends JpaRepository<Analytics, Long> {
     @Query("SELECT COUNT(DISTINCT a.userId) FROM Analytics a WHERE a.timestamp >= :since")
     Long countUniqueUsersSince(@Param("since") LocalDateTime since);
 
-    @Query("SELECT a.toolId, COUNT(a) FROM Analytics a WHERE a.eventType = 'TOOL_VIEW' AND a.timestamp >= :since GROUP BY a.toolId ORDER BY COUNT(a) DESC")
+    @Query(
+            "SELECT a.toolId, COUNT(a) FROM Analytics a " +
+                    "WHERE a.eventType = 'TOOL_VIEW' AND a.timestamp >= :since " +
+                    "GROUP BY a.toolId ORDER BY COUNT(a) DESC"
+    )
     List<Object[]> findMostViewedToolsSince(@Param("since") LocalDateTime since);
 }

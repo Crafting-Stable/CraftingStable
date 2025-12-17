@@ -17,6 +17,16 @@ interface Tool {
     ownerId: number;
 }
 
+const getErrorMessage = (err: unknown): string => {
+    if (err instanceof Error) return err.message;
+    if (typeof err === 'string') return err;
+    try {
+        return JSON.stringify(err) || 'Unknown error';
+    } catch {
+        return 'Unknown error';
+    }
+};
+
 const AdminTools: React.FC = () => {
     const navigate = useNavigate();
     const [tools, setTools] = useState<Tool[]>([]);
@@ -74,8 +84,8 @@ const AdminTools: React.FC = () => {
 
             const data: Tool[] = await res.json().catch(() => []);
             setTools(data);
-        } catch (err: any) {
-            setError(err?.message || 'Failed to fetch tools');
+        } catch (err: unknown) {
+            setError(getErrorMessage(err) || 'Failed to fetch tools');
         } finally {
             setLoading(false);
         }
@@ -100,8 +110,8 @@ const AdminTools: React.FC = () => {
             }
 
             await fetchTools();
-        } catch (err: any) {
-            alert(err?.message || 'Failed to update tool status');
+        } catch (err: unknown) {
+            alert(getErrorMessage(err) || 'Failed to update tool status');
         }
     };
 
@@ -130,8 +140,8 @@ const AdminTools: React.FC = () => {
             setEditingTool(null);
             await fetchTools();
             alert('Ferramenta atualizada com sucesso!');
-        } catch (err: any) {
-            alert(err?.message || 'Failed to update tool');
+        } catch (err: unknown) {
+            alert(getErrorMessage(err) || 'Failed to update tool');
         }
     };
 
@@ -155,8 +165,8 @@ const AdminTools: React.FC = () => {
 
             await fetchTools();
             alert('Ferramenta apagada com sucesso!');
-        } catch (err: any) {
-            alert(err?.message || 'Failed to delete tool');
+        } catch (err: unknown) {
+            alert(getErrorMessage(err) || 'Failed to delete tool');
         }
     };
 

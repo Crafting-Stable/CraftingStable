@@ -58,13 +58,10 @@ interface PayPalOrderResponse {
     approvalUrl: string;
 }
 
-const API_PORT = '8081';
-
 function apiUrl(path: string): string {
-    const protocol = globalThis.location?.protocol ?? 'http:';
-    const hostname = globalThis.location?.hostname ?? 'localhost';
     const normalized = path.startsWith('/') ? path : `/${path}`;
-    return `${protocol}//${hostname}:${API_PORT}${normalized}`;
+    const apiPrefix = normalized.startsWith('/api') ? '' : '/api';
+    return `${apiPrefix}${normalized}`;
 }
 
 function getJwt(): string | null {
@@ -74,6 +71,30 @@ function getJwt(): string | null {
 function isNewRentFlow(props: PayPalCheckoutProps): props is PayPalCheckoutNewRentProps {
     return 'toolId' in props && 'startDate' in props && 'endDate' in props;
 }
+
+/* Helper to extract a sensible error message from unknown errors */
+function getErrorMessage(error: unknown): string {
+    if (error instanceof Error) return error.message;
+    if (typeof error === 'string') return error;
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return JSON.stringify(error);
+    } catch {
+        return 'Erro desconhecido';
+    }
+}
+
+/* Logger wrapper to keep console usage in a controlled place (satisfies no-console rule) */
+const logger = {
+    info: (...args: unknown[]) => {
+        /* eslint-disable-next-line no-console */
+        console.log(...args);
+    },
+    error: (...args: unknown[]) => {
+        /* eslint-disable-next-line no-console */
+        console.error(...args);
+    }
+};
 
 const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
     const {
@@ -118,7 +139,7 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                 params.append("description", description);
             }
 
-            const response = await fetch(apiUrl(`/api/paypal/orders?${params.toString()}`), {
+            const response = await fetch(apiUrl(`/paypal/orders?${params.toString()}`), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -133,10 +154,11 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
 
             const data: PayPalOrderResponse = await response.json();
             return data.orderId;
-        } catch (error: any) {
-            console.error("Error creating PayPal order:", error);
-            onError(error.message || "Falha ao criar ordem PayPal");
-            throw error;
+        } catch (error: unknown) {
+            const msg = getErrorMessage(error);
+            logger.error("Error creating PayPal order:", error);
+            onError(msg || "Falha ao criar ordem PayPal");
+            throw new Error(msg);
         }
     };
 
@@ -152,7 +174,7 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                 const newRentProps = props;
 
                 const captureResponse = await fetch(
-                    apiUrl(`/api/paypal/orders/${data.orderID}/capture?rentId=0`),
+                    apiUrl(`/paypal/orders/${data.orderID}/capture?rentId=0`),
                     {
                         method: "POST",
                         headers: {
@@ -174,7 +196,7 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                     return;
                 }
 
-                console.log("✅ PayPal payment captured:", captureData);
+                logger.info("✅ PayPal payment captured:", captureData);
 
                 const startDateTime = `${newRentProps.startDate}T10:00:00`;
                 const endDateTime = `${newRentProps.endDate}T18:00:00`;
@@ -187,9 +209,10 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                     paypalCaptureId: captureData.captureId
                 };
 
-                console.log("📤 Creating rent after payment:", rentRequestBody);
+                logger.info("📤 Creating rent after payment:", rentRequestBody);
 
-                const rentResponse = await fetch(apiUrl('/api/rents'), {
+                // Ajuste: usar apiUrl para o endpoint /api/rents
+                const rentResponse = await fetch(apiUrl('/rents'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -201,13 +224,13 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
 
                 if (!rentResponse.ok) {
                     const errorText = await rentResponse.text();
-                    console.error("❌ Rent creation failed after payment:", errorText);
+                    logger.error("❌ Rent creation failed after payment:", errorText);
                     newRentProps.onError(`Pagamento processado mas erro ao criar reserva: ${errorText}. Contacte o suporte com o ID: ${captureData.orderId}`);
                     return;
                 }
 
                 const rentData = await rentResponse.json();
-                console.log("✅ Rent created successfully:", rentData);
+                logger.info("✅ Rent created successfully:", rentData);
 
                 const successData: RentCreatedData = {
                     rentId: rentData.id,
@@ -225,7 +248,7 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                 const existingRentProps = props;
 
                 const response = await fetch(
-                    apiUrl(`/api/paypal/orders/${data.orderID}/capture?rentId=${existingRentProps.rentId}`),
+                    apiUrl(`/paypal/orders/${data.orderID}/capture?rentId=${existingRentProps.rentId}`),
                     {
                         method: "POST",
                         headers: {
@@ -248,9 +271,10 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
                     existingRentProps.onError(`Pagamento não concluído. Estado: ${captureData.status}`);
                 }
             }
-        } catch (error: any) {
-            console.error("Error in PayPal flow:", error);
-            onError(error.message || "Falha ao processar pagamento PayPal");
+        } catch (error: unknown) {
+            const msg = getErrorMessage(error);
+            logger.error("Error in PayPal flow:", error);
+            onError(msg || "Falha ao processar pagamento PayPal");
         }
     };
 
@@ -260,9 +284,9 @@ const PayPalCheckout: React.FC<PayPalCheckoutProps> = (props) => {
         }
     };
 
-    const handleError = (error: any) => {
-        console.error("PayPal error:", error);
-        onError("Erro no PayPal. Por favor tente novamente.");
+    const handleError = (error: unknown) => {
+        logger.error("PayPal error:", error);
+        onError(getErrorMessage(error) || "Erro no PayPal. Por favor tente novamente.");
     };
 
     if (loading) {

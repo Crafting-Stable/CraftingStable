@@ -9,20 +9,12 @@ import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import ua.tqs.dto.ToolDTO;
+import ua.tqs.dto.RentResponseDTO;
 import ua.tqs.enums.ToolStatus;
 import ua.tqs.exception.ResourceNotFoundException;
 import ua.tqs.model.Rent;
@@ -139,12 +131,7 @@ public class ToolController {
                 return ResponseEntity.ok(response);
             }
 
-            if (tool.getStatus() == ToolStatus.RENTED) {
-                response.put(AVAILABLE_KEY, false);
-                response.put(REASON_KEY, "A ferramenta está atualmente alugada");
-                return ResponseEntity.ok(response);
-            }
-
+            // estados que bloqueiam tudo, independentemente de datas
             if (tool.getStatus() == ToolStatus.UNDER_MAINTENANCE) {
                 response.put(AVAILABLE_KEY, false);
                 response.put(REASON_KEY, "A ferramenta está em manutenção");
@@ -160,6 +147,7 @@ public class ToolController {
             LocalDateTime start = LocalDateTime.parse(startDate);
             LocalDateTime end = LocalDateTime.parse(endDate);
 
+            // Mesmo que o estado esteja RENTED, só bloqueia se houver overlap
             boolean available = rentService.checkAvailability(id, start, end);
 
             response.put(AVAILABLE_KEY, available);
@@ -174,5 +162,24 @@ public class ToolController {
             response.put(REASON_KEY, "Erro ao verificar disponibilidade: " + e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
+    }
+
+    @GetMapping("/{id}/blocked-dates")
+    public ResponseEntity<List<RentResponseDTO>> getBlockedDates(@PathVariable Long id) {
+        // devolve apenas rents APPROVED + ACTIVE (mesmo conjunto usado em checkAvailability)
+        List<Rent> rents = rentService.findBlockingRentsForTool(id);
+        List<RentResponseDTO> dtos = rents.stream()
+                .map(r -> new RentResponseDTO(
+                        r.getId(),
+                        r.getToolId(),
+                        r.getUserId(),
+                        r.getStatus() != null ? r.getStatus().name() : null,
+                        r.getStartDate(),
+                        r.getEndDate(),
+                        r.getMessage()
+                ))
+                .toList();
+
+        return ResponseEntity.ok(dtos);
     }
 }

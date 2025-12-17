@@ -12,7 +12,7 @@ public class ClientStatsDTO {
     private long pastRents;
     private double totalSpent;
 
-    public ClientStatsDTO() {}
+    public ClientStatsDTO() { }
 
     public ClientStatsDTO(Long clientId, long totalRents, long activeRents, long pastRents, double totalSpent) {
         this.clientId = clientId;

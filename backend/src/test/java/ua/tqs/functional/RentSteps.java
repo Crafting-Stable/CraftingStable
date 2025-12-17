@@ -2,8 +2,6 @@ package ua.tqs.functional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -53,7 +51,12 @@ public class RentSteps {
     @Given("a tool exists with name {string} and status {string}")
     public void toolExistsWithNameAndStatus(String name, String status) {
         // Create an owner for the tool (different from the renter)
-        User owner = TestDataFactory.createUser("toolowner_" + System.nanoTime() + "@example.com", "password123", ua.tqs.enums.UserRole.CUSTOMER);
+        String ownerEmail = "toolowner_" + System.nanoTime() + "@example.com";
+        User owner = TestDataFactory.createUser(
+                ownerEmail,
+                "password123",
+                ua.tqs.enums.UserRole.CUSTOMER
+        );
         userRepository.save(owner);
 
         Tool tool = TestDataFactory.createTool(name);
@@ -163,7 +166,12 @@ public class RentSteps {
         DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
 
         // Create a different user for the existing rental
-        User existingRentalUser = TestDataFactory.createUser("existing_rental_" + System.nanoTime() + "@example.com", "password", ua.tqs.enums.UserRole.CUSTOMER);
+        String existingRentalEmail = "existing_rental_" + System.nanoTime() + "@example.com";
+        User existingRentalUser = TestDataFactory.createUser(
+                existingRentalEmail,
+                "password",
+                ua.tqs.enums.UserRole.CUSTOMER
+        );
         userRepository.save(existingRentalUser);
 
         // Parse dates - if they're in the past, use future dates instead
@@ -229,13 +237,24 @@ public class RentSteps {
 
     @Given("a rental exists with status {string}")
     public void rentalExistsWithStatus(String status) {
-        User user = TestDataFactory.createUser("rental_" + System.nanoTime() + "@example.com", "password", ua.tqs.enums.UserRole.CUSTOMER);
+        String userEmail = "rental_" + System.nanoTime() + "@example.com";
+        User user = TestDataFactory.createUser(
+                userEmail,
+                "password",
+                ua.tqs.enums.UserRole.CUSTOMER
+        );
         userRepository.save(user);
 
-        User owner = TestDataFactory.createUser("owner_" + System.nanoTime() + "@example.com", "password", ua.tqs.enums.UserRole.ADMIN);
+        String ownerEmail = "owner_" + System.nanoTime() + "@example.com";
+        User owner = TestDataFactory.createUser(
+                ownerEmail,
+                "password",
+                ua.tqs.enums.UserRole.ADMIN
+        );
         userRepository.save(owner);
 
-        Tool tool = TestDataFactory.createTool("Rental Tool " + System.nanoTime());
+        String toolName = "Rental Tool " + System.nanoTime();
+        Tool tool = TestDataFactory.createTool(toolName);
         tool.setOwnerId(owner.getId());
         toolRepository.save(tool);
 
@@ -267,8 +286,9 @@ public class RentSteps {
     @When("the user approves the rental")
     public void userApprovesRental() {
         Tool tool = toolRepository.findById(lastCreatedRent.getToolId()).orElseThrow();
+        String approveUrl = "/api/rents/" + lastCreatedRent.getId() + "/approve?ownerId=" + tool.getOwnerId();
         sharedState.latestResponse = restTemplate.exchange(
-                "/api/rents/" + lastCreatedRent.getId() + "/approve?ownerId=" + tool.getOwnerId(),
+                approveUrl,
                 HttpMethod.PUT,
                 new HttpEntity<>(sharedState.headers),
                 String.class
@@ -283,8 +303,10 @@ public class RentSteps {
     @When("the user rejects the rental with reason {string}")
     public void userRejectsRentalWithReason(String reason) {
         Tool tool = toolRepository.findById(lastCreatedRent.getToolId()).orElseThrow();
+        String rejectUrl = "/api/rents/" + lastCreatedRent.getId() + "/reject?ownerId=" + tool.getOwnerId()
+                + "&message=" + reason;
         sharedState.latestResponse = restTemplate.exchange(
-                "/api/rents/" + lastCreatedRent.getId() + "/reject?ownerId=" + tool.getOwnerId() + "&message=" + reason,
+                rejectUrl,
                 HttpMethod.PUT,
                 new HttpEntity<>(sharedState.headers),
                 String.class
@@ -332,10 +354,16 @@ public class RentSteps {
         DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
 
         for (var dateData : dates) {
-            User user = TestDataFactory.createUser("test_" + System.nanoTime() + "@example.com", "password", ua.tqs.enums.UserRole.CUSTOMER);
+            String userEmail = "test_" + System.nanoTime() + "@example.com";
+            User user = TestDataFactory.createUser(
+                    userEmail,
+                    "password",
+                    ua.tqs.enums.UserRole.CUSTOMER
+            );
             userRepository.save(user);
 
-            Tool tool = TestDataFactory.createTool("Test Tool " + System.nanoTime());
+            String toolName = "Test Tool " + System.nanoTime();
+            Tool tool = TestDataFactory.createTool(toolName);
             toolRepository.save(tool);
 
             Rent rent = new Rent();
@@ -350,8 +378,9 @@ public class RentSteps {
     @When("a user searches for rentals in the interval:")
     public void userSearchesForRentalsInInterval(io.cucumber.datatable.DataTable dataTable) {
         java.util.Map<String, String> dates = dataTable.asMaps(String.class, String.class).get(0);
+        String url = "/api/rents/interval?from=" + dates.get("startDate") + "&to=" + dates.get("endDate");
         sharedState.latestResponse = restTemplate.exchange(
-                "/api/rents/interval?from=" + dates.get("startDate") + "&to=" + dates.get("endDate"),
+                url,
                 HttpMethod.GET,
                 new HttpEntity<>(sharedState.headers),
                 String.class

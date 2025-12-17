@@ -34,9 +34,7 @@ vi.mock('./pages/Admin/AdminUsers', () => ({
 vi.mock('./pages/Admin/AdminTools', () => ({
     default: () => <div data-testid="admin-tools">AdminTools</div>,
 }));
-vi.mock('./pages/Admin/AdminAnalytics', () => ({
-    default: () => <div data-testid="admin-analytics">AdminAnalytics</div>,
-}));
+
 vi.mock('./pages/Payment/PaymentSuccess', () => ({
     default: () => <div data-testid="payment-success">PaymentSuccess</div>,
 }));
@@ -55,7 +53,6 @@ import AddRent from './pages/User/AddRent';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminUsers from './pages/Admin/AdminUsers';
 import AdminTools from './pages/Admin/AdminTools';
-import AdminAnalytics from './pages/Admin/AdminAnalytics';
 import PaymentSuccess from './pages/Payment/PaymentSuccess';
 import PaymentCancel from './pages/Payment/PaymentCancel';
 
@@ -74,7 +71,6 @@ const TestApp = ({ initialEntries }: { initialEntries: string[] }) => (
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/tools" element={<AdminTools />} />
-            <Route path="/admin/analytics" element={<AdminAnalytics />} />
             <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="/payment/cancel" element={<PaymentCancel />} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -139,10 +135,6 @@ describe('App', () => {
             expect(screen.getByTestId('admin-tools')).toBeDefined();
         });
 
-        it('should render AdminAnalytics on /admin/analytics path', () => {
-            render(<TestApp initialEntries={['/admin/analytics']} />);
-            expect(screen.getByTestId('admin-analytics')).toBeDefined();
-        });
 
         it('should render PaymentSuccess on /payment/success path', () => {
             render(<TestApp initialEntries={['/payment/success']} />);

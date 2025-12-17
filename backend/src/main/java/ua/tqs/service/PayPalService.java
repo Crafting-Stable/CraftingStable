@@ -150,8 +150,7 @@ public class PayPalService {
             );
 
             JsonNode responseBody = objectMapper.readTree(response.getBody());
-
-            String status = responseBody.get(FIELD_STATUS).asText();
+            String status = responseBody.path(FIELD_STATUS).asText();
 
             PayPalCaptureDTO captureDTO = PayPalCaptureDTO.builder()
                     .orderId(orderId)
@@ -160,28 +159,10 @@ public class PayPalService {
                     .build();
 
             if (responseBody.has("payer")) {
-                JsonNode payer = responseBody.get("payer");
-                if (payer.has("payer_id")) {
-                    captureDTO.setPayerId(payer.get("payer_id").asText());
-                }
-                if (payer.has("email_address")) {
-                    captureDTO.setPayerEmail(payer.get("email_address").asText());
-                }
+                populatePayerInfo(responseBody.get("payer"), captureDTO);
             }
 
-            if (responseBody.has(FIELD_PURCHASE_UNITS)) {
-                JsonNode purchaseUnits = responseBody.get(FIELD_PURCHASE_UNITS);
-                if (purchaseUnits.isArray() && purchaseUnits.size() > 0) {
-                    JsonNode captures = purchaseUnits.get(0).path("payments").path("captures");
-                    if (captures.isArray() && captures.size() > 0) {
-                        JsonNode capture = captures.get(0);
-                        captureDTO.setCaptureId(capture.get("id").asText());
-                        JsonNode captureAmount = capture.get(FIELD_AMOUNT);
-                        captureDTO.setAmount(new BigDecimal(captureAmount.get(FIELD_VALUE).asText()));
-                        captureDTO.setCurrency(captureAmount.get(CURRENCY_CODE).asText());
-                    }
-                }
-            }
+            populateCaptureInfo(responseBody, captureDTO);
 
             if ("COMPLETED".equals(status)) {
                 updateRentStatusAfterPayment(rentId);
@@ -199,6 +180,43 @@ public class PayPalService {
         } catch (Exception e) {
             log.error("Unexpected error while capturing PayPal order", e);
             throw new PayPalApiException("Unexpected error while capturing PayPal order", e);
+        }
+    }
+
+    private void populatePayerInfo(JsonNode payer, PayPalCaptureDTO dto) {
+        if (payer == null) {
+            return;
+        }
+        if (payer.has("payer_id")) {
+            dto.setPayerId(payer.get("payer_id").asText());
+        }
+        if (payer.has("email_address")) {
+            dto.setPayerEmail(payer.get("email_address").asText());
+        }
+    }
+
+    private void populateCaptureInfo(JsonNode responseBody, PayPalCaptureDTO dto) {
+        JsonNode purchaseUnits = responseBody.path(FIELD_PURCHASE_UNITS);
+        if (!purchaseUnits.isArray() || purchaseUnits.size() == 0) {
+            return;
+        }
+
+        JsonNode captures = purchaseUnits.get(0).path("payments").path("captures");
+        if (!captures.isArray() || captures.size() == 0) {
+            return;
+        }
+
+        JsonNode capture = captures.get(0);
+        if (capture.has("id")) {
+            dto.setCaptureId(capture.get("id").asText());
+        }
+
+        JsonNode captureAmount = capture.path(FIELD_AMOUNT);
+        if (captureAmount.has(FIELD_VALUE)) {
+            dto.setAmount(new BigDecimal(captureAmount.get(FIELD_VALUE).asText()));
+        }
+        if (captureAmount.has(CURRENCY_CODE)) {
+            dto.setCurrency(captureAmount.get(CURRENCY_CODE).asText());
         }
     }
 

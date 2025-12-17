@@ -47,7 +47,9 @@ public class ToolDTO {
     private ToolStatus status;
 
     public static ToolDTO fromModel(Tool f) {
-        if (f == null) return null;
+        if (f == null) {
+            return null;
+        }
         return ToolDTO.builder()
                 .id(f.getId())
                 .name(f.getName())

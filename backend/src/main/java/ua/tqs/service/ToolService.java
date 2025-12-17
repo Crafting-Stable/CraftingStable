@@ -15,6 +15,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ToolService {
 
+    private static final String TOOL_NOT_FOUND = "Tool not found";
+
     private final ToolRepository toolRepository;
 
     @Transactional
@@ -45,8 +47,8 @@ public class ToolService {
     @Transactional
     public Tool update(Long id, Tool updates) {
         Tool tool = toolRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Tool not found"));
-        
+                .orElseThrow(() -> new ResourceNotFoundException(TOOL_NOT_FOUND));
+
         updateToolFields(tool, updates);
         return toolRepository.save(tool);
     }
@@ -54,13 +56,13 @@ public class ToolService {
     @Transactional
     public Tool updateByOwner(Long id, Long ownerId, Tool updates) {
         Tool tool = toolRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Tool not found"));
-        
+                .orElseThrow(() -> new ResourceNotFoundException(TOOL_NOT_FOUND));
+
         // Verify ownership
         if (!tool.getOwnerId().equals(ownerId)) {
             throw new IllegalArgumentException("Only the owner can update this tool");
         }
-        
+
         updateToolFields(tool, updates);
         return toolRepository.save(tool);
     }
@@ -73,21 +75,21 @@ public class ToolService {
     @Transactional
     public void deleteByOwner(Long id, Long ownerId) {
         Tool tool = toolRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Tool not found"));
-        
+                .orElseThrow(() -> new ResourceNotFoundException(TOOL_NOT_FOUND));
+
         // Verify ownership
         if (!tool.getOwnerId().equals(ownerId)) {
             throw new IllegalArgumentException("Only the owner can delete this tool");
         }
-        
+
         toolRepository.deleteById(id);
     }
 
     @Transactional
     public Tool updateStatus(Long id, ToolStatus status) {
         Tool tool = toolRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Tool not found"));
-        
+                .orElseThrow(() -> new ResourceNotFoundException(TOOL_NOT_FOUND));
+
         tool.setStatus(status);
         return toolRepository.save(tool);
     }
