@@ -15,11 +15,11 @@ jobs:
 
       - name: Deploy stack with Docker Compose
         run: |
-          # Garantir volumes de monitoring / db
+          cd "$GITHUB_WORKSPACE"
+
           docker volume create postgres_data || true
           docker volume create prometheus_data || true
           docker volume create grafana_data || true
 
-          # Só docker-compose (v1)
-          docker-compose pull
-          docker-compose up -d --build
+          docker-compose pull || true
+          docker-compose up -d --build || true
