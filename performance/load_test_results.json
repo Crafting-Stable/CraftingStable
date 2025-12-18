@@ -1,0 +1,16 @@
+{
+  "timestamp": "2025-12-18T22:48:28.995Z",
+  "metrics": {
+    "http_req_duration_avg": 13.101311409885177,
+    "http_req_duration_p95": 55.4411621,
+    "http_reqs_total": 10015,
+    "error_rate": 0.0002161227577263886,
+    "login_duration_avg": 55.03424124513619,
+    "register_duration_avg": 56.30701754385965,
+    "get_tools_duration_avg": 5.111037673496365,
+    "create_tool_duration_avg": 4.543820224719101,
+    "update_tool_duration_avg": 4.261802575107296,
+    "create_rent_duration_avg": 5.218798151001541,
+    "approve_rent_duration_avg": 0
+  }
+}
