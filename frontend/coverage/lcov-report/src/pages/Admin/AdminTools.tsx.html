@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">99.81% </span>
+                <span class="strong">98.9% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>538/539</span>
+                <span class='fraction'>543/549</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">71.62% </span>
+                <span class="strong">70.12% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>53/74</span>
+                <span class='fraction'>54/77</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">78.94% </span>
+                <span class="strong">80% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>15/19</span>
+                <span class='fraction'>16/20</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">99.81% </span>
+                <span class="strong">98.9% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>538/539</span>
+                <span class='fraction'>543/549</span>
             </div>
         
             
@@ -602,7 +602,17 @@
 <a name='L537'></a><a href='#L537'>537</a>
 <a name='L538'></a><a href='#L538'>538</a>
 <a name='L539'></a><a href='#L539'>539</a>
-<a name='L540'></a><a href='#L540'>540</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L540'></a><a href='#L540'>540</a>
+<a name='L541'></a><a href='#L541'>541</a>
+<a name='L542'></a><a href='#L542'>542</a>
+<a name='L543'></a><a href='#L543'>543</a>
+<a name='L544'></a><a href='#L544'>544</a>
+<a name='L545'></a><a href='#L545'>545</a>
+<a name='L546'></a><a href='#L546'>546</a>
+<a name='L547'></a><a href='#L547'>547</a>
+<a name='L548'></a><a href='#L548'>548</a>
+<a name='L549'></a><a href='#L549'>549</a>
+<a name='L550'></a><a href='#L550'>550</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -620,6 +630,16 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">73x</span>
@@ -1160,6 +1180,16 @@ interface Tool {
     ownerId: number;
 }
 &nbsp;
+const getErrorMessage = (err: unknown): string =&gt; {
+    if (err instanceof Error) return err.<span class="branch-0 cbranch-no" title="branch not covered" >message;</span>
+<span class="cstat-no" title="statement not covered" >    if (typeof err === 'string') return err;</span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+<span class="cstat-no" title="statement not covered" >        return JSON.stringify(err) || 'Unknown error';</span>
+<span class="branch-0 cbranch-no" title="branch not covered" >    } catch {</span>
+<span class="cstat-no" title="statement not covered" >        return 'Unknown error';</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+};
+&nbsp;
 const AdminTools: React.FC = () =&gt; {
     const navigate = useNavigate();
     const [tools, setTools] = useState&lt;Tool[]&gt;([]);
@@ -1217,8 +1247,8 @@ const AdminTools: React.FC = () =&gt; {
 &nbsp;
             const data: Tool[] = await res.json().catch(() =&gt; []);
             setTools(data);
-        } catch (err: any) {
-            setError(err?.<span class="branch-0 cbranch-no" title="branch not covered" >message || 'Failed to fetch tools')</span>;
+        } catch (err: unknown) {
+            setError(getErrorMessage(err<span class="branch-0 cbranch-no" title="branch not covered" >) || 'Failed to fetch tools')</span>;
         } finally {
             setLoading(false);
         }
@@ -1243,8 +1273,8 @@ const AdminTools: React.FC = () =&gt; {
             }
 &nbsp;
             await fetchTools();
-        } catch (err: any) {
-            alert(err?.<span class="branch-0 cbranch-no" title="branch not covered" >message || 'Failed to update tool status')</span>;
+        } catch (err: unknown) {
+            alert(getErrorMessage(err<span class="branch-0 cbranch-no" title="branch not covered" >) || 'Failed to update tool status')</span>;
         }
     };
 &nbsp;
@@ -1273,8 +1303,8 @@ const AdminTools: React.FC = () =&gt; {
             setEditingTool(null);
             await fetchTools();
             alert('Ferramenta atualizada com sucesso!');
-        } catch (err: any) {
-            alert(err?.<span class="branch-0 cbranch-no" title="branch not covered" >message || 'Failed to update tool')</span>;
+        } catch (err: unknown) {
+            alert(getErrorMessage(err<span class="branch-0 cbranch-no" title="branch not covered" >) || 'Failed to update tool')</span>;
         }
     };
 &nbsp;
@@ -1298,8 +1328,8 @@ const AdminTools: React.FC = () =&gt; {
 &nbsp;
             await fetchTools();
             alert('Ferramenta apagada com sucesso!');
-        } catch (err: any) {
-            alert(err?.<span class="branch-0 cbranch-no" title="branch not covered" >message || 'Failed to delete tool')</span>;
+        } catch (err: unknown) {
+            alert(getErrorMessage(err<span class="branch-0 cbranch-no" title="branch not covered" >) || 'Failed to delete tool')</span>;
         }
     };
 &nbsp;
@@ -1687,7 +1717,7 @@ export default AdminTools;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-12-13T19:15:08.512Z
+                at 2025-12-18T00:44:26.339Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>
