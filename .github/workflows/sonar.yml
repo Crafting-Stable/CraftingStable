@@ -130,21 +130,12 @@ jobs:
 
           echo "Building sonar-scanner args..."
           # Base args - most config is in sonar-project.properties
-          ARGS="-Dsonar.host.url=https://sonarcloud.io"
           
-          if [ -n "${SONAR_ORGANIZATION:-}" ]; then
-            ARGS="$ARGS -Dsonar.organization=${SONAR_ORGANIZATION}"
-          else
-            echo "::warning::SONAR_ORGANIZATION secret is empty; running scan without organization flag"
-          fi
-          if [ -n "${SONAR_TOKEN:-}" ]; then
-            ARGS="$ARGS -Dsonar.login=${SONAR_TOKEN}"
-          else
-            echo "::warning::SONAR_TOKEN secret is empty; authentication may fail"
-          fi
-
-          echo "Running sonar-scanner with args: $ARGS"
-          sonar-scanner $ARGS
+          echo "Running sonar-scanner..."
+          sonar-scanner \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.organization="${SONAR_ORGANIZATION}" \
+            -Dsonar.token="${SONAR_TOKEN}"
 
       - name: Comment on Jira on Success
         if: success() && env.JIRA_ISSUE_KEY != ''
