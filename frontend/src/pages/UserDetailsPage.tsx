@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import craftingstable from '../assets/craftingstable.png';
 import bgImg from '../assets/rust.jpg';
@@ -396,12 +396,190 @@ const PendingView: React.FC<PendingViewProps> = ({ pendingRents, tools, loadingR
 
 interface ToolItemProps {
     tool: Tool;
+    toolRents: Rent[];
     onUpdateStatus: (toolId: number, newStatus: string) => Promise<void>;
 }
 
-const ToolItem: React.FC<ToolItemProps> = ({ tool, onUpdateStatus }) => {
+// Availability Calendar Component for Owner Tools
+interface AvailabilityCalendarProps {
+    toolRents: Rent[];
+}
+
+const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({ toolRents }) => {
+    const [viewMonth, setViewMonth] = useState(() => {
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), 1);
+    });
+
+    const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const weekDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+
+    // Build set of rented dates from approved/active rents
+    const rentedDates = useMemo(() => {
+        const dates = new Set<string>();
+        const blockingStatuses = new Set(['APPROVED', 'ACTIVE']);
+        
+        toolRents.filter(r => blockingStatuses.has(r.status)).forEach(rent => {
+            const start = new Date(rent.startDate);
+            const end = new Date(rent.endDate);
+            const current = new Date(start);
+            
+            while (current <= end) {
+                const yyyy = current.getFullYear();
+                const mm = String(current.getMonth() + 1).padStart(2, '0');
+                const dd = String(current.getDate()).padStart(2, '0');
+                dates.add(`${yyyy}-${mm}-${dd}`);
+                current.setDate(current.getDate() + 1);
+            }
+        });
+        return dates;
+    }, [toolRents]);
+
+    // Build calendar grid
+    const calendarDays = useMemo(() => {
+        const year = viewMonth.getFullYear();
+        const month = viewMonth.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        
+        // Get Monday-based weekday (0=Mon, 6=Sun)
+        let startWeekday = firstDay.getDay() - 1;
+        if (startWeekday < 0) startWeekday = 6;
+        
+        const days: { day: number; iso: string; inMonth: boolean }[] = [];
+        
+        // Previous month padding
+        for (let i = startWeekday - 1; i >= 0; i--) {
+            const d = new Date(year, month, -i);
+            const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            days.push({ day: d.getDate(), iso, inMonth: false });
+        }
+        
+        // Current month days
+        for (let d = 1; d <= lastDay.getDate(); d++) {
+            const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            days.push({ day: d, iso, inMonth: true });
+        }
+        
+        // Next month padding
+        const remaining = 42 - days.length;
+        for (let d = 1; d <= remaining; d++) {
+            const nextMonth = new Date(year, month + 1, d);
+            const iso = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            days.push({ day: d, iso, inMonth: false });
+        }
+        
+        return days;
+    }, [viewMonth]);
+
+    const goToPrevMonth = () => {
+        setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1));
+    };
+
+    const goToNextMonth = () => {
+        setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1));
+    };
+
+    const today = new Date();
+    const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    return (
+        <div style={{ marginTop: 12, padding: 12, background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <button 
+                    onClick={goToPrevMonth}
+                    aria-label="Mês anterior"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: 4 }}
+                >
+                    ◀
+                </button>
+                <span style={{ fontWeight: 600, fontSize: 14 }}>
+                    {monthNames[viewMonth.getMonth()]} {viewMonth.getFullYear()}
+                </span>
+                <button 
+                    onClick={goToNextMonth}
+                    aria-label="Próximo mês"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: 4 }}
+                >
+                    ▶
+                </button>
+            </div>
+            
+            {/* Weekday headers */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
+                {weekDays.map(d => (
+                    <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 600, color: '#6b7280' }}>
+                        {d}
+                    </div>
+                ))}
+            </div>
+            
+            {/* Calendar grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+                {calendarDays.map((day) => {
+                    const isRented = rentedDates.has(day.iso);
+                    const isToday = day.iso === todayIso;
+                    const isPast = day.iso < todayIso;
+                    
+                    let bgColor = '#fff';
+                    let textColor = day.inMonth ? '#1f2937' : '#d1d5db';
+                    
+                    if (day.inMonth) {
+                        if (isRented) {
+                            bgColor = '#fee2e2'; // Red for rented
+                            textColor = '#991b1b';
+                        } else if (isPast) {
+                            bgColor = '#f3f4f6'; // Gray for past
+                            textColor = '#9ca3af';
+                        } else {
+                            bgColor = '#dcfce7'; // Green for available
+                            textColor = '#166534';
+                        }
+                    }
+                    
+                    return (
+                        <div
+                            key={day.iso}
+                            style={{
+                                width: '100%',
+                                aspectRatio: '1',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 11,
+                                borderRadius: 4,
+                                background: bgColor,
+                                color: textColor,
+                                fontWeight: isToday ? 700 : 400,
+                                border: isToday ? '2px solid #3b82f6' : '1px solid #e5e7eb'
+                            }}
+                        >
+                            {day.day}
+                        </div>
+                    );
+                })}
+            </div>
+            
+            {/* Legend */}
+            <div style={{ display: 'flex', gap: 12, marginTop: 8, justifyContent: 'center', fontSize: 11 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ width: 12, height: 12, background: '#dcfce7', borderRadius: 2, border: '1px solid #86efac' }} />
+                    <span>Disponível</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ width: 12, height: 12, background: '#fee2e2', borderRadius: 2, border: '1px solid #fca5a5' }} />
+                    <span>Alugado</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const ToolItem: React.FC<ToolItemProps> = ({ tool, toolRents, onUpdateStatus }) => {
     const statusInfo = getToolStatusInfo(tool.status);
     const [isChanging, setIsChanging] = useState(false);
+    const [showCalendar, setShowCalendar] = useState(false);
 
     const availableStatuses = ['AVAILABLE', 'UNDER_MAINTENANCE', 'INACTIVE'];
     const canChange = tool.status !== 'RENTED';
@@ -426,29 +604,59 @@ const ToolItem: React.FC<ToolItemProps> = ({ tool, onUpdateStatus }) => {
     return (
         <div style={{ border: '1px solid #e5e5e5', borderRadius: 8, padding: 16, background: '#fff' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 16 }}>
-                <div>
+                <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700 }}>{tool.name}</div>
                     <div style={{ color: '#6b7280', fontSize: 13 }}>{statusInfo.label}</div>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {availableStatuses.map(s => (
-                        <button key={s} onClick={() => handleStatusChange(s)} disabled={isChanging} style={{ padding: '6px 10px', borderRadius: 6 }}>
+                        <button key={s} onClick={() => handleStatusChange(s)} disabled={isChanging} style={{ padding: '6px 10px', borderRadius: 6, fontSize: 12 }}>
                             {s}
                         </button>
                     ))}
                 </div>
             </div>
+            <button 
+                onClick={() => setShowCalendar(!showCalendar)}
+                style={{ 
+                    marginTop: 12, 
+                    padding: '6px 12px', 
+                    borderRadius: 6, 
+                    border: '1px solid #d1d5db',
+                    background: showCalendar ? '#f3f4f6' : '#fff',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                }}
+            >
+                📅 {showCalendar ? 'Ocultar Calendário' : 'Ver Disponibilidade'}
+            </button>
+            {showCalendar && <AvailabilityCalendar toolRents={toolRents} />}
         </div>
     );
 };
 
 interface MyToolsViewProps {
     myTools: Tool[];
+    allRents: Rent[];
     loading: boolean;
     onUpdateStatus: (toolId: number, newStatus: string) => Promise<void>;
 }
 
-const MyToolsView: React.FC<MyToolsViewProps> = ({ myTools, loading, onUpdateStatus }) => {
+const MyToolsView: React.FC<MyToolsViewProps> = ({ myTools, allRents, loading, onUpdateStatus }) => {
+    // Group rents by tool ID for the availability calendar
+    const rentsByTool = useMemo(() => {
+        const map = new Map<number, Rent[]>();
+        myTools.forEach(t => map.set(t.id, []));
+        allRents.forEach(r => {
+            const existing = map.get(r.toolId);
+            if (existing) existing.push(r);
+        });
+        return map;
+    }, [myTools, allRents]);
+
     let content;
 
     if (loading) {
@@ -456,7 +664,14 @@ const MyToolsView: React.FC<MyToolsViewProps> = ({ myTools, loading, onUpdateSta
     } else if (myTools.length === 0) {
         content = <p>Não tem anúncios activos.</p>;
     } else {
-        content = <div style={{ display: 'grid', gap: 12 }}>{myTools.map(t => <ToolItem key={t.id} tool={t} onUpdateStatus={onUpdateStatus} />)}</div>;
+        content = <div style={{ display: 'grid', gap: 12 }}>{myTools.map(t => (
+            <ToolItem 
+                key={t.id} 
+                tool={t} 
+                toolRents={rentsByTool.get(t.id) ?? []} 
+                onUpdateStatus={onUpdateStatus} 
+            />
+        ))}</div>;
     }
 
     return (
@@ -476,6 +691,7 @@ export default function UserDetailsPage(): React.ReactElement {
     const [loading, setLoading] = useState(true);
     const [myRents, setMyRents] = useState<Rent[]>([]);
     const [pendingRents, setPendingRents] = useState<Rent[]>([]);
+    const [allRents, setAllRents] = useState<Rent[]>([]);
     const [myTools, setMyTools] = useState<Tool[]>([]);
     const [tools, setTools] = useState<Map<number, Tool>>(new Map());
     const [loadingRents, setLoadingRents] = useState(false);
@@ -517,6 +733,8 @@ export default function UserDetailsPage(): React.ReactElement {
             const toolsMap = new Map(allTools.map(t => [t.id, t]));
             setTools(toolsMap);
 
+            // Store all rents for the availability calendar
+            setAllRents(allRents);
             setMyRents(allRents.filter(r => r.userId === userId));
 
             const myToolIds = new Set(allTools.filter(t => t.ownerId === userId).map(t => t.id));
@@ -692,6 +910,7 @@ export default function UserDetailsPage(): React.ReactElement {
                             {activeTab === 'myTools' && (
                                 <MyToolsView
                                     myTools={myTools}
+                                    allRents={allRents}
                                     loading={loadingRents}
                                     onUpdateStatus={handleUpdateToolStatus}
                                 />

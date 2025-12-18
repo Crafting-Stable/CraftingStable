@@ -191,35 +191,6 @@ function validateRange(
     return null;
 }
 
-function computeNewRangeOnClick(
-    iso: string,
-    start: string,
-    end: string,
-    minStart: string,
-    blocked: readonly BlockedDateRange[]
-): { start: string; end: string } | null {
-    if (iso < minStart) return null;
-
-    if (iso <= start) {
-        const newStart = iso;
-        const minEnd = toIsoDateString(
-            new Date(new Date(newStart).getTime() + 24 * 60 * 60 * 1000)
-        );
-        let newEnd = end;
-        if (newEnd <= newStart || isRangeBlocked(newStart, newEnd, blocked)) {
-            newEnd = minEnd;
-        }
-        return { start: newStart, end: newEnd };
-    }
-
-    const minEnd = toIsoDateString(
-        new Date(new Date(start).getTime() + 24 * 60 * 60 * 1000)
-    );
-    const candidate = iso <= start ? minEnd : iso;
-    if (isRangeBlocked(start, candidate, blocked)) return null;
-    return { start, end: candidate };
-}
-
 // ---------- MiniCalendar ----------
 type MiniCalendarProps = {
     readonly today: Date;
@@ -945,27 +916,42 @@ function BookingCalendar({
         paymentSection = (
             <div
                 style={{
-                    background: "rgba(34, 197, 94, 0.15)",
-                    border: "2px solid #22c55e",
-                    color: "#86efac",
-                    padding: "24px 20px",
-                    borderRadius: 12,
-                    textAlign: "center",
+                    position: "fixed",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: "rgba(0, 0, 0, 0.75)",
                     display: "flex",
-                    flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
-                    maxWidth: 400,
-                    margin: "0 auto",
+                    zIndex: 9999,
                 }}
             >
-                <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
-                <p style={{ fontWeight: 600, fontSize: 16, margin: 0 }}>
-                    Reserva criada com sucesso!
-                </p>
-                <p style={{ fontSize: 14, marginTop: 8, opacity: 0.9 }}>
-                    A redirecionar para a sua página de reservas...
-                </p>
+                <div
+                    style={{
+                        background: "rgba(34, 197, 94, 0.15)",
+                        border: "2px solid #22c55e",
+                        color: "#86efac",
+                        padding: "40px 48px",
+                        borderRadius: 16,
+                        textAlign: "center",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        maxWidth: 420,
+                        backdropFilter: "blur(8px)",
+                    }}
+                >
+                    <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
+                    <p style={{ fontWeight: 700, fontSize: 20, margin: 0 }}>
+                        Reserva criada com sucesso!
+                    </p>
+                    <p style={{ fontSize: 15, marginTop: 12, opacity: 0.9 }}>
+                        A redirecionar para a sua página de reservas...
+                    </p>
+                </div>
             </div>
         );
     } else {
