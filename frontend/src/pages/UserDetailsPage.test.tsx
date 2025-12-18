@@ -90,3 +90,74 @@ test('mostra perfil e contadores quando existe user e jwt e fetch retorna rents\
     await screen.findByText(/Furadeira/);
     expect(screen.getByText(/Furadeira/)).toBeInTheDocument();
 });
+
+test('mostra dias de aluguer específicos na aba Minhas Reservas', async () => {
+    localStorage.setItem('jwt', 'fake-token');
+    localStorage.setItem('user', JSON.stringify({ id: 1, username: 'Maria', email: 'maria@example.com' }));
+
+    (global as any).fetch = vi.fn((input: RequestInfo) => {
+        const url = String(input);
+        if (url.includes('/api/rents')) {
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve([
+                    {
+                        id: 20,
+                        toolId: 200,
+                        userId: 1,
+                        status: 'APPROVED',
+                        startDate: '2025-06-10',
+                        endDate: '2025-06-13',
+                        message: ''
+                    }
+                ])
+            });
+        }
+
+        if (url.includes('/api/tools')) {
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve([
+                    { id: 200, name: 'Serra Circular', ownerId: 2, status: 'RENTED' }
+                ])
+            });
+        }
+
+        return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ id: 1, username: 'Maria', email: 'maria@example.com', role: 'Utilizador' })
+        });
+    });
+
+    render(
+        <MemoryRouter>
+            <UserDetailsPage />
+        </MemoryRouter>
+    );
+
+    // Espera pelo carregamento
+    await screen.findByText(/Maria/);
+
+    // Clica na aba de reservas
+    const reservasTab = screen.getByRole('button', { name: /📦 Minhas Reservas \(1\)/i });
+    await userEvent.click(reservasTab);
+
+    // Verifica que a ferramenta é exibida
+    await screen.findByText(/Serra Circular/);
+    
+    // Verifica que o número de dias é exibido (4 dias: 10, 11, 12, 13 de junho)
+    // O texto está fragmentado em múltiplos text nodes - usamos queryAllByText para evitar erro de múltiplos matches
+    const daysElements = screen.queryAllByText((_content, element) => {
+        return element?.tagName === 'DIV' && 
+               element?.textContent?.includes('4') && 
+               element?.textContent?.includes('de aluguer') || false;
+    });
+    expect(daysElements.length).toBeGreaterThan(0);
+    
+    // Verifica que os dias individuais são exibidos como badges (quando <= 7 dias)
+    // Os badges usam formato DD/MM
+    expect(screen.getByText('10/06')).toBeInTheDocument();
+    expect(screen.getByText('11/06')).toBeInTheDocument();
+    expect(screen.getByText('12/06')).toBeInTheDocument();
+    expect(screen.getByText('13/06')).toBeInTheDocument();
+});

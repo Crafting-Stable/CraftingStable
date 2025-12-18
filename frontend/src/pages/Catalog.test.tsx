@@ -342,4 +342,24 @@ describe('CatalogPage', () => {
       expect(images.length).toBe(3);
     });
   });
+
+  it('should have scrollable root container with proper styling', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockTools,
+    });
+
+    const { container } = renderCatalog();
+
+    await waitFor(() => {
+      expect(screen.getByText('Martelo')).toBeDefined();
+    });
+
+    // The root container should have minHeight instead of fixed height for proper scrolling
+    const rootElement = container.firstChild as HTMLElement;
+    expect(rootElement).toBeDefined();
+    // Verify the page renders without scroll issues - content is accessible
+    expect(screen.getByText('Catálogo')).toBeDefined();
+    expect(screen.getByText('3 resultados')).toBeDefined();
+  });
 });

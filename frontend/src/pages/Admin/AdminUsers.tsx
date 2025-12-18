@@ -152,7 +152,6 @@ const AdminUsers: React.FC = () => {
                 <nav style={styles.nav}>
                     <Link to="/admin" style={styles.navLink}>Dashboard</Link>
                     <Link to="/admin/tools" style={styles.navLink}>Tools</Link>
-                    <Link to="/admin/analytics" style={styles.navLink}>Analytics</Link>
                     <Link to="/" style={styles.navLink}>Home</Link>
                 </nav>
             </header>

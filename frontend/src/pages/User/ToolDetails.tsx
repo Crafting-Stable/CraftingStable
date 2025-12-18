@@ -240,18 +240,66 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
                                                        blockedDates,
                                                        onChangeRange,
                                                    }) => {
-    const startDate = useMemo(
-        () => new Date(today.getTime() + 24 * 60 * 60 * 1000),
-        [today]
-    );
-    const dates = useMemo(() => {
-        const arr: { iso: string; label: string; dateObj: Date }[] = [];
-        for (let i = 0; i < 60; i += 1) {
-            const d = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
-            arr.push({ iso: toIsoDateString(d), label: d.getDate().toString(), dateObj: d });
+    // Track which month is being viewed
+    const [viewMonth, setViewMonth] = useState<Date>(() => {
+        const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+        return new Date(tomorrow.getFullYear(), tomorrow.getMonth(), 1);
+    });
+    
+    // Track selection mode: 'start' or 'end'
+    const [selectionMode, setSelectionMode] = useState<'start' | 'end'>('end');
+
+    // Generate dates for the current view month
+    const calendarDays = useMemo(() => {
+        const year = viewMonth.getFullYear();
+        const month = viewMonth.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        
+        const arr: { iso: string; label: string; dateObj: Date; isCurrentMonth: boolean }[] = [];
+        
+        // Get the day of week for the first day (0 = Sunday, 1 = Monday, etc.)
+        // Adjust to start from Monday (1 = Monday, 0 = Sunday becomes 7)
+        let startDayOfWeek = firstDay.getDay();
+        if (startDayOfWeek === 0) startDayOfWeek = 7;
+        startDayOfWeek -= 1; // Make Monday = 0
+        
+        // Add days from previous month to fill the first week
+        for (let i = startDayOfWeek - 1; i >= 0; i--) {
+            const d = new Date(year, month, -i);
+            arr.push({ 
+                iso: toIsoDateString(d), 
+                label: d.getDate().toString(), 
+                dateObj: d,
+                isCurrentMonth: false
+            });
         }
+        
+        // Add all days of the current month
+        for (let day = 1; day <= lastDay.getDate(); day++) {
+            const d = new Date(year, month, day);
+            arr.push({ 
+                iso: toIsoDateString(d), 
+                label: d.getDate().toString(), 
+                dateObj: d,
+                isCurrentMonth: true
+            });
+        }
+        
+        // Add days from next month to complete the grid (6 rows x 7 days = 42 cells)
+        const remaining = 42 - arr.length;
+        for (let i = 1; i <= remaining; i++) {
+            const d = new Date(year, month + 1, i);
+            arr.push({ 
+                iso: toIsoDateString(d), 
+                label: d.getDate().toString(), 
+                dateObj: d,
+                isCurrentMonth: false
+            });
+        }
+        
         return arr;
-    }, [startDate]);
+    }, [viewMonth]);
 
     const isBlockedDay = (iso: string): boolean =>
         blockedDates.some(
@@ -259,6 +307,28 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
                 BLOCKING_STATUSES.has(b.status) &&
                 rangesOverlap(iso, iso, b.startDate, b.endDate)
         );
+
+    const isInRange = (iso: string): boolean => {
+        return iso >= start && iso <= end;
+    };
+
+    const goToPreviousMonth = () => {
+        setViewMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    };
+
+    const goToNextMonth = () => {
+        setViewMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    };
+
+    const monthName = viewMonth.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
+
+    // Check if previous month button should be disabled
+    const canGoPrevious = useMemo(() => {
+        const lastDayOfPrevMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 0);
+        return toIsoDateString(lastDayOfPrevMonth) >= minStart;
+    }, [viewMonth, minStart]);
+
+    const weekDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
     return (
         <div style={{ marginTop: 12 }}>
@@ -272,42 +342,192 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
             >
                 📆 Calendário (dias alugados em vermelho)
             </div>
+            
+            {/* Selection mode toggle */}
+            <div style={{ 
+                display: 'flex', 
+                gap: 8, 
+                marginBottom: 12,
+                alignItems: 'center'
+            }}>
+                <span style={{ color: '#fff', fontSize: 13 }}>Selecionar:</span>
+                <button
+                    type="button"
+                    onClick={() => setSelectionMode('start')}
+                    disabled={!!success}
+                    style={{
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        border: 'none',
+                        cursor: success ? 'not-allowed' : 'pointer',
+                        background: selectionMode === 'start' ? '#10b981' : 'rgba(255,255,255,0.1)',
+                        color: '#fff',
+                        fontSize: 12,
+                        fontWeight: selectionMode === 'start' ? 600 : 400,
+                    }}
+                >
+                    📅 Data Início
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setSelectionMode('end')}
+                    disabled={!!success}
+                    style={{
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        border: 'none',
+                        cursor: success ? 'not-allowed' : 'pointer',
+                        background: selectionMode === 'end' ? '#10b981' : 'rgba(255,255,255,0.1)',
+                        color: '#fff',
+                        fontSize: 12,
+                        fontWeight: selectionMode === 'end' ? 600 : 400,
+                    }}
+                >
+                    📅 Data Fim
+                </button>
+            </div>
+
+            {/* Month navigation */}
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 12,
+                padding: '8px 4px',
+                background: 'rgba(255,255,255,0.05)',
+                borderRadius: 6,
+            }}>
+                <button
+                    type="button"
+                    onClick={goToPreviousMonth}
+                    disabled={!canGoPrevious || !!success}
+                    aria-label="Mês anterior"
+                    style={{
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        border: 'none',
+                        cursor: (!canGoPrevious || success) ? 'not-allowed' : 'pointer',
+                        background: canGoPrevious && !success ? 'rgba(255,255,255,0.1)' : 'transparent',
+                        color: canGoPrevious && !success ? '#fff' : 'rgba(255,255,255,0.3)',
+                        fontSize: 14,
+                        fontWeight: 600,
+                    }}
+                >
+                    ◀ Anterior
+                </button>
+                <span style={{ 
+                    color: '#fff', 
+                    fontWeight: 600, 
+                    fontSize: 15,
+                    textTransform: 'capitalize'
+                }}>
+                    {monthName}
+                </span>
+                <button
+                    type="button"
+                    onClick={goToNextMonth}
+                    disabled={!!success}
+                    aria-label="Próximo mês"
+                    style={{
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        border: 'none',
+                        cursor: success ? 'not-allowed' : 'pointer',
+                        background: success ? 'transparent' : 'rgba(255,255,255,0.1)',
+                        color: success ? 'rgba(255,255,255,0.3)' : '#fff',
+                        fontSize: 14,
+                        fontWeight: 600,
+                    }}
+                >
+                    Próximo ▶
+                </button>
+            </div>
+
+            {/* Week day headers */}
             <div
                 style={{
                     display: "grid",
                     gridTemplateColumns: "repeat(7, 1fr)",
-                    gap: 6,
+                    gap: 4,
+                    marginBottom: 4,
                 }}
             >
-                {dates.map((d) => {
+                {weekDays.map(day => (
+                    <div 
+                        key={day}
+                        style={{
+                            textAlign: 'center',
+                            color: 'rgba(255,255,255,0.6)',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            padding: '4px 0',
+                        }}
+                    >
+                        {day}
+                    </div>
+                ))}
+            </div>
+
+            {/* Calendar grid */}
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(7, 1fr)",
+                    gap: 4,
+                }}
+            >
+                {calendarDays.map((d) => {
                     const blocked = isBlockedDay(d.iso);
-                    const selected = d.iso === start || d.iso === end;
+                    const isStart = d.iso === start;
+                    const isEnd = d.iso === end;
+                    const inRange = isInRange(d.iso);
                     const disabled = blocked || !!success || d.iso < minStart;
 
-                    let background = "rgba(255,255,255,0.03)";
+                    let background = d.isCurrentMonth 
+                        ? "rgba(255,255,255,0.03)" 
+                        : "rgba(255,255,255,0.01)";
                     let border = "1px solid rgba(255,255,255,0.06)";
-                    let color = "#e6eef8";
+                    let color = d.isCurrentMonth ? "#e6eef8" : "rgba(255,255,255,0.3)";
 
                     if (blocked) {
                         background = "#7f1d1d";
                         color = "#fff";
-                    } else if (selected) {
+                    } else if (isStart || isEnd) {
                         background = "#064e3b";
                         border = "2px solid #10b981";
                         color = "#fff";
+                    } else if (inRange && d.isCurrentMonth) {
+                        background = "rgba(16, 185, 129, 0.2)";
+                        border = "1px solid rgba(16, 185, 129, 0.4)";
                     }
 
                     const handleClick = (): void => {
                         if (success || disabled) return;
-                        const next = computeNewRangeOnClick(
-                            d.iso,
-                            start,
-                            end,
-                            minStart,
-                            blockedDates
-                        );
-                        if (!next) return;
-                        onChangeRange(next.start, next.end);
+                        
+                        if (selectionMode === 'start') {
+                            // Setting new start date
+                            let newStart = d.iso;
+                            let newEnd = end;
+                            
+                            // Ensure end is after start
+                            if (newEnd <= newStart) {
+                                newEnd = toIsoDateString(
+                                    new Date(new Date(newStart).getTime() + 24 * 60 * 60 * 1000)
+                                );
+                            }
+                            
+                            // Check for blocking
+                            if (!isRangeBlocked(newStart, newEnd, blockedDates)) {
+                                onChangeRange(newStart, newEnd);
+                            }
+                        } else {
+                            // Setting new end date
+                            if (d.iso <= start) return; // End must be after start
+                            
+                            if (!isRangeBlocked(start, d.iso, blockedDates)) {
+                                onChangeRange(start, d.iso);
+                            }
+                        }
                     };
 
                     return (
@@ -322,28 +542,21 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
                                     : d.dateObj.toLocaleDateString("pt-PT")
                             }
                             style={{
-                                padding: "8px 6px",
+                                padding: "6px 4px",
                                 textAlign: "center",
                                 borderRadius: 6,
                                 cursor: disabled ? "not-allowed" : "pointer",
                                 userSelect: "none",
-                                fontSize: 13,
+                                fontSize: 12,
                                 border,
                                 background,
                                 color,
-                                opacity: disabled && !blocked ? 0.5 : 1,
+                                opacity: (disabled && !blocked) || !d.isCurrentMonth ? 0.5 : 1,
+                                minHeight: 36,
                             }}
                         >
-                            <div style={{ fontWeight: 700 }}>{d.label}</div>
-                            <div
-                                style={{
-                                    fontSize: 11,
-                                    opacity: 0.8,
-                                }}
-                            >
-                                {d.dateObj.toLocaleDateString("pt-PT", {
-                                    weekday: "short",
-                                })}
+                            <div style={{ fontWeight: isStart || isEnd ? 700 : 500 }}>
+                                {d.label}
                             </div>
                         </button>
                     );
@@ -732,15 +945,27 @@ function BookingCalendar({
         paymentSection = (
             <div
                 style={{
-                    background: "rgba(34, 197, 94, 0.12)",
-                    border: "1px solid #22c55e",
+                    background: "rgba(34, 197, 94, 0.15)",
+                    border: "2px solid #22c55e",
                     color: "#86efac",
-                    padding: "10px 14px",
-                    borderRadius: 6,
+                    padding: "24px 20px",
+                    borderRadius: 12,
                     textAlign: "center",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    maxWidth: 400,
+                    margin: "0 auto",
                 }}
             >
-                <p>A redirecionar para a sua página de reservas...</p>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+                <p style={{ fontWeight: 600, fontSize: 16, margin: 0 }}>
+                    Reserva criada com sucesso!
+                </p>
+                <p style={{ fontSize: 14, marginTop: 8, opacity: 0.9 }}>
+                    A redirecionar para a sua página de reservas...
+                </p>
             </div>
         );
     } else {
@@ -803,13 +1028,19 @@ function BookingCalendar({
                         background: "rgba(34, 197, 94, 0.12)",
                         border: "1px solid #22c55e",
                         color: "#86efac",
-                        padding: "10px 14px",
-                        borderRadius: 6,
+                        padding: "20px 24px",
+                        borderRadius: 8,
                         marginBottom: 12,
-                        fontSize: 14,
+                        fontSize: 16,
+                        textAlign: "center",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
                     }}
                 >
-                    ✅ {success}
+                    <div style={{ fontSize: 32, marginBottom: 8 }}>🎉</div>
+                    <div style={{ fontWeight: 600 }}>✅ {success}</div>
                 </div>
             )}
 
@@ -974,7 +1205,13 @@ function BookingCalendar({
                 </div>
             )}
 
-            <div style={{ marginTop: 16 }}>{paymentSection}</div>
+            <div style={{ 
+                marginTop: 16,
+                display: "flex",
+                justifyContent: "center",
+            }}>
+                {paymentSection}
+            </div>
 
             {showModal && (
                 <RentSuccessModal rentData={rentData} onClose={handleCloseModal} />

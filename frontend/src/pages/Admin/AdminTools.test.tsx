@@ -626,4 +626,25 @@ describe('AdminTools', () => {
     const dashboardLink = screen.getByText('Dashboard');
     expect(dashboardLink).toBeDefined();
   });
+
+  it('navigation does not contain Analytics link', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => mockTools,
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText('Tool Management')).toBeDefined();
+    });
+
+    // Verify navigation links are present
+    expect(screen.getByText('Dashboard')).toBeDefined();
+    expect(screen.getByText('Users')).toBeDefined();
+    expect(screen.getByText('Home')).toBeDefined();
+    
+    // Analytics link should NOT be present
+    expect(screen.queryByText('Analytics')).toBeNull();
+  });
 });

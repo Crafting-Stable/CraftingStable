@@ -153,6 +153,32 @@ const Header: React.FC<HeaderProps> = ({ onBack, onLogout }) => (
     </header>
 );
 
+// Helper function to calculate days between dates and get all dates
+function getDaysBetween(startDate: string, endDate: string): { days: number; dateList: string[] } {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const dateList: string[] = [];
+    const current = new Date(start);
+    
+    while (current <= end) {
+        dateList.push(current.toLocaleDateString('pt-PT', { 
+            day: '2-digit', 
+            month: 'short' 
+        }));
+        current.setDate(current.getDate() + 1);
+    }
+    
+    return { days: dateList.length, dateList };
+}
+
+// Helper to format date for display
+function formatDateRange(startDate: string, endDate: string): string {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
+    return `${start.toLocaleDateString('pt-PT', options)} → ${end.toLocaleDateString('pt-PT', options)}`;
+}
+
 interface RentItemProps {
     rent: Rent;
     tools: Map<number, Tool>;
@@ -167,13 +193,48 @@ const RentItem: React.FC<RentItemProps> = ({ rent, tools, userId, onCancel }) =>
 
     const tool = tools.get(rent.toolId);
     const toolDisplay = tool ? `${tool.name} (#${tool.id})` : `Ferramenta #${rent.toolId}`;
+    
+    const { days, dateList } = getDaysBetween(rent.startDate, rent.endDate);
 
     return (
         <div key={rent.id} style={{ border: '1px solid #e5e5e5', borderRadius: 8, padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                <div>
+                <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700 }}>{toolDisplay}</div>
-                    <div style={{ fontSize: 13, color: '#6b7280' }}>{rent.startDate} → {rent.endDate}</div>
+                    <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
+                        📅 {formatDateRange(rent.startDate, rent.endDate)}
+                    </div>
+                    <div style={{ fontSize: 13, color: '#1f2937', marginTop: 4 }}>
+                        <strong>{days} dia{days === 1 ? '' : 's'}</strong> de aluguer
+                    </div>
+                    {days <= 7 && (
+                        <div style={{ 
+                            display: 'flex', 
+                            flexWrap: 'wrap', 
+                            gap: 4, 
+                            marginTop: 8 
+                        }}>
+                            {dateList.map((date, idx) => (
+                                <span 
+                                    key={idx}
+                                    style={{ 
+                                        background: '#f3f4f6', 
+                                        padding: '2px 8px', 
+                                        borderRadius: 4, 
+                                        fontSize: 11,
+                                        color: '#374151'
+                                    }}
+                                >
+                                    {date}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                    {days > 7 && (
+                        <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+                            De {dateList[0]} a {dateList.at(-1)}
+                        </div>
+                    )}
                 </div>
                 <div style={{ textAlign: 'right' }}>
                     <div style={{ background, color, padding: '6px 8px', borderRadius: 6 }}>{statusLabel}</div>
