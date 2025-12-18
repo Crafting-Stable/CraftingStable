@@ -394,7 +394,7 @@ export default function AddRent(): React.ReactElement {
     }
 
     const containerStyle: React.CSSProperties = {
-        height: "100vh",
+        minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
         fontFamily: "Inter, Arial, sans-serif",
@@ -404,7 +404,7 @@ export default function AddRent(): React.ReactElement {
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
         position: "relative",
-        overflow: "hidden"
+        overflowY: "auto"
     };
 
     const overlayStyle: React.CSSProperties = {

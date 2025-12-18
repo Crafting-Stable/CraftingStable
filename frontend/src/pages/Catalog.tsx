@@ -32,18 +32,21 @@ interface ApiTool {
 
 const styles: { [k: string]: React.CSSProperties } = {
     root: {
-        height: "100vh",
+        minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
         position: "relative",
         backgroundImage: `url(${bgImg})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
+        backgroundAttachment: "fixed",
         color: "#fff",
         fontFamily: "Inter, Arial, sans-serif",
         overflowY: "auto",
+        overflowX: "hidden",
         WebkitOverflowScrolling: "touch",
-        touchAction: "pan-y"
+        touchAction: "pan-y",
+        paddingBottom: 40
     },
     overlay: {
         position: "absolute",

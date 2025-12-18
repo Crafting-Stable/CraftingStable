@@ -160,4 +160,27 @@ describe('AdminUsers', () => {
         expect(roleCall![1].method).toBe('PUT');
         expect(roleCall![1].body).toBe(JSON.stringify({ role: 'ADMIN' }));
     });
+
+    test('navigation does not contain Analytics link', async () => {
+        (global as any).fetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => usersInitial,
+        });
+
+        render(
+            <MemoryRouter>
+                <AdminUsers />
+            </MemoryRouter>
+        );
+
+        await screen.findByText('Alice');
+
+        // Verify navigation links
+        expect(screen.getByText('Dashboard')).toBeInTheDocument();
+        expect(screen.getByText('Tools')).toBeInTheDocument();
+        expect(screen.getByText('Home')).toBeInTheDocument();
+        
+        // Analytics link should NOT be present
+        expect(screen.queryByText('Analytics')).not.toBeInTheDocument();
+    });
 });

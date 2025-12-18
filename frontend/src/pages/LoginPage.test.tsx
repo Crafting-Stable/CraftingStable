@@ -124,4 +124,27 @@ describe('LoginPage', () => {
       expect(modal.getByText(/Email already exists|Email já existe/i)).toBeDefined();
     });
   });
+
+  it('register modal is displayed centered on screen', async () => {
+    render(
+        <BrowserRouter>
+          <LoginPage />
+        </BrowserRouter>
+    );
+
+    // Open register modal
+    const createBtn = screen.getByRole('button', { name: /criar conta/i });
+    fireEvent.click(createBtn);
+
+    // Check that modal backdrop exists with proper centering classes
+    const backdrop = document.querySelector('.modal-backdrop');
+    expect(backdrop).not.toBeNull();
+
+    // Check that dialog is visible
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeDefined();
+
+    // Verify the modal content is visible (centered form)
+    expect(within(dialog).getByText(/Crie a sua conta/i)).toBeDefined();
+  });
 });

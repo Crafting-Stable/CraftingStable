@@ -283,24 +283,33 @@ export default function LoginPage(): React.ReactElement {
             </div>
 
             {showRegisterForm && (
-                <>
-                    <button
-                        className="modal-backdrop"
-                        aria-label="Fechar formulário de registo"
-                        onClick={() => setShowRegisterForm(false)}
-                        style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
-                    ></button>
-
+                <div 
+                    className="modal-backdrop"
+                    onClick={() => setShowRegisterForm(false)}
+                    onKeyDown={(e) => e.key === 'Escape' && setShowRegisterForm(false)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Fechar formulário de registo"
+                >
                     <dialog
                         className="modal"
                         open
                         aria-modal="true"
-                        style={{ zIndex: 10000 }}
+                        style={{ 
+                            zIndex: 10000,
+                            position: 'relative',
+                            margin: 0,
+                            border: 'none',
+                            background: 'transparent',
+                        }}
                     >
                         <section
                             className="card"
                             style={{ maxWidth: 540, width: '100%', maxHeight: '80vh', overflow: 'auto' }}
                             onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                            role="form"
+                            tabIndex={-1}
                         >
                             <div style={{
                                 display: 'flex',
@@ -402,7 +411,7 @@ export default function LoginPage(): React.ReactElement {
                             </form>
                         </section>
                     </dialog>
-                </>
+                </div>
             )}
 
             <style>{`
@@ -471,14 +480,22 @@ export default function LoginPage(): React.ReactElement {
                     position: fixed;
                     inset: 0;
                     background: rgba(0,0,0,0.45);
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
                     z-index: 9999;
                     border: none;
-                    padding: 0;
+                    padding: 20px;
+                    box-sizing: border-box;
                 }
-                .modal { padding: 18px; max-width: 96vw; box-sizing: border-box; }
+                .modal { 
+                    padding: 18px; 
+                    max-width: 96vw; 
+                    box-sizing: border-box;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
                 .modal .card { box-shadow: 0 10px 30px rgba(0,0,0,0.18); }
                 .modal .card::-webkit-scrollbar { height: 8px; }
                 .modal .card { max-height: 80vh; overflow: auto; }
