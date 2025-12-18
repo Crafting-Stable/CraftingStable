@@ -37,7 +37,9 @@ public class AuthController {
     private final JwtUtil jwtUtil;
 
     @Autowired
-    public AuthController(AuthenticationManager authManager, UserDetailsServiceImpl userDetailsService, JwtUtil jwtUtil) {
+    public AuthController(AuthenticationManager authManager,
+                          UserDetailsServiceImpl userDetailsService,
+                          JwtUtil jwtUtil) {
         this.authManager = authManager;
         this.userDetailsService = userDetailsService;
         this.jwtUtil = jwtUtil;
@@ -53,7 +55,18 @@ public class AuthController {
             logger.info("✅ Authentication successful for: {}", request.getEmail());
         } catch (BadCredentialsException e) {
             logger.error("❌ Bad credentials for: {}", request.getEmail());
-            return ResponseEntity.status(401).body("Invalid email or password");
+
+            boolean exists = userDetailsService.userExists(request.getEmail());
+            Map<String, String> body = new HashMap<>();
+
+            if (!exists) {
+                body.put("message", "Este utilizador não existe.");
+            } else {
+                body.put("message", "Email ou password incorretos.");
+            }
+
+            // Continua a devolver 401 (correto para API), mas com mensagem amigável em JSON
+            return ResponseEntity.status(401).body(body);
         }
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
@@ -63,11 +76,9 @@ public class AuthController {
         String authority = userDetails.getAuthorities().iterator().next().getAuthority();
         logger.info("🎭 Full authority: {}", authority);
 
-        // ✅ Gera o token COM o prefixo ROLE_ (para validação correta)
         String token = jwtUtil.generateToken(userDetails.getUsername(), authority);
         logger.info("🎫 JWT token generated: {}...", token.substring(0, Math.min(30, token.length())));
 
-        // ✅ Remove o prefixo ROLE_ apenas para enviar ao frontend
         String role = authority.replace("ROLE_", "");
         logger.info("🎭 Role without prefix (for response): {}", role);
 
