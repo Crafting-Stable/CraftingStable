@@ -37,5 +37,15 @@ jobs:
           docker volume create prometheus_data || true
           docker volume create grafana_data || true
 
-          docker-compose pull || true
-          docker-compose up -d --build || true
+          # Para tudo antes de recriar
+          docker-compose down || true
+
+          # Limpa containers/imagens antigos problemáticos (especialmente backend)
+          docker rm -f craftingstable_backend_1 || true
+          docker rmi craftingstable_backend:latest || true
+
+          # Rebuild completo sem cache para garantir código novo
+          docker-compose build --no-cache
+
+          # Sobe de novo
+          docker-compose up -d

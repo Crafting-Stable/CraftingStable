@@ -21,7 +21,7 @@ const MIN_PASSWORD_LENGTH = 6;
 const ERR_NAME_REQUIRED = 'Nome obrigatório';
 const ERR_EMAIL_REQUIRED = 'Email obrigatório';
 const ERR_EMAIL_INVALID = 'Email inválido';
-const ERR_PASSWORD_REQUIRED = 'Password obrigatória'; // NOSONAR - mensagem de UI, não é uma credencial
+const ERR_PASSWORD_REQUIRED = 'Password obrigatória';
 const ERR_PASSWORD_TOO_SHORT = `Password muito curta (mínimo ${MIN_PASSWORD_LENGTH} caracteres)`;
 const ERR_CONFIRM_MISMATCH = 'Passwords não coincidem';
 const ERR_NETWORK = 'Erro de rede';
@@ -49,7 +49,8 @@ export default function LoginPage(): React.ReactElement {
         return () => globalThis.removeEventListener('keydown', handleKey);
     }, [showRegisterForm]);
 
-    // --- Helpers extraídos para reduzir complexidade ---
+    // --- Helpers ---
+
     const postJson = async (path: string, payload: unknown) => {
         try {
             const res = await fetch(path, {
@@ -63,13 +64,17 @@ export default function LoginPage(): React.ReactElement {
             } catch {
                 data = {};
             }
-            return { ok: res.ok, data };
+            return { ok: res.ok, status: res.status, data };
         } catch {
-            return { ok: false, data: ERR_NETWORK };
+            return { ok: false, status: 0, data: ERR_NETWORK };
         }
     };
 
-    const applyApiErrors = (data: unknown, setErrors: (e: Record<string, string>) => void, fallback: string) => {
+    const applyApiErrors = (
+        data: unknown,
+        setErrors: (e: Record<string, string>) => void,
+        fallback: string
+    ) => {
         if (typeof data === 'object' && data !== null) {
             const d = data as Record<string, unknown>;
             if (d.errors && typeof d.errors === 'object') {
@@ -103,17 +108,37 @@ export default function LoginPage(): React.ReactElement {
         return errs;
     };
 
-    // --- Submits simplificados usando os helpers ---
     const handleLoginSubmit = async (ev?: React.FormEvent) => {
         ev?.preventDefault();
         const errs = validateLogin(login);
         setLoginErrors(errs);
         if (Object.keys(errs).length > 0) return;
 
-        const { ok, data } = await postJson('/api/auth/login', { email: login.email, password: login.password });
+        const { ok, status, data } = await postJson('/api/auth/login', {
+            email: login.email,
+            password: login.password
+        });
+
         if (!ok) {
-            if (data === ERR_NETWORK) setLoginErrors({ general: ERR_NETWORK });
-            else applyApiErrors(data, setLoginErrors, ERR_LOGIN);
+            if (data === ERR_NETWORK) {
+                setLoginErrors({ general: ERR_NETWORK });
+                return;
+            }
+
+            // Se backend devolver message (ex: "Este utilizador não existe.")
+            if (typeof data === 'object' && data !== null && 'message' in data) {
+                const msg = (data as { message: string }).message;
+                setLoginErrors({ general: msg });
+                return;
+            }
+
+            // fallback para outros erros
+            if (status === 401) {
+                setLoginErrors({ general: 'Email ou password incorretos.' });
+                return;
+            }
+
+            applyApiErrors(data, setLoginErrors, ERR_LOGIN);
             return;
         }
 
@@ -157,8 +182,11 @@ export default function LoginPage(): React.ReactElement {
 
         const { ok, data } = await postJson('/api/auth/register', payload);
         if (!ok) {
-            if (data === ERR_NETWORK) setRegisterErrors({ general: ERR_NETWORK });
-            else applyApiErrors(data, setRegisterErrors, ERR_REGISTER);
+            if (data === ERR_NETWORK) {
+                setRegisterErrors({ general: ERR_NETWORK });
+            } else {
+                applyApiErrors(data, setRegisterErrors, ERR_REGISTER);
+            }
             return;
         }
 
@@ -221,7 +249,11 @@ export default function LoginPage(): React.ReactElement {
                                         </button>
                                     </div>
                                     {loginErrors.password && <div className="error">{loginErrors.password}</div>}
-                                    {loginErrors.general && <div className="error" style={{ marginTop: 8 }}>{loginErrors.general}</div>}
+                                    {loginErrors.general && (
+                                        <div className="error" style={{ marginTop: 8 }}>
+                                            {loginErrors.general}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <button type="submit" className="btn">Entrar</button>
@@ -231,7 +263,13 @@ export default function LoginPage(): React.ReactElement {
 
                     <div style={{ marginTop: 18, textAlign: 'center' }}>
                         <span className="muted">Primeira vez?</span>
-                        <button className="btn secondary" style={{ marginLeft: 10 }} onClick={() => setShowRegisterForm(true)}>Criar conta</button>
+                        <button
+                            className="btn secondary"
+                            style={{ marginLeft: 10 }}
+                            onClick={() => setShowRegisterForm(true)}
+                        >
+                            Criar conta
+                        </button>
                     </div>
 
                     <div style={{ marginTop: 18, textAlign: 'center', color: '#6b7280' }}>
@@ -264,10 +302,22 @@ export default function LoginPage(): React.ReactElement {
                             style={{ maxWidth: 540, width: '100%', maxHeight: '80vh', overflow: 'auto' }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: 8
+                            }}>
                                 <div className="brand">
                                     <div style={{ width: 44 }}>
-                                        <div style={{ width: 44, height: 44, borderRadius: 8, background: '#fde68a' }} />
+                                        <div
+                                            style={{
+                                                width: 44,
+                                                height: 44,
+                                                borderRadius: 8,
+                                                background: '#fde68a'
+                                            }}
+                                        />
                                     </div>
                                     <div>
                                         <strong>Crie a sua conta</strong>
@@ -275,7 +325,11 @@ export default function LoginPage(): React.ReactElement {
                                     </div>
                                 </div>
 
-                                <button className="btn secondary" onClick={() => setShowRegisterForm(false)} aria-label="Fechar">
+                                <button
+                                    className="btn secondary"
+                                    onClick={() => setShowRegisterForm(false)}
+                                    aria-label="Fechar"
+                                >
                                     Fechar
                                 </button>
                             </div>
@@ -329,10 +383,18 @@ export default function LoginPage(): React.ReactElement {
                                     {registerErrors.confirm && <div className="error">{registerErrors.confirm}</div>}
                                 </div>
 
-                                {registerErrors.general && <div className="error" style={{ marginBottom: 12 }}>{registerErrors.general}</div>}
+                                {registerErrors.general && (
+                                    <div className="error" style={{ marginBottom: 12 }}>
+                                        {registerErrors.general}
+                                    </div>
+                                )}
 
                                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                                    <button type="button" className="btn secondary" onClick={() => setShowRegisterForm(false)}>
+                                    <button
+                                        type="button"
+                                        className="btn secondary"
+                                        onClick={() => setShowRegisterForm(false)}
+                                    >
                                         Cancelar
                                     </button>
                                     <button type="submit" className="btn">Criar conta</button>
@@ -344,53 +406,83 @@ export default function LoginPage(): React.ReactElement {
             )}
 
             <style>{`
-                      @media (max-width: 780px) {
-                        .side-by-side { flex-direction: column; padding: 16px; }
-                        .card { width: 100%; margin: 8px 0; }
-                      }
-                      .side-by-side { display: flex; gap: 24px; align-items: stretch; }
-                      /* Garantir texto escuro dentro dos cartões e modal */
-                      .card, .modal .card { color: #111; }
-                      /* Inputs e labels dentro dos cartões também devem ter texto escuro */
-                      .card input, .card label, .card .muted { color: #111; }
+                @media (max-width: 780px) {
+                    .side-by-side { flex-direction: column; padding: 16px; }
+                    .card { width: 100%; margin: 8px 0; }
+                }
+                .side-by-side { display: flex; gap: 24px; align-items: stretch; }
+                .card, .modal .card { color: #111; }
+                .card input, .card label, .card .muted { color: #111; }
 
-                      /* Forçar fundo e cor dos inputs para evitar ser pretos em temas do navegador */
-                      .card input,
-                      .modal .card input {
-                        background: #fff;
-                        color: #111;
-                        caret-color: #111;
-                        -webkit-text-fill-color: #111; /* Safari / iOS */
-                        border: 1px solid #e5e7eb;
-                      }
+                .card input,
+                .modal .card input {
+                    background: #fff;
+                    color: #111;
+                    caret-color: #111;
+                    -webkit-text-fill-color: #111;
+                    border: 1px solid #e5e7eb;
+                }
 
-                      input {
-                        width:100%;
-                        padding:10px 12px;
-                        border-radius:6px;
-                        /* manter cor e fundo aqui também para inputs fora do .card se necessário */
-                        background: #fff;
-                        color: #111;
-                      }
+                input {
+                    width:100%;
+                    padding:10px 12px;
+                    border-radius:6px;
+                    background: #fff;
+                    color: #111;
+                }
 
-                      input::placeholder {
-                        color: #9ca3af;
-                        opacity: 1;
-                      }
+                input::placeholder {
+                    color: #9ca3af;
+                    opacity: 1;
+                }
 
-                      .error { color:#d32f2f; font-size:13px; margin-top:6px; }
-                      .muted { color:#6b7280; font-size:14px; }
-                      .card { background: #fff; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); padding: 28px; width: 100%; max-width: 520px; }
-                      .brand { display:flex; gap:12px; align-items:center; margin-bottom: 18px; }
-                      .brand-logo { width:44px; height:44px; background:linear-gradient(135deg,#1f8bf5,#4bd3a8); border-radius:8px; display:inline-block; }
-                      .btn { background:#1f8bf5; color:#fff; border:0; padding:10px 14px; border-radius:6px; cursor:pointer; }
-                      .btn.secondary { background:#f3f4f6; color:#111; border:1px solid #e5e7eb; }
-                      .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index: 9999; border: none; padding: 0; }
-                      .modal { padding: 18px; max-width: 96vw; box-sizing: border-box; }
-                      .modal .card { box-shadow: 0 10px 30px rgba(0,0,0,0.18); }
-                      .modal .card::-webkit-scrollbar { height: 8px; }
-                      .modal .card { max-height: 80vh; overflow: auto; }
-                    `}</style>
+                .error { color:#d32f2f; font-size:13px; margin-top:6px; }
+                .muted { color:#6b7280; font-size:14px; }
+                .card {
+                    background: #fff;
+                    border-radius: 8px;
+                    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+                    padding: 28px;
+                    width: 100%;
+                    max-width: 520px;
+                }
+                .brand { display:flex; gap:12px; align-items:center; margin-bottom: 18px; }
+                .brand-logo {
+                    width:44px;
+                    height:44px;
+                    background:linear-gradient(135deg,#1f8bf5,#4bd3a8);
+                    border-radius:8px;
+                    display:inline-block;
+                }
+                .btn {
+                    background:#1f8bf5;
+                    color:#fff;
+                    border:0;
+                    padding:10px 14px;
+                    border-radius:6px;
+                    cursor:pointer;
+                }
+                .btn.secondary {
+                    background:#f3f4f6;
+                    color:#111;
+                    border:1px solid #e5e7eb;
+                }
+                .modal-backdrop {
+                    position: fixed;
+                    inset: 0;
+                    background: rgba(0,0,0,0.45);
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    z-index: 9999;
+                    border: none;
+                    padding: 0;
+                }
+                .modal { padding: 18px; max-width: 96vw; box-sizing: border-box; }
+                .modal .card { box-shadow: 0 10px 30px rgba(0,0,0,0.18); }
+                .modal .card::-webkit-scrollbar { height: 8px; }
+                .modal .card { max-height: 80vh; overflow: auto; }
+            `}</style>
         </div>
     );
 }
@@ -420,7 +512,7 @@ const styles: Record<string, React.CSSProperties> = {
         width: '100%',
         display: 'flex',
         flexDirection: 'column',
-        flex: 1,
+        flex: 1
     },
     container: {
         width: '100%',
