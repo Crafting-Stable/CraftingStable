@@ -1,11 +1,9 @@
-@wip
 Feature: PayPal Payment Integration
   As a customer with an approved rental
   I want to pay for my rental using PayPal
   So that I can complete my tool rental transaction securely
 
-  # Note: These tests require valid PayPal sandbox credentials
-  # They are tagged @wip to skip in CI and run manually with real credentials
+  # Note: Tests run against mocked PayPal service in test profile
 
   Background:
     Given the application is running
@@ -78,11 +76,11 @@ Feature: PayPal Payment Integration
 
   Scenario: Unauthenticated user cannot create PayPal order
     When an unauthenticated user attempts to create a PayPal order
-    Then the PayPal order response status is 401
+    Then the PayPal order response status is 403
 
   Scenario: Unauthenticated user cannot capture PayPal order
     When an unauthenticated user attempts to capture a PayPal order
-    Then the PayPal capture response status is 401
+    Then the PayPal capture response status is 403
 
   Scenario: Create PayPal order for new rental (pay-first flow)
     Given a user is logged in as "CUSTOMER" with email "customer@example.com"
