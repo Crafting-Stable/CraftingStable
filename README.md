@@ -27,3 +27,9 @@ Crafting Stable is a peer-to-peer marketplace for renting tools: it connects too
 
 - **Crafting Stable - Website**:  
   [http://deti-tqs-21.ua.pt/](http://deti-tqs-21.ua.pt/)
+
+#### API Documentation
+
+- **Swagger UI**:
+
+  [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/swagger-ui/index.html)
